@@ -154,6 +154,19 @@ El objetivo es obtener al finalizar el proyecto una versión:
 * contenerizada;
 * desplegada en un ambiente demostrativo.
 
+## Documentación del proyecto
+
+La documentación técnica se mantiene versionada junto al código:
+
+* [Organización de la documentación](docs/README.md)
+* [Estructura inicial del repositorio](docs/arquitectura/estructura-repositorio.md)
+* [Estrategia Git](docs/gestion/estrategia-git.md)
+* [Definición de Terminado](docs/gestion/definicion-terminado.md)
+* [Registros de decisiones arquitectónicas](docs/adr/)
+* [Contratos de integración](docs/contratos/)
+
+Las reglas para ramas, commits y pull requests se encuentran en [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Evolución futura
 
 Posterior al desarrollo y despliegue de la plataforma principal, se contempla como posible evolución la creación de una **API empresarial** que permita integrar las capacidades inteligentes de SynapDesk con plataformas externas como sistemas de mesa de ayuda o soluciones empresariales existentes.
