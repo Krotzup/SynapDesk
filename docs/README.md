@@ -16,5 +16,6 @@ Documentos iniciales:
 
 - [Estructura del repositorio](arquitectura/estructura-repositorio.md)
 - [Estrategia de entornos](arquitectura/entornos.md)
+- [Estrategia inicial de staging](arquitectura/staging.md)
 - [Estrategia Git](gestion/estrategia-git.md)
 - [Definición de Terminado](gestion/definicion-terminado.md)
