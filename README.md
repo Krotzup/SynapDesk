@@ -167,6 +167,10 @@ La documentación técnica se mantiene versionada junto al código:
 
 Las reglas para ramas, commits y pull requests se encuentran en [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Inicio rápido del entorno local
+
+El entorno inicial utiliza Docker Compose con PostgreSQL y pgvector. Las instrucciones de configuración, ejecución y diagnóstico se encuentran en [infra/README.md](infra/README.md).
+
 ## Evolución futura
 
 Posterior al desarrollo y despliegue de la plataforma principal, se contempla como posible evolución la creación de una **API empresarial** que permita integrar las capacidades inteligentes de SynapDesk con plataformas externas como sistemas de mesa de ayuda o soluciones empresariales existentes.
