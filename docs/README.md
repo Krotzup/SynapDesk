@@ -11,3 +11,10 @@ docs/
 ```
 
 Los documentos deben actualizarse dentro del mismo pull request que modifica la decisión o el comportamiento correspondiente.
+
+Documentos iniciales:
+
+- [Estructura del repositorio](arquitectura/estructura-repositorio.md)
+- [Estrategia de entornos](arquitectura/entornos.md)
+- [Estrategia Git](gestion/estrategia-git.md)
+- [Definición de Terminado](gestion/definicion-terminado.md)
