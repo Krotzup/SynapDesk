@@ -1,182 +1,230 @@
 # SynapDesk
 
-**SynapDesk** es una plataforma inteligente de soporte TI orientada a optimizar la clasificación, priorización y asistencia en la resolución de tickets mediante la integración de **Machine Learning, recuperación semántica, Retrieval-Augmented Generation (RAG) y Large Language Models (LLM)**.
+**SynapDesk** es una plataforma web inteligente de soporte TI orientada a asistir a agentes y administradores de mesas de ayuda en la clasificación, priorización y resolución de tickets.
 
-El proyecto busca transformar documentación técnica y tickets históricos en conocimiento útil para los agentes de soporte, reduciendo tareas repetitivas y facilitando el acceso a información relevante durante la atención de nuevas incidencias.
+El sistema combinará **Machine Learning**, recuperación semántica, **Retrieval-Augmented Generation (RAG)** y **Large Language Models (LLM)** para transformar documentación técnica y tickets históricos en recomendaciones contextualizadas y respaldadas por fuentes.
+
+La inteligencia artificial no reemplazará al especialista. Las recomendaciones estarán sujetas a validación humana.
 
 ## Objetivo
 
-Diseñar, desarrollar y evaluar una plataforma capaz de asistir a los equipos de soporte TI mediante un flujo inteligente que combine clasificación automática, recuperación de información y generación contextualizada de recomendaciones.
+Diseñar, desarrollar y evaluar una plataforma que asista a equipos de soporte TI mediante un flujo inteligente de clasificación automática, recuperación de información y generación contextualizada de recomendaciones.
 
-El flujo general del sistema es:
+El flujo general previsto es:
 
-**Ticket → Machine Learning → Recuperación semántica → RAG → LLM → Recomendación → Validación humana**
+```text
+Ticket → clasificación y priorización ML → recuperación semántica → RAG → LLM → recomendación con fuentes → validación humana
+```
 
-## Funcionalidades principales
+## Alcance funcional
 
-* Gestión de usuarios y roles.
-* Creación y administración de tickets.
-* Clasificación automática de incidencias mediante Machine Learning.
-* Estimación de prioridad y categoría.
-* Gestión de documentación técnica.
-* Generación y almacenamiento de embeddings.
-* Búsqueda semántica mediante base de datos vectorial.
-* Recuperación de tickets históricos similares.
-* Implementación de arquitectura RAG.
-* Generación de recomendaciones mediante LLM.
-* Visualización de las fuentes utilizadas.
-* Validación Human-in-the-loop.
-* Registro de resultados y métricas de evaluación.
+SynapDesk contempla:
 
-## Tecnologías
+- gestión de usuarios y roles;
+- creación y administración de tickets;
+- clasificación automática de incidencias mediante Machine Learning;
+- estimación de categoría, prioridad y nivel de confianza;
+- gestión de documentación técnica;
+- generación y almacenamiento de embeddings;
+- búsqueda semántica mediante PostgreSQL y pgvector;
+- recuperación de documentación y tickets históricos similares;
+- generación contextualizada de recomendaciones mediante RAG y LLM;
+- visualización de las fuentes utilizadas;
+- aceptación, modificación o rechazo de recomendaciones;
+- registro de predicciones, revisiones humanas y métricas de evaluación.
+
+Las funcionalidades se desarrollarán incrementalmente. Su presencia en esta sección representa el alcance previsto del producto, no necesariamente su estado actual de implementación.
+
+## Tecnologías adoptadas
 
 ### Frontend
 
-* Next.js
-* React
-* Tailwind CSS
+- Next.js
+- React
+- Tailwind CSS
 
 ### Backend
 
-* Python
-* FastAPI
-* Pydantic
+- Python
+- FastAPI
+- Pydantic
 
-### Base de datos
+### Persistencia
 
-* PostgreSQL
-* pgvector
-
-### Inteligencia Artificial
-
-* Scikit-learn
-* PyTorch / TensorFlow
-* Hugging Face
-* Modelos de embeddings
-* Large Language Models
-* RAG
+- PostgreSQL
+- pgvector
 
 ### Infraestructura y desarrollo
 
-* Docker
-* GitHub
-* GitHub Projects
-* Jupyter Notebook / Google Colab
+- Docker y Docker Compose
+- Git y GitHub
+- GitHub Projects
+- Jupyter Notebook o Google Colab para experimentación
+
+## Tecnologías de inteligencia artificial en evaluación
+
+- Scikit-learn para modelos base de clasificación;
+- PyTorch, TensorFlow o Hugging Face únicamente si el modelo seleccionado los requiere;
+- modelo de embeddings pendiente de evaluación;
+- proveedor y modelo LLM pendientes de selección;
+- LangChain o LlamaIndex únicamente si aportan valor demostrado al pipeline RAG.
+
+La selección definitiva dependerá de los resultados obtenidos sobre los datos del proyecto. No se asume que todas estas tecnologías serán utilizadas simultáneamente.
 
 ## Arquitectura conceptual
 
-```text
-                    SynapDesk
-                        │
-             ┌──────────┴──────────┐
-             │                     │
-          Frontend              Backend
-             │                     │
-             └──────────┬──────────┘
-                        │
-            ┌───────────┼────────────┐
-            │           │            │
-            ▼           ▼            ▼
-           ML          RAG          LLM
-            │           │            │
-            │      Embeddings        │
-            │           │            │
-            └───────────┼────────────┘
-                        │
-                PostgreSQL + pgvector
+SynapDesk comenzará como un **monolito modular**. Los módulos estarán separados internamente, pero el backend se desplegará inicialmente como una sola aplicación FastAPI.
+
+```mermaid
+flowchart TD
+    Usuario["Agente o administrador"] --> Frontend["Frontend Next.js"]
+    Frontend --> Backend["Backend FastAPI"]
+    Backend --> Identidad["Identidad y acceso"]
+    Backend --> Tickets["Tickets"]
+    Backend --> Documentos["Documentos"]
+    Backend --> Asistencia["Asistencia inteligente"]
+    Asistencia --> ML["Machine Learning"]
+    Asistencia --> Recuperacion["Recuperación y RAG"]
+    Asistencia --> LLM["Proveedor LLM"]
+    Tickets --> Base["PostgreSQL + pgvector"]
+    Documentos --> Base
+    Recuperacion --> Base
 ```
+
+Esta arquitectura favorece modularidad, bajo acoplamiento, mantenibilidad, pruebas e integración progresiva sin introducir la complejidad operacional de microservicios.
 
 ## Machine Learning
 
-El componente de Machine Learning se utiliza principalmente para analizar los tickets recibidos y estimar atributos como:
+El componente de Machine Learning analizará el asunto y la descripción de los tickets para estimar atributos como:
 
-* categoría;
-* prioridad;
-* área responsable.
+- categoría;
+- prioridad;
+- área responsable, si el conjunto de datos permite evaluarla adecuadamente.
 
-Los diferentes modelos serán evaluados utilizando métricas como:
+Los modelos candidatos se evaluarán con métricas apropiadas para clasificación, entre ellas:
 
-* Precision;
-* Recall;
-* Macro F1-Score;
-* Weighted F1-Score;
-* matriz de confusión.
+- precisión;
+- exhaustividad (*recall*);
+- macro F1-score;
+- weighted F1-score;
+- matriz de confusión.
+
+El modelo seleccionado deberá convertirse en un artefacto versionado e integrable. Un notebook por sí solo no se considerará un entregable ejecutable del producto.
 
 ## RAG y recuperación semántica
 
-SynapDesk utiliza una arquitectura RAG para recuperar información relevante desde:
+El pipeline RAG estará diseñado para recuperar información relevante desde:
 
-* documentación técnica;
-* manuales;
-* procedimientos;
-* tickets históricos;
-* soluciones anteriores.
+- documentación técnica;
+- manuales y procedimientos;
+- tickets históricos;
+- soluciones anteriores.
 
-La información recuperada es utilizada como contexto para el modelo de lenguaje, permitiendo generar recomendaciones basadas en fuentes disponibles dentro del sistema.
+La información recuperada se utilizará como contexto controlado para generar recomendaciones. El sistema deberá conservar trazabilidad sobre las fuentes y comunicar cuando no exista información suficiente.
 
-## Human-in-the-loop
+La recuperación y la generación permanecerán separadas para poder evaluarlas y probarlas independientemente.
 
-Las recomendaciones generadas por inteligencia artificial no reemplazan la decisión del agente.
+## Validación humana
+
+Las recomendaciones generadas por inteligencia artificial no reemplazarán la decisión del agente.
 
 El usuario podrá:
 
-* aceptar una recomendación;
-* modificarla;
-* rechazarla;
-* consultar las fuentes utilizadas.
+- aceptar una recomendación;
+- modificarla;
+- rechazarla;
+- consultar las fuentes utilizadas;
+- entregar retroalimentación opcional.
 
-Este enfoque mantiene la supervisión humana dentro del proceso de resolución.
+El sistema registrará la recomendación original, la decisión humana, el usuario revisor y la fecha correspondiente.
 
-## Equipo
+## Equipo y responsabilidades
 
-El proyecto es desarrollado por un equipo multidisciplinario de tres integrantes, con responsabilidades principales distribuidas entre:
+El proyecto es desarrollado por tres integrantes con las siguientes responsabilidades principales:
 
-* desarrollo Full Stack y arquitectura;
-* Machine Learning y Deep Learning;
-* desarrollo Frontend y experiencia de usuario;
-* RAG y modelos de lenguaje;
-* integración, pruebas y despliegue.
+- arquitectura, backend, integración técnica y coordinación funcional del backlog;
+- Machine Learning, datos, entrenamiento y evaluación de modelos;
+- frontend, experiencia de usuario y facilitación del proceso Scrum.
+
+Las decisiones técnicas y funcionales relevantes se revisan de manera colaborativa.
 
 ## Metodología
 
-El desarrollo se organiza mediante **Scrum complementado con prácticas de MLOps ligero**, permitiendo trabajar de manera incremental y mantener trazabilidad sobre datasets, experimentos, modelos y métricas.
+El desarrollo se organiza mediante **Scrum**, complementado con prácticas ligeras de MLOps para mantener trazabilidad sobre datasets, experimentos, modelos, versiones y métricas.
+
+El equipo trabajará mediante ramas cortas, pull requests, revisión entre integrantes e integración progresiva en `main`.
 
 ## Estado del proyecto
 
-SynapDesk se encuentra actualmente en desarrollo como parte de un **Proyecto APT de Ingeniería Informática**.
+SynapDesk se encuentra en desarrollo como parte de un **Proyecto APT de Ingeniería Informática**.
 
-El objetivo es obtener al finalizar el proyecto una versión:
+Actualmente el equipo trabaja en la preparación técnica del proyecto, incluyendo:
 
-* funcional;
-* integrada;
-* evaluada;
-* documentada;
-* contenerizada;
-* desplegada en un ambiente demostrativo.
+- arquitectura inicial;
+- estructura del monorepositorio;
+- convenciones Git;
+- entorno local con Docker;
+- PostgreSQL con pgvector;
+- separación entre desarrollo y testing.
+
+El objetivo semestral es obtener una versión:
+
+- funcional;
+- integrada;
+- evaluada;
+- documentada;
+- contenerizada;
+- desplegada en un entorno demostrativo.
 
 ## Documentación del proyecto
 
 La documentación técnica se mantiene versionada junto al código:
 
-* [Organización de la documentación](docs/README.md)
-* [Estructura inicial del repositorio](docs/arquitectura/estructura-repositorio.md)
-* [Estrategia Git](docs/gestion/estrategia-git.md)
-* [Definición de Terminado](docs/gestion/definicion-terminado.md)
-* [Registros de decisiones arquitectónicas](docs/adr/)
-* [Contratos de integración](docs/contratos/)
+- [Organización de la documentación](docs/README.md)
+- [Estructura inicial del repositorio](docs/arquitectura/estructura-repositorio.md)
+- [Estrategia de entornos](docs/arquitectura/entornos.md)
+- [Estrategia Git](docs/gestion/estrategia-git.md)
+- [Definición de Terminado](docs/gestion/definicion-terminado.md)
+- [Registros de decisiones arquitectónicas](docs/adr/)
+- [Contratos de integración](docs/contratos/)
 
 Las reglas para ramas, commits y pull requests se encuentran en [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Inicio rápido del entorno local
 
-El entorno inicial utiliza Docker Compose con PostgreSQL y pgvector. Las instrucciones de configuración, ejecución y diagnóstico se encuentran en [infra/README.md](infra/README.md).
+Crear la configuración local desde la plantilla:
+
+```bash
+cp .env.example .env
+```
+
+Modificar las contraseñas locales en `.env` y levantar PostgreSQL:
+
+```bash
+docker compose up -d db
+docker compose ps
+```
+
+Las instrucciones completas se encuentran en [infra/README.md](infra/README.md).
+
+## Fuera del alcance actual
+
+Durante el semestre no se contempla desarrollar:
+
+- una API empresarial pública para terceros;
+- integraciones con Zendesk, Jira Service Management o Freshdesk;
+- multi-tenancy empresarial;
+- facturación o planes comerciales;
+- microservicios;
+- portal para desarrolladores;
+- acuerdos de nivel de servicio empresariales.
 
 ## Evolución futura
 
-Posterior al desarrollo y despliegue de la plataforma principal, se contempla como posible evolución la creación de una **API empresarial** que permita integrar las capacidades inteligentes de SynapDesk con plataformas externas como sistemas de mesa de ayuda o soluciones empresariales existentes.
+Después de validar y desplegar la plataforma web, podrá evaluarse una API empresarial para integrar las capacidades de SynapDesk con sistemas externos de mesa de ayuda.
 
-Esta funcionalidad se considera una extensión futura y no forma parte del alcance principal del desarrollo actual.
+Esta posibilidad se considera trabajo futuro y no forma parte del alcance principal del APT.
 
 ## Licencia
 
-La licencia del proyecto será definida de acuerdo con los criterios académicos y de propiedad intelectual establecidos por el equipo y la institución.
+La licencia será definida según los criterios académicos, institucionales y de propiedad intelectual acordados por el equipo.
