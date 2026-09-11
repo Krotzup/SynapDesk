@@ -23,7 +23,7 @@ npm install
 
 ## Variables de entorno
 
-Copiá el archivo de ejemplo y completá los valores:
+Copia el archivo de ejemplo y completa los valores:
 
 ```bash
 cp ../.env.example .env.local
