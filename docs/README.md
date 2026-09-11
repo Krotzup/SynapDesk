@@ -19,3 +19,5 @@ Documentos iniciales:
 - [Estrategia inicial de staging](arquitectura/staging.md)
 - [Estrategia Git](gestion/estrategia-git.md)
 - [Definición de Terminado](gestion/definicion-terminado.md)
+- [Modelo inicial del dominio](arquitectura/modelo-dominio.md)
+- [Contrato inicial entre frontend y backend](contratos/frontend-backend.md)

@@ -10,3 +10,7 @@ Contratos previstos:
 - proveedor LLM.
 
 Cada contrato deberá incluir datos de entrada, datos de salida, validaciones, errores esperados y al menos un ejemplo.
+
+## Contratos disponibles
+
+- [Contrato inicial entre frontend y backend](frontend-backend.md)
