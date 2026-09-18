@@ -1,16 +1,20 @@
 import { api } from "@/lib/api";
-import { Recommendation } from "@/types";
+import { HumanReview, Recommendation } from "@/types";
 
 export const recommendationsService = {
-  getByTicket: (ticketId: string): Promise<Recommendation> =>
-    api.get(`/tickets/${ticketId}/recommendation`),
+  // Genera una nueva recomendación para el ticket
+  generate: (ticketId: string): Promise<Recommendation> =>
+    api.post(`/tickets/${ticketId}/recommendations`, {}),
 
-  accept: (id: string): Promise<Recommendation> =>
-    api.patch(`/recommendations/${id}`, { status: "accepted" }),
+  // Lista todas las recomendaciones de un ticket
+  getByTicket: (ticketId: string): Promise<Recommendation[]> =>
+    api.get(`/tickets/${ticketId}/recommendations`),
 
-  reject: (id: string): Promise<Recommendation> =>
-    api.patch(`/recommendations/${id}`, { status: "rejected" }),
+  // Consulta una recomendación específica
+  getById: (id: string): Promise<Recommendation> => api.get(`/recommendations/${id}`),
 
-  modify: (id: string, modifiedContent: string): Promise<Recommendation> =>
-    api.patch(`/recommendations/${id}`, { status: "modified", modifiedContent }),
+  // Registra la revisión humana (aceptar / modificar / rechazar)
+  // El backend determina el revisor mediante la sesión — no se envía reviewerId
+  review: (id: string, data: HumanReview): Promise<void> =>
+    api.post(`/recommendations/${id}/reviews`, data),
 };

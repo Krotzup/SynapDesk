@@ -1,6 +1,7 @@
 import { ApiError } from "@/types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_PREFIX = "/api/v1";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -28,13 +29,18 @@ async function request<TResponse, TBody = unknown>(
     config.body = JSON.stringify(body);
   }
 
-  const response = await fetch(`${BASE_URL}${endpoint}`, config);
+  const response = await fetch(`${BASE_URL}${API_PREFIX}${endpoint}`, config);
 
   if (!response.ok) {
-    const error: ApiError = await response
-      .json()
-      .catch(() => ({ message: "Error desconocido", statusCode: response.status }));
-    throw error;
+    const errorBody: ApiError = await response.json().catch(() => ({
+      error: {
+        code: "UNKNOWN_ERROR",
+        message: "Error desconocido",
+        details: null,
+        requestId: "",
+      },
+    }));
+    throw errorBody;
   }
 
   // 204 No Content
