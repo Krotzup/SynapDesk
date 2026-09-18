@@ -1,26 +1,61 @@
 @import "tailwindcss";
-
+@custom-variant dark (&:where(.dark, .dark *));
+/* ─── Variables de color del sistema de diseño SynapDesk ──────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Fondo y superficies */
+  --color-bg: #f8fafc;
+  --color-surface: #ffffff;
+  --color-surface-soft: #f1f5f9;
+  --color-border: #e2e8f0;
+
+  /* Sidebar */
+  --color-sidebar-bg: #0f172a;
+  --color-sidebar-item-active: #1e293b;
+  --color-sidebar-text: #94a3b8;
+  --color-sidebar-active: #38bdf8;
+
+  /* Texto */
+  --color-text-heading: #0f172a;
+  --color-text-body: #334155;
+  --color-text-meta: #475569;
+  --color-text-muted: #94a3b8;
+
+  /* Marca y acciones */
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+
+  /* IA */
+  --color-ai-bg: #eef2ff;
+  --color-ai-border: #818cf8;
+  --color-ai-title: #4338ca;
+  --color-ai-badge-bg: #e0e7ff;
+  --color-ai-badge-text: #3730a3;
+  --color-ai-chip-border: #c7d2fe;
+  --color-ai-chip-text: #4338ca;
+  --color-avatar: #6366f1;
+
+  /* Acciones Human-in-the-loop */
+  --color-accept: #16a3a1;
+  --color-danger: #ef4444;
+
+  /* Prioridades */
+  --color-priority-low-bg: #dcfce7;
+  --color-priority-low-text: #16a34a;
+  --color-priority-medium-bg: #fef9c3;
+  --color-priority-medium-text: #d97706;
+  --color-priority-high-bg: #fee2e2;
+  --color-priority-high-text: #991b1b;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter);
+  --color-background: var(--color-bg);
+  --color-foreground: var(--color-text-heading);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* ─── Base ────────────────────────────────────────────────────────────────── */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text-body);
+  font-family: var(--font-inter), system-ui, sans-serif;
 }
