@@ -75,11 +75,15 @@ No usar este color para elementos que no sean de origen automático o de IA.
 
 ### Fuente principal
 
-**Inter** (primera opción) o **Roboto** (alternativa).
-Ambas priorizan la legibilidad en pantallas de alta densidad y bloques de texto largo,
-lo que es relevante para mostrar manuales técnicos y respuestas generadas por el LLM.
+El frontend usa actualmente **Geist** (cargada por defecto por `create-next-app` mediante `next/font/google`).
 
-En Next.js se carga mediante `next/font/google` para evitar layout shift.
+Geist es la fuente de Vercel, diseñada para interfaces técnicas con alta legibilidad en pantallas
+de alta densidad. Se mantiene como fuente principal por ser consistente con el stack y el estilo
+de referencia (Vercel).
+
+**Decisión pendiente:** el equipo debe confirmar si se mantiene Geist o se reemplaza por
+**Inter** (mayor adopción en SaaS técnicos como Jira, Linear, Notion) antes de implementar
+los mockups en código. Ambas son opciones válidas; lo importante es no mezclarlas.
 
 ### Jerarquía de tamaños
 
@@ -121,16 +125,21 @@ Al hacer hover o clic, se despliega el fragmento exacto de texto que el LLM usó
 
 ### Acciones de validación humana (Human-in-the-loop)
 
-La sección de revisión tiene tres acciones con jerarquía visual clara:
+La sección de revisión tiene cuatro acciones con jerarquía visual clara.
+Descartar y Reintentar son operaciones distintas y deben tratarse por separado:
 
-| Acción | Tipo de botón | Color |
-|---|---|---|
-| Aceptar y enviar | Primario | Azul `#2563EB` |
-| Editar | Secundario con borde | Gris neutro |
-| Descartar / Reintentar | Terciario o texto | Gris sutil o rojo suave |
+| Acción | Tipo de botón | Color | Operación |
+|---|---|---|---|
+| Aceptar y enviar | Primario | Azul `#2563EB` | Registra decisión `accepted` |
+| Editar | Secundario con borde | Gris neutro | Abre área de texto editable pre-completada |
+| Descartar | Terciario o texto | Rojo suave | Registra decisión `rejected` — no genera nueva recomendación |
+| Reintentar | Terciario o texto | Gris sutil | Solicita una nueva recomendación al LLM para el mismo ticket |
 
 Al presionar **Editar**, se abre un área de texto editable con la respuesta pre-completada.
 El contenido original de la recomendación no se sobreescribe: se guarda la versión modificada por separado.
+
+**Descartar** cierra la recomendación actual con decisión `rejected`.
+**Reintentar** genera una nueva recomendación desde cero; la anterior queda en el historial del ticket.
 
 ---
 
