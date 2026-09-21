@@ -5,8 +5,10 @@ el desarrollo de los mockups y la implementación de la interfaz de SynapDesk.
 
 Debe consultarse antes de diseñar cualquier pantalla o componente nuevo.
 
-**El mockup aprobado tiene precedencia sobre cualquier criterio de este documento.**
-Ante cualquier contradicción, el mockup gana.
+**El mockup aprobado tiene precedencia sobre las decisiones visuales de este documento.**
+Ante cualquier contradicción en colores, tipografía, espaciado o componentes visuales, el mockup gana.
+
+Los contratos de integración, ADR y decisiones funcionales mantienen su precedencia en sus respectivos ámbitos y no están sujetos a esta regla.
 
 ---
 
@@ -104,11 +106,14 @@ No usar este color para elementos que no sean de origen automático o de IA.
 
 ### Fuente principal
 
-**Inter** — fuente sans-serif de alta legibilidad en interfaces técnicas.
-Es la fuente que más se aproxima al estilo visual del mockup aprobado.
+**Inter** será la fuente principal del frontend y reemplazará a Geist durante la implementación del diseño.
 
-Se reemplaza Geist (fuente por defecto de `create-next-app`) por Inter
+Inter es una fuente sans-serif de alta legibilidad en interfaces técnicas y es la que más se aproxima
+al estilo visual del mockup aprobado. El reemplazo se realizará en `frontend/src/app/layout.tsx`
 mediante `next/font/google` para evitar layout shift.
+
+> El frontend actualmente utiliza Geist (fuente por defecto de `create-next-app`).
+> Esta decisión está aprobada y pendiente de implementación.
 
 ### Jerarquía de tamaños
 
@@ -253,3 +258,11 @@ En orden de prioridad:
 - Indicador de confianza del modelo ML: ¿porcentaje, barra de progreso o badge?
 - Modo oscuro: no está en el alcance inicial, pero no debe bloquearse en la implementación
 - Botón Reintentar: definir si va junto a Descartar o en una sección separada
+
+---
+
+## Referencia visual
+
+Los valores de color, tipografía y estructura de este documento fueron extraídos del mockup
+aprobado por el equipo. El mockup se adjunta en el pull request correspondiente como evidencia
+de verificación.
