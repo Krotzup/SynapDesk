@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 const categories = [
   { name: "Todas las áreas", count: 18, active: true },
   { name: "Base de Datos", count: 5, active: false },

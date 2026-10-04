@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 const areaMetrics = [
   { name: "Backend", total: 42, resolved: 38, avgTime: "18m", rate: 90 },
   { name: "Frontend", total: 35, resolved: 31, avgTime: "12m", rate: 88 },
