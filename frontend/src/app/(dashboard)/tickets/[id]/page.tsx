@@ -10,7 +10,6 @@ export default async function TicketDetailPage({ params }: TicketDetailPageProps
   return (
     <div className="p-6 bg-[#F8FAFC] min-h-screen">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start max-w-7xl mx-auto">
-
         {/* Panel central: Detalle del ticket */}
         <div className="lg:col-span-2 space-y-6 bg-white p-6 rounded-2xl border border-[#E2E8F0] shadow-sm">
           <Link
@@ -33,8 +32,8 @@ export default async function TicketDetailPage({ params }: TicketDetailPageProps
           </div>
 
           <p className="text-sm text-[#475569] leading-relaxed">
-            No se puede conectar al servidor de base de datos desde la aplicación.
-            El error aparece al intentar realizar la consulta.
+            No se puede conectar al servidor de base de datos desde la aplicación. El error aparece
+            al intentar realizar la consulta.
           </p>
 
           <div className="grid grid-cols-3 gap-4 pt-4 border-t border-[#F1F5F9]">
@@ -66,7 +65,10 @@ export default async function TicketDetailPage({ params }: TicketDetailPageProps
                   <p className="text-[11px] text-[#94A3B8]">2.4 MB</p>
                 </div>
               </div>
-              <button className="text-[#64748B] hover:text-[#0F172A] text-sm" aria-label="Descargar archivo">
+              <button
+                className="text-[#64748B] hover:text-[#0F172A] text-sm"
+                aria-label="Descargar archivo"
+              >
                 ↓
               </button>
             </div>
@@ -77,8 +79,8 @@ export default async function TicketDetailPage({ params }: TicketDetailPageProps
               Descripción adicional
             </p>
             <div className="p-4 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl text-sm text-[#475569]">
-              Revisé los logs y parece un problema de conexión con el servidor.
-              Adjunto el archivo con el error completo.
+              Revisé los logs y parece un problema de conexión con el servidor. Adjunto el archivo
+              con el error completo.
             </div>
           </div>
         </div>
@@ -106,10 +108,10 @@ export default async function TicketDetailPage({ params }: TicketDetailPageProps
           <div>
             <p className="text-xs font-bold text-[#4338CA] mb-1.5">Recomendación generada</p>
             <p className="text-xs text-[#1E293B] leading-relaxed">
-              El error se debe a un problema de conexión con el servidor de base de datos.
-              Verifica que el servicio esté en ejecución, revisa las credenciales de conexión
-              y la configuración de red. Si el problema persiste, revisa los logs del servidor
-              y la configuración del pool de conexiones.
+              El error se debe a un problema de conexión con el servidor de base de datos. Verifica
+              que el servicio esté en ejecución, revisa las credenciales de conexión y la
+              configuración de red. Si el problema persiste, revisa los logs del servidor y la
+              configuración del pool de conexiones.
             </p>
           </div>
 
@@ -121,12 +123,14 @@ export default async function TicketDetailPage({ params }: TicketDetailPageProps
                 <summary className="flex items-center gap-2 cursor-pointer list-none bg-white border border-[#C7D2FE] rounded-lg px-3 py-2 text-xs font-medium text-[#4338CA] hover:bg-[#EEF2FF] transition-colors">
                   <span>📑</span>
                   <span className="flex-1">Manual_Postgres.pdf — Pág. 14</span>
-                  <span className="text-[#94A3B8] group-open:rotate-180 transition-transform">▾</span>
+                  <span className="text-[#94A3B8] group-open:rotate-180 transition-transform">
+                    ▾
+                  </span>
                 </summary>
                 <div className="mt-1 px-3 py-2 bg-white border border-[#C7D2FE] border-t-0 rounded-b-lg text-[11px] text-[#475569] leading-relaxed italic">
                   &ldquo;Verifique la configuración del adaptador de red y el estado del servicio
-                  PostgreSQL. Asegúrese de que el puerto 5432 esté habilitado en el firewall
-                  y que las credenciales del pool de conexiones sean correctas...&rdquo;
+                  PostgreSQL. Asegúrese de que el puerto 5432 esté habilitado en el firewall y que
+                  las credenciales del pool de conexiones sean correctas...&rdquo;
                 </div>
               </details>
             </div>
@@ -153,7 +157,6 @@ export default async function TicketDetailPage({ params }: TicketDetailPageProps
             </button>
           </div>
         </div>
-
       </div>
     </div>
   );

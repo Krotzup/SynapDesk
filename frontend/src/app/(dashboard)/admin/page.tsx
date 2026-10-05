@@ -33,7 +33,6 @@ export default function AdminPage() {
   return (
     <div className="p-8 bg-[#F8FAFC] min-h-screen">
       <div className="max-w-5xl mx-auto space-y-6">
-
         {/* Encabezado */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -107,7 +106,6 @@ export default function AdminPage() {
             </table>
           </div>
         </div>
-
       </div>
     </div>
   );

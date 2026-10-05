@@ -62,131 +62,128 @@ const documents = [
 
 export default function DocumentosPage() {
   return (
-    <div className="p-8 bg-[#F8FAFC] dark:bg-[#0B0F19] min-h-screen transition-colors">
+    <div className="p-8 bg-[#F8FAFC] min-h-screen">
       <div className="max-w-7xl mx-auto space-y-6">
-        
-        {/* Encabezado Principal */}
+        {/* Encabezado */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-[#0F172A] dark:text-white">Base de Conocimientos Técnica</h1>
-            <p className="text-sm text-[#64748B] dark:text-[#94A3B8] mt-1">
+            <h1 className="text-2xl font-bold text-[#0F172A]">Base de Conocimientos Técnica</h1>
+            <p className="text-sm text-[#64748B] mt-1">
               Documentación indexada para el motor RAG del Asistente IA y consultas del equipo.
             </p>
           </div>
-
           <button className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-sm font-semibold rounded-xl transition-colors shadow-sm self-start sm:self-auto">
-            <span>📤</span> Subir Documento
+            📤 Subir documento
           </button>
         </div>
 
-        {/* Resumen Métrico RAG */}
+        {/* Métricas rápidas */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white dark:bg-[#111827] p-5 rounded-2xl border border-[#E2E8F0] dark:border-[#1E293B] shadow-sm flex items-center justify-between transition-colors">
+          <div className="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-sm flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-wider">Documentos Indexados</p>
-              <p className="text-2xl font-bold text-[#0F172A] dark:text-white mt-1">18</p>
+              <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">
+                Documentos indexados
+              </p>
+              <p className="text-2xl font-bold text-[#0F172A] mt-1">18</p>
             </div>
-            <div className="h-10 w-10 bg-[#EFF6FF] dark:bg-[#1E3A8A]/40 text-[#2563EB] dark:text-[#60A5FA] rounded-xl flex items-center justify-center font-bold text-lg">
+            <div className="h-10 w-10 bg-[#EFF6FF] text-[#2563EB] rounded-xl flex items-center justify-center text-lg">
               📚
             </div>
           </div>
-
-          <div className="bg-white dark:bg-[#111827] p-5 rounded-2xl border border-[#E2E8F0] dark:border-[#1E293B] shadow-sm flex items-center justify-between transition-colors">
+          <div className="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-sm flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-wider">Consultas RAG este mes</p>
-              <p className="text-2xl font-bold text-[#10B981] dark:text-[#34D399] mt-1">432</p>
+              <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">
+                Consultas RAG este mes
+              </p>
+              <p className="text-2xl font-bold text-[#10B981] mt-1">432</p>
             </div>
-            <div className="h-10 w-10 bg-[#D1FAE5] dark:bg-[#064E3B]/40 text-[#10B981] dark:text-[#34D399] rounded-xl flex items-center justify-center font-bold text-lg">
+            <div className="h-10 w-10 bg-[#D1FAE5] text-[#10B981] rounded-xl flex items-center justify-center text-lg">
               🎯
             </div>
           </div>
-
-          <div className="bg-white dark:bg-[#111827] p-5 rounded-2xl border border-[#E2E8F0] dark:border-[#1E293B] shadow-sm flex items-center justify-between transition-colors">
+          <div className="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-sm flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-wider">Tasa de Coincidencia</p>
-              <p className="text-2xl font-bold text-[#2563EB] dark:text-[#60A5FA] mt-1">94.8%</p>
+              <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">
+                Tasa de coincidencia
+              </p>
+              <p className="text-2xl font-bold text-[#2563EB] mt-1">94.8%</p>
             </div>
-            <div className="h-10 w-10 bg-[#DBEAFE] dark:bg-[#1E3A8A]/40 text-[#1E40AF] dark:text-[#93C5FD] rounded-xl flex items-center justify-center font-bold text-lg">
+            <div className="h-10 w-10 bg-[#DBEAFE] text-[#1E40AF] rounded-xl flex items-center justify-center text-lg">
               ⚡
             </div>
           </div>
         </div>
 
-        {/* Filtros por Categoría + Buscador */}
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 bg-white dark:bg-[#111827] p-4 rounded-2xl border border-[#E2E8F0] dark:border-[#1E293B] shadow-sm transition-colors">
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-none">
+        {/* Filtros y buscador */}
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-sm">
+          <div className="flex items-center gap-2 overflow-x-auto">
             {categories.map((cat) => (
               <button
                 key={cat.name}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
                   cat.active
                     ? "bg-[#2563EB] text-white"
-                    : "bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-[#94A3B8] hover:bg-[#E2E8F0] dark:hover:bg-[#334155]"
+                    : "bg-[#F1F5F9] text-[#64748B] hover:bg-[#E2E8F0]"
                 }`}
               >
                 {cat.name} ({cat.count})
               </button>
             ))}
           </div>
-
-          <div className="w-full md:w-64">
-            <input
-              type="text"
-              placeholder="Buscar por nombre o contenido..."
-              className="w-full bg-[#F8FAFC] dark:bg-[#1E293B] border border-[#E2E8F0] dark:border-transparent text-xs rounded-xl px-3.5 py-2 text-[#0F172A] dark:text-white placeholder-[#94A3B8] outline-none focus:border-[#2563EB]"
-            />
-          </div>
+          <input
+            type="text"
+            placeholder="Buscar por nombre o contenido..."
+            className="w-full md:w-64 bg-[#F8FAFC] border border-[#E2E8F0] text-xs rounded-xl px-3.5 py-2 text-[#0F172A] placeholder-[#94A3B8] outline-none focus:border-[#2563EB]"
+          />
         </div>
 
-        {/* Tabla / Listado de Documentos */}
-        <div className="bg-white dark:bg-[#111827] rounded-2xl border border-[#E2E8F0] dark:border-[#1E293B] shadow-sm overflow-hidden transition-colors">
+        {/* Tabla de documentos */}
+        <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-[#F8FAFC] dark:bg-[#1E293B]/50 text-[11px] font-bold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-wider border-b border-[#E2E8F0] dark:border-[#1E293B]">
+                <tr className="bg-[#F8FAFC] text-[11px] font-bold text-[#64748B] uppercase tracking-wider border-b border-[#E2E8F0]">
                   <th className="py-3.5 px-6">Documento</th>
                   <th className="py-3.5 px-6">Categoría</th>
                   <th className="py-3.5 px-6">Tamaño</th>
-                  <th className="py-3.5 px-6">Subido Por</th>
-                  <th className="py-3.5 px-6">Última Actualización</th>
+                  <th className="py-3.5 px-6">Subido por</th>
+                  <th className="py-3.5 px-6">Actualización</th>
                   <th className="py-3.5 px-6 text-center">Impacto RAG</th>
-                  <th className="py-3.5 px-6 text-right">Acción</th>
+                  <th className="py-3.5 px-6 text-right">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#F1F5F9] dark:divide-[#1E293B] text-xs text-[#475569] dark:text-[#CBD5E1]">
+              <tbody className="divide-y divide-[#F1F5F9] text-xs text-[#475569]">
                 {documents.map((doc) => (
-                  <tr key={doc.id} className="hover:bg-[#F8FAFC]/80 dark:hover:bg-[#1E293B]/50 transition-colors">
+                  <tr key={doc.id} className="hover:bg-[#F8FAFC] transition-colors">
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
-                        <span className="p-2 bg-[#F1F5F9] dark:bg-[#1E3A8A]/40 text-[#2563EB] dark:text-[#60A5FA] rounded-lg font-bold">📄</span>
+                        <span className="p-2 bg-[#F1F5F9] text-[#2563EB] rounded-lg">📄</span>
                         <div>
-                          <p className="font-bold text-[#0F172A] dark:text-white hover:text-[#2563EB] dark:hover:text-[#60A5FA] cursor-pointer">
-                            {doc.title}
-                          </p>
-                          <span className="inline-flex items-center gap-1 text-[10px] text-[#10B981] dark:text-[#34D399] font-semibold mt-0.5">
+                          <p className="font-semibold text-[#0F172A]">{doc.title}</p>
+                          <span className="inline-flex items-center gap-1 text-[10px] text-[#10B981] font-semibold mt-0.5">
                             ● {doc.status}
                           </span>
                         </div>
                       </div>
                     </td>
                     <td className="py-4 px-6">
-                      <span className="inline-block bg-[#EFF6FF] dark:bg-[#1E3A8A]/50 text-[#1D4ED8] dark:text-[#93C5FD] text-[11px] font-semibold px-2.5 py-1 rounded-full">
+                      <span className="inline-block bg-[#EFF6FF] text-[#1D4ED8] text-[11px] font-semibold px-2.5 py-1 rounded-full">
                         {doc.category}
                       </span>
                     </td>
-                    <td className="py-4 px-6 text-[#64748B] dark:text-[#94A3B8]">{doc.size}</td>
-                    <td className="py-4 px-6 font-medium text-[#0F172A] dark:text-white">{doc.uploadedBy}</td>
+                    <td className="py-4 px-6 text-[#64748B]">{doc.size}</td>
+                    <td className="py-4 px-6 font-medium text-[#0F172A]">{doc.uploadedBy}</td>
                     <td className="py-4 px-6 text-[#94A3B8]">{doc.updatedAt}</td>
                     <td className="py-4 px-6 text-center">
-                      <span className="inline-block bg-[#F1F5F9] dark:bg-[#1E293B] text-[#0F172A] dark:text-white text-[11px] font-bold px-2.5 py-1 rounded-lg">
+                      <span className="inline-block bg-[#F1F5F9] text-[#0F172A] text-[11px] font-bold px-2.5 py-1 rounded-lg">
                         {doc.ragHits} veces usado
                       </span>
                     </td>
                     <td className="py-4 px-6 text-right space-x-2">
-                      <button className="text-xs font-semibold text-[#2563EB] dark:text-[#60A5FA] hover:underline">
+                      <button className="text-xs font-semibold text-[#2563EB] hover:underline">
                         Ver
                       </button>
-                      <button className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white">
+                      <button className="text-xs font-semibold text-[#64748B] hover:text-[#0F172A]">
                         Descargar
                       </button>
                     </td>
@@ -196,7 +193,6 @@ export default function DocumentosPage() {
             </table>
           </div>
         </div>
-
       </div>
     </div>
   );
