@@ -18,6 +18,67 @@ La documentación, las historias, los criterios de aceptación y las descripcion
 
 No se realizan cambios directos sobre `main`.
 
+### Sincronización con `main`
+
+Cada nueva rama de trabajo debe crearse a partir de una copia local actualizada de `main`.
+
+Después de que un Pull Request sea aprobado y fusionado en `main`, cada integrante debe actualizar su rama `main` local antes de comenzar una nueva tarea:
+
+```bash
+git checkout main
+git pull origin main
+```
+
+Una vez actualizado `main`, las nuevas ramas de trabajo deben crearse desde esa versión:
+
+```bash
+git checkout -b <tipo>/<descripcion-breve-en-espanol>
+```
+
+No se deben crear nuevas ramas a partir de una rama anterior ya fusionada, cerrada o desactualizada.
+
+#### Ramas de trabajo que ya están en desarrollo
+
+Si `main` recibe nuevos cambios mientras una rama de trabajo continúa activa, **no se deben incorporar automáticamente esos cambios mediante un merge**.
+
+Primero se debe actualizar la referencia del repositorio remoto:
+
+```bash
+git fetch origin
+```
+
+Luego se debe comprobar si la rama activa quedó detrás de `main` y si los nuevos cambios afectan archivos, contratos o componentes relacionados con el trabajo en curso.
+
+La incorporación de cambios recientes de `main` a una rama activa debe realizarse solamente cuando sea necesaria y después de revisar posibles conflictos o impactos sobre el trabajo existente.
+
+No se debe eliminar, sobrescribir ni reemplazar trabajo válido de la rama activa únicamente para igualarla con `main`.
+
+### Integración de cambios en `main`
+
+Las ramas de trabajo **no deben fusionarse directamente en `main` desde el entorno local**.
+
+Todo cambio destinado a `main` debe seguir este flujo:
+
+1. trabajar en una rama independiente;
+2. guardar y publicar los cambios mediante commits y `push`;
+3. crear un Pull Request hacia `main`;
+4. solicitar la revisión de al menos otro integrante del equipo;
+5. corregir los hallazgos encontrados durante la revisión;
+6. aprobar el Pull Request;
+7. realizar el merge en GitHub únicamente después de la aprobación;
+8. actualizar posteriormente las copias locales de `main`.
+
+No se debe utilizar:
+
+```bash
+git checkout main
+git merge <rama-de-trabajo>
+```
+
+como mecanismo normal de integración del proyecto.
+
+Tampoco se debe utilizar `git push --force`, `git reset --hard` ni reescribir el historial compartido para resolver una sincronización.
+
 ## Nombres de ramas
 
 Formato:
