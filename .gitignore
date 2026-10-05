@@ -37,3 +37,6 @@ artifacts/
 
 # Docker
 *.pid
+
+#Backend
+backend/.venv/
