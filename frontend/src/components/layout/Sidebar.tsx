@@ -93,7 +93,7 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="flex h-full w-[270px] shrink-0 flex-col bg-[#0F172A] dark:bg-[#090D16] pt-4 pb-6 select-none border-r border-transparent dark:border-[#1E293B]">
+    <aside className="flex h-full w-[270px] shrink-0 flex-col bg-[#0F172A] pt-4 pb-6 select-none">
       {/* Logo dentro del Sidebar */}
       <div className="flex items-center gap-3 px-6 py-2 mb-4">
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#2563EB] shrink-0 shadow-sm">
@@ -114,7 +114,7 @@ export function Sidebar() {
               className={[
                 "flex items-center gap-3 rounded-xl px-4 py-3 text-[14px] font-medium transition-all duration-150",
                 isActive
-                  ? "bg-[#1E3A8A]/60 dark:bg-[#1E40AF] text-white font-semibold"
+                  ? "bg-[#1E3A8A]/60 text-white font-semibold"
                   : "text-[#94A3B8] hover:bg-[#1E293B]/50 hover:text-white",
               ].join(" ")}
             >

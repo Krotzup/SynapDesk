@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@custom-variant dark (&:where(.dark, .dark *));
+
 /* ─── Variables de color del sistema de diseño SynapDesk ──────────────────── */
 :root {
   /* Fondo y superficies */
