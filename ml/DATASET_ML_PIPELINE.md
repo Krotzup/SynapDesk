@@ -16,7 +16,13 @@ El CSV actual se guarda localmente en:
 ml/data/raw/tickets_esp.csv
 ```
 
-La carpeta `data/` no se versiona en Git. Lo mismo aplica para los artefactos generados en `ml/artifacts/`.
+La carpeta `data/` no se versiona en Git. Lo mismo aplica para los artefactos
+generados en `ml/artifacts/`. Para comprobar el pipeline sin usar datos reales
+se incluye un dataset sintetico en:
+
+```bash
+ml/samples/tickets_esp_sintetico.csv
+```
 
 ## Instalacion
 
@@ -24,16 +30,16 @@ Desde la raiz del repositorio:
 
 ```bash
 python -m venv .venv
-.venv\Scripts\activate
-pip install -r ml/requirements.txt
+source .venv/Scripts/activate
+python -m pip install -r ml/requirements.txt
 ```
 
 ## Entrenamiento en español
 
 ```bash
-python ml/train_ticket_classifier.py ^
-  --input-csv ml/data/raw/tickets_esp.csv ^
-  --language es ^
+python ml/train_ticket_classifier.py \
+  --input-csv ml/data/raw/tickets_esp.csv \
+  --language es \
   --output-dir ml/artifacts/ticket_classifier_es
 ```
 
@@ -45,25 +51,51 @@ El script genera:
 - `sample_prediction.json`: ejemplo de salida.
 
 El script elimina duplicados exactos por texto y etiquetas, por lo que el CSV
-de 2.239 filas produce 2.237 filas entrenables.
+de 2.239 filas produce 2.237 filas entrenables. La separacion train/test se
+hace por texto para evitar que textos duplicados aparezcan en ambos conjuntos.
 
-Durante la evaluación y la inferencia se aplica por defecto una regla de
-negocio: si el asunto o cuerpo contiene señales fuertes como `urgente`,
+Las reglas de negocio estan desactivadas por defecto mientras se aprueban los
+criterios funcionales de prioridad. Si se ejecuta con `--enable-business-rules`,
+la regla actual marca como `critical` los tickets cuyo asunto o cuerpo contiene
+señales fuertes como `urgente`,
 `urgencia`, `emergencia`, `crítico`, `inmediatamente`, `alta prioridad` o
-`caída total`, la prioridad final se fuerza a `high`. La salida informa si la
-decisión provino del modelo, de la regla o de ambos. Se puede desactivar con
-`--disable-business-rules`.
+`caída total`. La salida informa si la decision provino del modelo, de la regla
+o de ambos, y conserva `model_label` y `model_confidence` separados de la
+prioridad final. En decisiones por regla, `confidence` queda en `null` y
+`confidence_source` indica que no aplica confianza estadistica para la etiqueta
+final.
+
+## Verificacion con dataset sintetico
+
+```bash
+python ml/train_ticket_classifier.py \
+  --input-csv ml/samples/tickets_esp_sintetico.csv \
+  --language es \
+  --min-target-count 1 \
+  --max-features 2000 \
+  --output-dir ml/artifacts/ticket_classifier_sample
+```
+
+Pruebas automatizadas:
+
+```bash
+python -m unittest discover -s tests
+```
 
 ## Prediccion local
 
 ```bash
-python ml/predict_ticket.py ^
-  --model ml/artifacts/ticket_classifier_es/ticket_classifier.joblib ^
-  --subject "No puedo acceder al correo" ^
+python ml/predict_ticket.py \
+  --model ml/artifacts/ticket_classifier_es/ticket_classifier.joblib \
+  --subject "No puedo acceder al correo" \
   --body "Desde la manana Outlook rechaza mi clave y necesito enviar reportes."
 ```
 
-La salida incluye `clasificacion_sugerida`, `prioridad_estimada` y `area_responsable`, cada una con confianza y top 3 de clases cuando el clasificador lo permite. La prioridad puede incluir `decision`, `rule`, `trigger` y `model_confidence` cuando se aplico una regla.
+La salida incluye `clasificacion_sugerida`, `prioridad_estimada` y
+`area_responsable`, cada una con confianza y top 3 de clases cuando el
+clasificador lo permite. La prioridad puede incluir `decision`,
+`decision_source`, `rule`, `trigger`, `model_label`, `model_confidence` y
+`confidence_source` cuando se aplico una regla.
 
 ## Modelo elegido
 

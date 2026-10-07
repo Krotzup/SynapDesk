@@ -18,6 +18,8 @@ asistencia para el agente; la decision final permanece bajo supervision humana.
 - Python 3.12 recomendado
 - pip
 - CSV de tickets en espanol ubicado localmente en `ml/data/raw/tickets_esp.csv`
+  o el dataset sintetico versionado en `ml/samples/tickets_esp_sintetico.csv`
+  para verificar el pipeline.
 
 El dataset y los artefactos generados no se versionan en Git. Debe confirmarse
 la licencia, procedencia y ausencia de informacion sensible antes de compartir
@@ -42,7 +44,10 @@ python --version
 
 ## Dataset
 
-El pipeline actual utiliza `ml/data/raw/tickets_esp.csv`.
+El pipeline principal utiliza `ml/data/raw/tickets_esp.csv`. Ese archivo no se
+versiona porque puede contener datos externos o sensibles. Para verificar el
+pipeline sin exponer datos reales se incluye
+`ml/samples/tickets_esp_sintetico.csv`.
 
 - Registros originales: 2.239.
 - Registros entrenables: 2.237, despues de eliminar duplicados exactos.
@@ -54,7 +59,7 @@ El pipeline actual utiliza `ml/data/raw/tickets_esp.csv`.
 Las etiquetas tecnicas se conservan para mantener el contrato del sistema:
 
 - Tipo: `incident`, `request`, `problem`, `change`.
-- Prioridad: `low`, `medium`, `high`.
+- Prioridad: `low`, `medium`, `high`, `critical`.
 - Area: nombres tecnicos como `technical_support` o `it_support`.
 
 ## Entrenamiento
@@ -70,6 +75,19 @@ python ml/train_ticket_classifier.py \
 
 El entrenamiento limpia el texto, normaliza las etiquetas, elimina filas
 invalidas y duplicados, separa entrenamiento y prueba y genera las metricas.
+La separacion evita que textos duplicados queden al mismo tiempo en
+entrenamiento y prueba.
+
+Verificacion reproducible con dataset sintetico:
+
+```bash
+python ml/train_ticket_classifier.py \
+  --input-csv ml/samples/tickets_esp_sintetico.csv \
+  --language es \
+  --min-target-count 1 \
+  --max-features 2000 \
+  --output-dir ml/artifacts/ticket_classifier_sample
+```
 
 ## Prediccion
 
@@ -77,7 +95,8 @@ invalidas y duplicados, separa entrenamiento y prueba y genera las metricas.
 python ml/predict_ticket.py \
   --model ml/artifacts/ticket_classifier_es/ticket_classifier.joblib \
   --subject "URGENTE: no puedo entrar al correo" \
-  --body "Necesito recuperar el acceso inmediatamente para trabajar."
+  --body "Necesito recuperar el acceso inmediatamente para trabajar." \
+  --enable-business-rules
 ```
 
 La respuesta entrega:
@@ -89,9 +108,33 @@ La respuesta entrega:
 - version del modelo;
 - decision y trazabilidad de las reglas aplicadas.
 
+## Mapeo a MLPrediction
+
+Hasta que el contrato Backend-ML quede cerrado en el PR documental, la
+integracion debe tratar esta salida como un adaptador interno hacia
+`MLPrediction`:
+
+| Salida ML | Campo sugerido en dominio | Nota |
+| --- | --- | --- |
+| `predictions.clasificacion_sugerida.label` | `predictedCategory` | Categoria estimada por el modelo. |
+| `predictions.prioridad_estimada.label` | `predictedPriority` | Puede venir del modelo o de una regla aprobada. |
+| `predictions.area_responsable.label` | `predictedArea` | Area o cola sugerida. |
+| `predictions.*.confidence` | `confidence` o detalle por salida | Confianza estadistica solo cuando `confidence_source = model`. |
+| `modelName` | `modelName` | Nombre del artefacto cargado. |
+| `modelVersion` | `modelVersion` | Version exacta del entrenamiento. |
+| `predictions.*.top3` / `top_3` | metadata adicional | Probabilidades por clase para auditoria y UI. |
+| `decision`, `decision_source`, `rule`, `trigger` | metadata adicional | Trazabilidad de reglas y procedencia. |
+| `model_label`, `model_confidence` | metadata adicional | Resultado estadistico original cuando hubo regla. |
+
+Si `decision_source = business_rule`, la prioridad final no debe interpretarse
+como una prediccion estadistica con certeza total. En ese caso `confidence`
+queda en `null` y la confianza del clasificador queda en `model_confidence`.
+
 ## Reglas de negocio
 
-La regla `urgent_priority` fuerza `priority = high` cuando el asunto o cuerpo
+Las reglas de negocio estan desactivadas por defecto hasta que el equipo
+apruebe sus criterios funcionales. La regla `urgent_priority`, cuando se activa
+explicitamente, fuerza `priority = critical` cuando el asunto o cuerpo
 contiene señales fuertes de urgencia, por ejemplo:
 
 - `urgente`;
@@ -104,7 +147,10 @@ contiene señales fuertes de urgencia, por ejemplo:
 - `interrupcion total` o `interrupción total`.
 
 Cuando se aplica la regla, la respuesta incluye `decision = business_rule`,
-`rule`, `trigger` y la confianza original del modelo en `model_confidence`.
+`decision_source`, `rule`, `trigger`, `model_label`, `model_confidence` y
+`confidence_source`. En decisiones por regla, `confidence` queda en `null`
+porque la confianza estadistica corresponde al modelo y se conserva en
+`model_confidence`.
 
 Para comparar únicamente el resultado estadistico del modelo:
 
@@ -112,8 +158,7 @@ Para comparar únicamente el resultado estadistico del modelo:
 python ml/predict_ticket.py \
   --model ml/artifacts/ticket_classifier_es/ticket_classifier.joblib \
   --subject "URGENTE: no puedo entrar al correo" \
-  --body "Necesito recuperar el acceso inmediatamente para trabajar." \
-  --disable-business-rules
+  --body "Necesito recuperar el acceso inmediatamente para trabajar."
 ```
 
 ## Artefactos generados
@@ -138,7 +183,8 @@ con `git add -f`.
 | `python ml/train_ticket_classifier.py` | Prepara el CSV y entrena el modelo. |
 | `python ml/predict_ticket.py` | Ejecuta una prediccion local. |
 | `python -m py_compile ml/*.py` | Comprueba la sintaxis de los scripts. |
-| `python ml/train_ticket_classifier.py --disable-business-rules` | Evalua sin reglas deterministas. |
+| `python -m unittest discover -s tests` | Ejecuta las pruebas automatizadas. |
+| `python ml/train_ticket_classifier.py --enable-business-rules` | Evalua con reglas deterministas aprobadas. |
 
 ## Resultados actuales
 
@@ -148,29 +194,25 @@ Metricas Macro F1 sobre el conjunto de prueba:
 | --- | ---: | ---: |
 | Clasificacion sugerida | 0,7131 | 0,7120 |
 | Prioridad solo modelo | 0,6658 | 0,6859 |
-| Prioridad con reglas | 0,6602 | 0,6793 |
 | Area responsable | 0,7108 | 0,6479 |
 
-La regla se aplico en 133 casos del conjunto de prueba. La diferencia entre
-prioridad solo modelo y prioridad con reglas se debe a que algunos registros
-del CSV contienen palabras de urgencia, pero fueron etiquetados como `medium`
-o `low`.
+Las reglas deterministas deben medirse aparte con `--enable-business-rules`
+despues de aprobar los criterios funcionales de prioridad.
 
 ## Estado de implementacion
 
 - [x] Dataset en espanol analizado y preparado.
 - [x] Entrenamiento de modelos para tipo, prioridad y area.
 - [x] Prediccion local mediante artefacto `.joblib`.
-- [x] Regla de urgencia compartida entre evaluacion y prediccion.
-- [x] Metricas y contrato backend-ML documentados.
+- [x] Regla de urgencia compartida entre evaluacion y prediccion, desactivada por defecto.
+- [x] Metricas y pipeline ML documentados.
+- [x] Pruebas automatizadas del modulo ML.
 - [ ] Integracion del modelo dentro de un backend FastAPI.
-- [ ] Pruebas automatizadas del modulo ML.
 - [ ] Montaje del modelo dentro de un servicio Docker.
 
 ## Documentacion relacionada
 
 - [Pipeline de dataset y modelo](DATASET_ML_PIPELINE.md)
-- [Contrato entre backend y ML](../docs/contratos/backend-ml.md)
 - [Estrategia de entornos](../docs/arquitectura/entornos.md)
 
 El backend FastAPI y el servicio de inferencia se integraran en una etapa

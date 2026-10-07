@@ -14,7 +14,7 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import SGDClassifier
 from sklearn.metrics import classification_report, f1_score
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GroupShuffleSplit, train_test_split
 from sklearn.pipeline import Pipeline
 
 from ticket_rules import (
@@ -88,6 +88,9 @@ def load_and_prepare_dataset(
 
     for column in ("subject", "body"):
         prepared[column] = prepared[column].map(normalize_text)
+    prepared = prepared[
+        (prepared["subject"].str.len() > 0) | (prepared["body"].str.len() > 0)
+    ]
 
     prepared["text"] = (
         "Asunto: " + prepared["subject"] + "\nDescripcion: " + prepared["body"]
@@ -158,6 +161,28 @@ def safe_train_test_split(
     test_size: float,
     random_state: int,
 ) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series]:
+    if df["text"].nunique() > 1:
+        try:
+            splitter = GroupShuffleSplit(
+                n_splits=1,
+                test_size=test_size,
+                random_state=random_state,
+            )
+            train_index, test_index = next(
+                splitter.split(df["text"], df[target], groups=df["text"])
+            )
+            train_df = df.iloc[train_index]
+            test_df = df.iloc[test_index]
+            if not train_df.empty and not test_df.empty:
+                return (
+                    train_df["text"],
+                    test_df["text"],
+                    train_df[target],
+                    test_df[target],
+                )
+        except ValueError:
+            pass
+
     class_counts = df[target].value_counts()
     stratify = df[target] if class_counts.min() >= 2 else None
     try:
@@ -238,7 +263,7 @@ def train(config: TrainingConfig) -> None:
         "business_rules": {
             "enabled": config.business_rules_enabled,
             "urgent_priority_rule": (
-                "strong Spanish urgency phrases force priority high"
+                "strong Spanish urgency phrases force priority critical"
             ),
         },
         "models": {},
@@ -363,10 +388,22 @@ def parse_args() -> TrainingConfig:
     parser.add_argument("--max-features", type=int, default=120000)
     parser.add_argument("--ngram-min", type=int, default=1)
     parser.add_argument("--ngram-max", type=int, default=2)
-    parser.add_argument(
+    rules_group = parser.add_mutually_exclusive_group()
+    rules_group.add_argument(
+        "--enable-business-rules",
+        action="store_true",
+        help=(
+            "Aplica reglas deterministas de prioridad durante la evaluacion. "
+            "Requiere aprobacion funcional del criterio urgent_priority."
+        ),
+    )
+    rules_group.add_argument(
         "--disable-business-rules",
         action="store_true",
-        help="No aplicar reglas deterministas de prioridad durante la evaluacion.",
+        help=(
+            "Mantiene desactivadas las reglas deterministas de prioridad. "
+            "Es el comportamiento por defecto."
+        ),
     )
     args = parser.parse_args()
 
@@ -380,7 +417,7 @@ def parse_args() -> TrainingConfig:
         max_features=args.max_features,
         ngram_min=args.ngram_min,
         ngram_max=args.ngram_max,
-        business_rules_enabled=not args.disable_business_rules,
+        business_rules_enabled=args.enable_business_rules,
     )
 
 

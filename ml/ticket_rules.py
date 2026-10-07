@@ -4,6 +4,8 @@ import re
 from typing import Iterable
 
 
+URGENT_PRIORITY_LABEL = "critical"
+
 URGENT_PRIORITY_PATTERN = re.compile(
     r"\b(?:"
     r"urgente|urgencia|emergencia|"
@@ -28,12 +30,12 @@ def apply_priority_rule_to_labels(
     texts: Iterable[str],
     labels: Iterable[str],
 ) -> tuple[list[str], list[str]]:
-    """Force high priority for tickets with an explicit urgency signal."""
+    """Force critical priority for tickets with an explicit urgency signal."""
     adjusted: list[str] = []
     triggers: list[str] = []
     for text, label in zip(texts, labels, strict=True):
         trigger = find_urgent_trigger(text)
-        adjusted.append("high" if trigger else label)
+        adjusted.append(URGENT_PRIORITY_LABEL if trigger else label)
         triggers.append(trigger or "")
     return adjusted, triggers
 
@@ -44,29 +46,27 @@ def apply_priority_rule_to_prediction(
 ) -> dict[str, object]:
     """Annotate and apply the urgency override to a prediction payload."""
     trigger = find_urgent_trigger(text)
-    if trigger is None:
-        prediction["decision"] = "model"
-        return prediction
-
-    original_label = prediction.get("label")
-    prediction["label"] = "high"
-    prediction["decision"] = (
-        "model_and_business_rule" if original_label == "high" else "business_rule"
-    )
-    prediction["rule"] = "urgent_priority"
-    prediction["trigger"] = trigger
-
+    model_label = prediction.get("label")
+    prediction["model_label"] = model_label
     if "confidence" in prediction:
         prediction["model_confidence"] = prediction["confidence"]
-        prediction["confidence"] = 1.0
+    prediction["confidence_source"] = "model"
 
-    for key in ("top3", "top_3"):
-        if key not in prediction:
-            continue
-        ranked = [{"label": "high", "confidence": 1.0}]
-        ranked.extend(
-            item for item in prediction[key] if item.get("label") != "high"
-        )
-        prediction[key] = ranked[:3]
+    if trigger is None:
+        prediction["decision"] = "model"
+        prediction["decision_source"] = "model"
+        return prediction
+
+    prediction["label"] = URGENT_PRIORITY_LABEL
+    prediction["decision"] = (
+        "model_and_business_rule"
+        if model_label == URGENT_PRIORITY_LABEL
+        else "business_rule"
+    )
+    prediction["decision_source"] = "business_rule"
+    prediction["rule"] = "urgent_priority"
+    prediction["trigger"] = trigger
+    prediction["confidence"] = None
+    prediction["confidence_source"] = "not_applicable"
 
     return prediction

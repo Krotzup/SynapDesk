@@ -68,20 +68,32 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--subject", required=True, help="Asunto del ticket.")
     parser.add_argument("--body", required=True, help="Descripcion del ticket.")
-    parser.add_argument(
+    rules_group = parser.add_mutually_exclusive_group()
+    rules_group.add_argument(
+        "--enable-business-rules",
+        action="store_true",
+        help="Activa reglas deterministas de prioridad aprobadas funcionalmente.",
+    )
+    rules_group.add_argument(
         "--disable-business-rules",
         action="store_true",
-        help="Desactiva la regla que eleva urgencias explicitas a prioridad high.",
+        help="Desactiva reglas deterministas aunque el artefacto las tenga habilitadas.",
     )
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = parse_args()
+    business_rules = None
+    if args.enable_business_rules:
+        business_rules = True
+    if args.disable_business_rules:
+        business_rules = False
+
     result = predict(
         Path(args.model),
         args.subject,
         args.body,
-        business_rules=not args.disable_business_rules,
+        business_rules=business_rules,
     )
     print(json.dumps(result, indent=2, ensure_ascii=False))

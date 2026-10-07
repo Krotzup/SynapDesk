@@ -23,4 +23,3 @@ Documentos iniciales:
 - [Contrato inicial entre frontend y backend](contratos/frontend-backend.md)
 - [Estructura del frontend](arquitectura/estructura-frontend.md)
 - [Diseño visual del frontend](arquitectura/diseno-frontend.md)
-- [Contrato inicial entre backend y modelo de Machine Learning](contratos/backend-ml.md)
