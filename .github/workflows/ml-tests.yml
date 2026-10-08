@@ -1,0 +1,46 @@
+name: ML tests
+
+on:
+  pull_request:
+    paths:
+      - "ml/**"
+      - "tests/ml/**"
+      - ".github/workflows/ml-tests.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "ml/**"
+      - "tests/ml/**"
+      - ".github/workflows/ml-tests.yml"
+
+jobs:
+  ml:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install -r ml/requirements.txt
+
+      - name: Compile ML scripts
+        run: python -m py_compile ml/ticket_rules.py ml/train_ticket_classifier.py ml/predict_ticket.py
+
+      - name: Run unit tests
+        run: python -m unittest discover -s tests
+
+      - name: Train with synthetic dataset
+        run: >
+          python ml/train_ticket_classifier.py
+          --input-csv ml/samples/tickets_esp_sintetico.csv
+          --language es
+          --min-target-count 1
+          --max-features 2000
+          --output-dir ml/artifacts/ticket_classifier_sample
