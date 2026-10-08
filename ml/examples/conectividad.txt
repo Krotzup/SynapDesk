@@ -1,0 +1,1 @@
+Si un equipo no puede acceder a la red corporativa, compruebe primero la conexión física o inalámbrica. Revise el estado del adaptador de red y la configuración IP. Si la red sigue sin funcionar, documente los resultados y escale al equipo de redes.

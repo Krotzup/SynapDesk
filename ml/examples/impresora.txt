@@ -1,0 +1,1 @@
+Si una impresora no responde, revise que esté encendida y conectada. Compruebe la cola de impresión y la configuración del controlador. Registre el resultado antes de solicitar soporte adicional.
