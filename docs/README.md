@@ -23,3 +23,4 @@ Documentos iniciales:
 - [Contrato inicial entre frontend y backend](contratos/frontend-backend.md)
 - [Estructura del frontend](arquitectura/estructura-frontend.md)
 - [Diseño visual del frontend](arquitectura/diseno-frontend.md)
+- [Contrato experimental de embeddings y recuperación](contratos/embeddings-recuperacion.md)

@@ -14,3 +14,4 @@ Cada contrato deberá incluir datos de entrada, datos de salida, validaciones, e
 ## Contratos disponibles
 
 - [Contrato inicial entre frontend y backend](frontend-backend.md)
+- [Contrato experimental de embeddings y recuperación](embeddings-recuperacion.md)
