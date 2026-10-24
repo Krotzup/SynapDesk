@@ -174,7 +174,7 @@ Secciones en orden:
 3. Prioridad estimada: badge de prioridad con ícono de alerta
 4. Recomendación generada: texto `#1E293B`, Regular (400)
 5. Fuentes consultadas (RAG): chips con borde `#C7D2FE` y texto `#4338CA`
-6. Acciones: botones Aceptar / Editar / Descartar en orden vertical
+6. Acciones: botones Aceptar / Editar / Reintentar / Descartar en orden vertical
 
 ---
 
