@@ -21,5 +21,6 @@ Documentos iniciales:
 - [Definición de Terminado](gestion/definicion-terminado.md)
 - [Modelo inicial del dominio](arquitectura/modelo-dominio.md)
 - [Contrato inicial entre frontend y backend](contratos/frontend-backend.md)
+- [Contrato inicial entre backend y Machine Learning](contratos/backend-ml.md)
 - [Estructura del frontend](arquitectura/estructura-frontend.md)
 - [Diseño visual del frontend](arquitectura/diseno-frontend.md)
