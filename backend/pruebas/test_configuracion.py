@@ -14,7 +14,12 @@ RAIZ_BACKEND = Path(__file__).resolve().parents[1]
 
 @pytest.mark.parametrize(
     "contenido",
-    ["APP_ENV=local\n", "BACKEND_CORS_ORIGINS=http://localhost:3000\n"],
+    [
+        "APP_ENV=local\n",
+        "BACKEND_CORS_ORIGINS=http://localhost:3000\n",
+        "POSTGRES_PORT=puerto_invalido\n",
+        "POSTGRES_SSLMODE=modo_invalido\n",
+    ],
 )
 def test_importar_fabrica_y_probar_salud_ignora_env_local_invalido(tmp_path, contenido):
     archivo_env = tmp_path / ".env"
@@ -72,3 +77,44 @@ def test_fabrica_conserva_validacion_de_app_env(tmp_path, monkeypatch):
 
     with pytest.raises(ValidationError):
         crear_aplicacion()
+
+
+@pytest.mark.parametrize(
+    ("variable", "valor"),
+    [("POSTGRES_PORT", "puerto_invalido"), ("POSTGRES_SSLMODE", "modo_invalido")],
+)
+def test_configuracion_conserva_validacion_de_postgresql(monkeypatch, variable, valor):
+    monkeypatch.setenv(variable, valor)
+
+    with pytest.raises(ValidationError):
+        crear_aplicacion()
+
+
+def test_punto_de_entrada_no_crea_motor_al_importarse():
+    codigo = """
+from unittest.mock import patch
+from app.configuracion import Configuracion
+
+Configuracion.model_config["env_file"] = None
+with patch.dict("os.environ", {
+    "APP_ENV": "testing",
+    "BACKEND_CORS_ORIGINS": "[]",
+    "POSTGRES_DB": "base_ficticia",
+    "POSTGRES_USER": "usuario_ficticio",
+    "POSTGRES_PASSWORD": "clave_ficticia",
+}), patch("sqlalchemy.create_engine") as crear_motor:
+    from app.main import app, crear_aplicacion
+    from app.aplicacion import crear_aplicacion as fabrica
+    assert crear_aplicacion is fabrica
+    assert app.state.motor_bd is None
+    assert set(app.openapi()["paths"]) == {"/api/v1/health", "/api/v1/ready"}
+    crear_motor.assert_not_called()
+"""
+    resultado = subprocess.run(
+        [sys.executable, "-c", codigo],
+        cwd=RAIZ_BACKEND,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert resultado.returncode == 0, resultado.stderr
