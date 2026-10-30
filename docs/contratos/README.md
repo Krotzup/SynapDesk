@@ -14,3 +14,4 @@ Cada contrato deberá incluir datos de entrada, datos de salida, validaciones, e
 ## Contratos disponibles
 
 - [Contrato inicial entre frontend y backend](frontend-backend.md)
+- [Contrato API de autenticación V1](autenticacion-v1.md)

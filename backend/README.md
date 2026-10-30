@@ -167,13 +167,17 @@ Las pruebas locales importan la fábrica desde `app.aplicacion`, utilizan config
 
 Las regresiones de [test_configuracion.py](pruebas/test_configuracion.py) utilizan archivos ficticios en directorios temporales. Comprueban importaciones frente a configuración inválida, carga y validación habituales al invocar la fábrica sin parámetros y el punto de entrada `app.main:app` sin creación de motor al importarse. También se comprueban CORS, salud, disponibilidad, errores públicos sin datos internos y liberación del motor al finalizar el ciclo de vida, incluso ante excepciones.
 
-Validación local de la reconciliación, el 30 de octubre de 2026 en Windows con Python 3.12.10: **21 pruebas aprobadas y 12 omitidas**, tanto con el entorno habitual como con variables ambientales inválidas; `python -m pip check` sin dependencias rotas. No se instalaron dependencias ni se accedió a PostgreSQL real. La revisión Alembic y el DDL de ambos modelos se contrastaron en memoria; esta comprobación no sustituye las pruebas de integración.
+Validación local de la consolidación contra `main` en `098fed3`, el 30 de octubre de 2026 en Windows con Python 3.12.10: **21 pruebas aprobadas y 12 omitidas**, tanto con el entorno habitual como con variables ambientales inválidas; `python -m pip check` sin dependencias rotas. Se preservaron los cambios del frontend del PR #17 y el contrato de autenticación ya incorporado en `main`. No se instalaron dependencias ni se accedió a PostgreSQL real. `alembic heads` y `history` identificaron una única revisión inicial; el DDL de ambos modelos se contrastó en memoria, incluidos restricciones, valores iniciales e índices.
+
+**Limitación de esta validación: `POSTGRESQL_TEST_ENV_UNAVAILABLE`.** No se encontraron herramientas Docker, Podman ni un servidor PostgreSQL local en las ubicaciones comprobadas del entorno de ejecución; no se pudo verificar una instancia exclusiva de pruebas. No se aplicaron migraciones a una base real. La validación estática no demuestra aplicación, reversión, idempotencia ni correspondencia con un esquema PostgreSQL desplegado; esas comprobaciones siguen pendientes de las pruebas de integración.
 
 Las doce pruebas de integración se omiten salvo que `EJECUTAR_PRUEBAS_BD=1`. Utilizan exclusivamente las variables `POSTGRES_TEST_*`. Verifican PostgreSQL 17, pgvector 0.8.6, disponibilidad, persistencia, restricciones y correspondencia entre modelos y migración.
 
 Las pruebas de persistencia insertan datos ficticios y ejecutan las migraciones dentro de transacciones que se revierten al terminar. La prueba de migración revierte y reaplica la revisión dentro de esa transacción, sin realizar una reversión permanente de las tablas. Uvicorn no necesita estar iniciado para ejecutar pruebas.
 
 ### Integración con PostgreSQL real
+
+Antes de habilitar estas pruebas, verifica que host, puerto y base correspondan a una instancia exclusiva para pruebas con datos descartables. El nombre de la base por sí solo no demuestra ese aislamiento. Si no puedes comprobarlo, conserva las pruebas de integración omitidas.
 
 En el `.env` de la raíz conserva las variables de testing existentes y agrega `POSTGRES_TEST_HOST=127.0.0.1` si falta. Se requieren `POSTGRES_TEST_DB`, `POSTGRES_TEST_USER` y `POSTGRES_TEST_PASSWORD`; el puerto por defecto es `5433`.
 

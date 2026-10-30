@@ -2,13 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-const statusItems = [
-  { label: "Todos", count: 24, color: "#38BDF8" },
-  { label: "Abiertos", count: 12, color: "#38BDF8" },
-  { label: "En Proceso", count: 7, color: "#F59E0B" },
-  { label: "Resueltos", count: 5, color: "#10B981" },
-];
+import { ReactNode } from "react";
 
 function IconHome() {
   return (
@@ -89,7 +83,12 @@ const navItems = [
   { href: "/admin", label: "Configuración", Icon: IconSettings },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  // Conteos por estado; se reciben ya renderizados desde el servidor.
+  statusSummary: ReactNode;
+}
+
+export function Sidebar({ statusSummary }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -131,23 +130,7 @@ export function Sidebar() {
 
       <div className="px-6">
         <p className="mb-4 text-[10px] font-bold uppercase tracking-wider text-[#64748B]">ESTADO</p>
-        <div className="flex flex-col gap-3">
-          {statusItems.map((item) => (
-            <div key={item.label} className="flex items-center justify-between text-[13px]">
-              <div className="flex items-center gap-3">
-                <span
-                  className="h-2 w-2 rounded-full shrink-0"
-                  style={{ backgroundColor: item.color }}
-                  aria-hidden="true"
-                />
-                <span className="text-[#94A3B8]">{item.label}</span>
-              </div>
-              <span className="min-w-[24px] text-center text-[11px] font-bold text-[#94A3B8] bg-[#1E293B] rounded-full px-2 py-0.5">
-                {item.count}
-              </span>
-            </div>
-          ))}
-        </div>
+        {statusSummary}
       </div>
     </aside>
   );

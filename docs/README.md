@@ -21,6 +21,7 @@ Documentos iniciales:
 - [Definición de Terminado](gestion/definicion-terminado.md)
 - [Modelo inicial del dominio](arquitectura/modelo-dominio.md)
 - [Contrato inicial entre frontend y backend](contratos/frontend-backend.md)
+- [Contrato API de autenticación V1](contratos/autenticacion-v1.md)
 - [Estructura del frontend](arquitectura/estructura-frontend.md)
 - [Diseño visual del frontend](arquitectura/diseno-frontend.md)
 - [Persistencia relacional inicial](arquitectura/persistencia-inicial.md)
