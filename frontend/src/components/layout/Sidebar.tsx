@@ -100,7 +100,7 @@ export function Sidebar({ statusSummary }: SidebarProps) {
             <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
           </svg>
         </div>
-        <span className="text-[19px] font-extrabold tracking-tight text-white">Synapdesk</span>
+        <span className="text-[19px] font-extrabold tracking-tight text-white">SynapDesk</span>
       </div>
 
       <nav className="flex flex-col gap-1 px-3">

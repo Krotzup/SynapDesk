@@ -118,10 +118,19 @@ export interface PaginationParams {
   order?: "asc" | "desc";
 }
 
+// Filtros opcionales y combinables de GET /tickets (propuesta del backend para el MVP)
+export interface TicketListParams extends PaginationParams {
+  status?: TicketStatus;
+  priority?: TicketPriority;
+  area?: string;
+}
+
 // ─── Métricas ─────────────────────────────────────────────────────────────────
 
 export interface Metrics {
   totalTickets: number;
+  openTickets: number;
+  inProgressTickets: number;
   resolvedTickets: number;
   avgResolutionTimeHours: number;
   recommendationsAccepted: number;

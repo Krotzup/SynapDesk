@@ -1,17 +1,13 @@
-import { PaginationParams } from "@/types";
-
 /**
- * Construye un query string a partir de parámetros de paginación,
- * omitiendo los valores undefined para evitar enviar parámetros vacíos.
+ * Construye un query string a partir de parámetros de listado (paginación y filtros),
+ * omitiendo los valores undefined o vacíos para evitar enviar parámetros vacíos.
  */
-export function buildQuery(params?: PaginationParams): string {
+export function buildQuery<T extends object>(params?: T): string {
   if (!params) return "";
   const query = new URLSearchParams();
-  if (params.page !== undefined) query.set("page", String(params.page));
-  if (params.pageSize !== undefined) query.set("pageSize", String(params.pageSize));
-  if (params.search !== undefined) query.set("search", params.search);
-  if (params.sort !== undefined) query.set("sort", params.sort);
-  if (params.order !== undefined) query.set("order", params.order);
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+  }
   const str = query.toString();
   return str ? `?${str}` : "";
 }

@@ -1,45 +1,56 @@
 import Link from "next/link";
 import { connection } from "next/server";
+import { TicketFilters } from "@/components/tickets/TicketFilters";
+import { TicketPagination } from "@/components/tickets/TicketPagination";
 import { Button } from "@/components/ui/Button";
 import { StatusBadge, PriorityBadge } from "@/components/ui/Badge";
 import { formatDateTime, shortId } from "@/lib/format";
-import { getTicketStatusSummary } from "@/lib/ticket-summary";
+import { buildQuery } from "@/lib/params";
+import { filtersForUrl, hasActiveFilters, parseTicketListParams } from "@/lib/ticket-filters";
+import { metricsService } from "@/services/metrics";
 import { ticketsService } from "@/services/tickets";
 
-export default async function TicketsPage() {
+interface TicketsPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function TicketsPage({ searchParams }: TicketsPageProps) {
   // Renderiza en cada solicitud: el listado no debe obtenerse ni congelarse durante el build.
   await connection();
-  const [{ items: tickets }, summary] = await Promise.all([
-    ticketsService.getAll({ pageSize: 50 }),
-    getTicketStatusSummary(),
+  const filters = parseTicketListParams(await searchParams);
+  const filtered = hasActiveFilters(filters);
+  const [result, summary] = await Promise.all([
+    ticketsService.getAll(filters),
+    metricsService.getSummary(),
   ]);
+  const tickets = result.items;
 
-  // Mismos conteos que el menú lateral.
+  // Conteos globales desde GET /metrics/summary, los mismos del menú lateral.
   const summaryCards = [
     {
       label: "Total tickets",
-      value: summary.total,
+      value: summary.totalTickets,
       icon: "📋",
       bg: "bg-[#EFF6FF]",
       text: "text-[#2563EB]",
     },
     {
       label: "Abiertos",
-      value: summary.open,
+      value: summary.openTickets,
       icon: "🔓",
       bg: "bg-[#DBEAFE]",
       text: "text-[#1E40AF]",
     },
     {
       label: "En proceso",
-      value: summary.inProgress,
+      value: summary.inProgressTickets,
       icon: "⏳",
       bg: "bg-[#FEF3C7]",
       text: "text-[#D97706]",
     },
     {
       label: "Resueltos",
-      value: summary.resolved,
+      value: summary.resolvedTickets,
       icon: "✅",
       bg: "bg-[#D1FAE5]",
       text: "text-[#10B981]",
@@ -84,13 +95,12 @@ export default async function TicketsPage() {
 
         {/* Tabla de tickets */}
         <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm overflow-hidden">
-          <div className="p-5 border-b border-[#F1F5F9] flex flex-col sm:flex-row items-center justify-between gap-4">
-            <h2 className="text-base font-bold text-[#0F172A]">Todos los tickets</h2>
-            <input
-              type="text"
-              placeholder="Filtrar por título o ID..."
-              className="w-full sm:w-64 bg-[#F8FAFC] border border-[#E2E8F0] text-xs rounded-xl px-3 py-2 text-[#0F172A] placeholder-[#94A3B8] outline-none focus:border-[#2563EB]"
-            />
+          <div className="p-5 border-b border-[#F1F5F9] flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <h2 className="text-base font-bold text-[#0F172A]">
+              {filtered ? "Resultados" : "Todos los tickets"}
+            </h2>
+            {/* La key reinicia los campos cuando los filtros cambian desde otro lugar (menú lateral) */}
+            <TicketFilters key={buildQuery(filtersForUrl(filters))} {...filters} />
           </div>
 
           <div className="overflow-x-auto">
@@ -111,7 +121,26 @@ export default async function TicketsPage() {
                 {tickets.length === 0 && (
                   <tr>
                     <td colSpan={8} className="py-10 px-6 text-center text-sm text-[#94A3B8]">
-                      No hay tickets registrados.
+                      {result.totalItems > 0 ? (
+                        <>
+                          Esta página no tiene tickets.{" "}
+                          <Link
+                            href={`/tickets${buildQuery(filtersForUrl(filters))}`}
+                            className="text-[#2563EB] hover:underline"
+                          >
+                            Ir a la primera página
+                          </Link>
+                        </>
+                      ) : filtered ? (
+                        <>
+                          No hay tickets que coincidan con los filtros.{" "}
+                          <Link href="/tickets" className="text-[#2563EB] hover:underline">
+                            Limpiar filtros
+                          </Link>
+                        </>
+                      ) : (
+                        "No hay tickets registrados."
+                      )}
                     </td>
                   </tr>
                 )}
@@ -133,14 +162,16 @@ export default async function TicketsPage() {
                     </td>
                     <td className="py-4 px-6">{ticket.createdBy.name}</td>
                     <td className="py-4 px-6 text-[#64748B]">{ticket.area ?? "Sin asignar"}</td>
-                    <td className="py-4 px-6">
+                    <td className="py-4 px-6 whitespace-nowrap">
                       <StatusBadge status={ticket.status} />
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-4 px-6 whitespace-nowrap">
                       <PriorityBadge priority={ticket.priority} />
                     </td>
-                    <td className="py-4 px-6 text-[#94A3B8]">{formatDateTime(ticket.createdAt)}</td>
-                    <td className="py-4 px-6 text-right">
+                    <td className="py-4 px-6 text-[#94A3B8] whitespace-nowrap">
+                      {formatDateTime(ticket.createdAt)}
+                    </td>
+                    <td className="py-4 px-6 text-right whitespace-nowrap">
                       <Link
                         href={`/tickets/${ticket.id}`}
                         className="inline-flex items-center text-xs font-semibold text-[#2563EB] hover:text-[#1D4ED8] bg-[#EFF6FF] hover:bg-[#DBEAFE] px-3 py-1.5 rounded-lg transition-colors"
@@ -153,6 +184,7 @@ export default async function TicketsPage() {
               </tbody>
             </table>
           </div>
+          <TicketPagination result={result} filters={filters} />
         </div>
       </div>
     </div>
