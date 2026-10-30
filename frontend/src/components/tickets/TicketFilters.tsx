@@ -47,14 +47,14 @@ export function TicketFilters(filters: TicketListParams) {
       className={`flex flex-wrap items-center gap-2 transition-opacity ${isPending ? "opacity-60" : ""}`}
     >
       <label htmlFor="ticket-search" className="sr-only">
-        Buscar por título o ID
+        Buscar por título, área, categoría, usuario o ID
       </label>
       <input
         id="ticket-search"
         name="search"
         type="search"
         defaultValue={filters.search ?? ""}
-        placeholder="Buscar por título o ID..."
+        placeholder="Título, área, usuario o ID..."
         className={`${fieldClass} w-full sm:w-56 placeholder-[#94A3B8]`}
       />
 

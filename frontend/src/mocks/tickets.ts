@@ -217,16 +217,34 @@ function notFound() {
   return rejectWithApiError("TICKET_NOT_FOUND", "El ticket solicitado no existe.");
 }
 
+// Minúsculas y sin tildes, para que "mendez" encuentre "Méndez".
+function normalizeText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
+}
+
+// La búsqueda textual cubre los datos visibles en el listado: título, área,
+// categoría, usuario que lo creó y el inicio del ID.
+function matchesSearch(ticket: Ticket, search: string): boolean {
+  const fields = [ticket.title, ticket.area, ticket.category, ticket.createdBy.name];
+  return (
+    ticket.id.startsWith(search) ||
+    fields.some((field) => field && normalizeText(field).includes(search))
+  );
+}
+
 export const ticketsMock: TicketsService = {
-  // Filtros opcionales y combinables; search busca en el título o en el inicio del ID.
+  // Filtros opcionales y combinables.
   getAll: (params) => {
-    const search = params?.search?.trim().toLowerCase();
+    const search = params?.search ? normalizeText(params.search.trim()) : "";
     const filtered = tickets.filter(
       (ticket) =>
         (!params?.status || ticket.status === params.status) &&
         (!params?.priority || ticket.priority === params.priority) &&
         (!params?.area || ticket.area === params.area) &&
-        (!search || ticket.title.toLowerCase().includes(search) || ticket.id.startsWith(search))
+        (!search || matchesSearch(ticket, search))
     );
     const sorted = [...filtered].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return simulateLatency(paginate(sorted, params));
