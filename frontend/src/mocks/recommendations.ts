@@ -50,6 +50,11 @@ const recommendations: Recommendation[] = [
   },
 ];
 
+/** Recomendaciones de ejemplo actuales, para calcular métricas coherentes. */
+export function getMockRecommendations(): readonly Recommendation[] {
+  return recommendations;
+}
+
 const statusByDecision: Record<ReviewDecision, RecommendationStatus> = {
   accepted: "accepted",
   modified: "modified",

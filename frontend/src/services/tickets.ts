@@ -2,7 +2,7 @@ import { api } from "@/lib/api";
 import { USE_MOCKS } from "@/lib/config";
 import { buildQuery } from "@/lib/params";
 import { ticketsMock } from "@/mocks/tickets";
-import { PaginatedResponse, PaginationParams, Ticket, TicketPriority, TicketStatus } from "@/types";
+import { PaginatedResponse, Ticket, TicketListParams, TicketPriority, TicketStatus } from "@/types";
 
 export interface CreateTicketRequest {
   title: string;
@@ -21,7 +21,7 @@ export interface UpdateTicketRequest {
 }
 
 const ticketsApi = {
-  getAll: (params?: PaginationParams): Promise<PaginatedResponse<Ticket>> =>
+  getAll: (params?: TicketListParams): Promise<PaginatedResponse<Ticket>> =>
     api.get(`/tickets${buildQuery(params)}`),
 
   getById: (id: string): Promise<Ticket> => api.get(`/tickets/${id}`),

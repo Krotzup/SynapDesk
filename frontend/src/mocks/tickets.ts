@@ -94,18 +94,140 @@ const tickets: Ticket[] = [
     updatedAt: "2026-10-27T09:30:00Z",
     resolvedAt: "2026-10-27T09:30:00Z",
   },
+  {
+    id: "a3b4c5d6-e7f8-4a9b-8c0d-1e2f3a4b5c07",
+    title: "VPN no conecta desde el hogar",
+    description: "La VPN muestra un error de autenticación y no permite trabajar en remoto.",
+    status: "open",
+    priority: "medium",
+    category: "Conectividad",
+    area: "Infraestructura",
+    createdBy: laura,
+    assignedTo: null,
+    createdAt: "2026-10-26T12:20:00Z",
+    updatedAt: "2026-10-26T12:20:00Z",
+    resolvedAt: null,
+  },
+  {
+    id: "b8c9d0e1-f2a3-4b4c-9d5e-6f7a8b9c0d08",
+    title: "Solicitud de notebook para nuevo integrante",
+    description: "Se necesita un notebook configurado con acceso a correo y VPN para el lunes.",
+    status: "in_progress",
+    priority: "low",
+    category: "Equipamiento",
+    area: "Soporte",
+    createdBy: ana,
+    assignedTo: roberto,
+    createdAt: "2026-10-25T15:00:00Z",
+    updatedAt: "2026-10-26T10:15:00Z",
+    resolvedAt: null,
+  },
+  {
+    id: "c1d2e3f4-a5b6-4c7d-8e8f-9a0b1c2d3e09",
+    title: "Impresora de recepción sin responder",
+    description: "La impresora no imprime y muestra la cola de impresión detenida.",
+    status: "resolved",
+    priority: "medium",
+    category: "Hardware",
+    area: "Soporte",
+    createdBy: carlos,
+    assignedTo: roberto,
+    createdAt: "2026-10-24T13:40:00Z",
+    updatedAt: "2026-10-24T18:05:00Z",
+    resolvedAt: "2026-10-24T18:05:00Z",
+  },
+  {
+    id: "d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f10",
+    title: "Permisos de lectura en carpeta compartida",
+    description: "El área de finanzas necesita acceso de lectura a la carpeta de reportes.",
+    status: "closed",
+    priority: "low",
+    category: "Accesos",
+    area: "Seguridad",
+    createdBy: laura,
+    assignedTo: laura,
+    createdAt: "2026-10-23T14:10:00Z",
+    updatedAt: "2026-10-24T09:00:00Z",
+    resolvedAt: "2026-10-23T19:30:00Z",
+  },
+  {
+    id: "e7f8a9b0-c1d2-4e3f-8a4b-5c6d7e8f9a11",
+    title: "Error 500 al exportar reportes mensuales",
+    description: "El cierre de mes falla al exportar reportes con el mismo mensaje de error.",
+    status: "in_progress",
+    priority: "high",
+    category: "Aplicaciones",
+    area: "Backend",
+    createdBy: carlos,
+    assignedTo: carlos,
+    createdAt: "2026-10-22T16:25:00Z",
+    updatedAt: "2026-10-23T11:00:00Z",
+    resolvedAt: null,
+  },
+  {
+    id: "f0a1b2c3-d4e5-4f6a-9b7c-8d9e0f1a2b12",
+    title: "Restablecer contraseña de correo corporativo",
+    description: "El usuario olvidó su contraseña y no puede ingresar al correo.",
+    status: "resolved",
+    priority: "low",
+    category: "Accesos",
+    area: "Soporte",
+    createdBy: ana,
+    assignedTo: ana,
+    createdAt: "2026-10-21T12:00:00Z",
+    updatedAt: "2026-10-21T12:45:00Z",
+    resolvedAt: "2026-10-21T12:45:00Z",
+  },
+  {
+    id: "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c13",
+    title: "Servidor de archivos sin espacio disponible",
+    description: "El disco del servidor de archivos está al 98 % y los usuarios no pueden guardar.",
+    status: "open",
+    priority: "critical",
+    category: "Infraestructura",
+    area: "Infraestructura",
+    createdBy: roberto,
+    assignedTo: null,
+    createdAt: "2026-10-20T11:30:00Z",
+    updatedAt: "2026-10-20T11:30:00Z",
+    resolvedAt: null,
+  },
+  {
+    id: "1b2c3d4e-5f6a-4b7c-9d8e-0f1a2b3c4d14",
+    title: "Actualizar antivirus en equipos de bodega",
+    description: "Tres equipos de bodega tienen el antivirus desactualizado.",
+    status: "open",
+    priority: "low",
+    category: "Seguridad",
+    area: "Seguridad",
+    createdBy: laura,
+    assignedTo: null,
+    createdAt: "2026-10-19T14:50:00Z",
+    updatedAt: "2026-10-19T14:50:00Z",
+    resolvedAt: null,
+  },
 ];
+
+/** Tickets de ejemplo actuales, para calcular métricas coherentes con el listado. */
+export function getMockTickets(): readonly Ticket[] {
+  return tickets;
+}
 
 function notFound() {
   return rejectWithApiError("TICKET_NOT_FOUND", "El ticket solicitado no existe.");
 }
 
 export const ticketsMock: TicketsService = {
+  // Filtros opcionales y combinables; search busca en el título o en el inicio del ID.
   getAll: (params) => {
     const search = params?.search?.trim().toLowerCase();
-    const filtered = search
-      ? tickets.filter((ticket) => ticket.title.toLowerCase().includes(search))
-      : tickets;
+    const filtered = tickets.filter(
+      (ticket) =>
+        (!params?.status || ticket.status === params.status) &&
+        (!params?.priority || ticket.priority === params.priority) &&
+        (!params?.area || ticket.area === params.area) &&
+        (!search || ticket.title.toLowerCase().includes(search) || ticket.id.startsWith(search))
+    );
     const sorted = [...filtered].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return simulateLatency(paginate(sorted, params));
   },
