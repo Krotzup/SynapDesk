@@ -1,12 +1,13 @@
 from unittest.mock import MagicMock
 from uuid import UUID
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine
 from sqlalchemy.exc import OperationalError
 
 from app.configuracion import Configuracion
-from app.main import crear_aplicacion
+from app.aplicacion import crear_aplicacion
 from app.persistencia.conexion import obtener_motor_bd
 
 
@@ -69,3 +70,39 @@ def test_sin_configuracion_bd_la_api_responde_pero_no_esta_lista() -> None:
     with TestClient(crear_app_prueba()) as cliente:
         assert cliente.get("/api/v1/health").status_code == 200
         assert cliente.get("/api/v1/ready").status_code == 503
+
+
+@pytest.mark.parametrize("fallo", [False, True])
+def test_ciclo_de_vida_crea_y_libera_motor_sin_conectar_en_salud(monkeypatch, fallo):
+    configuracion = Configuracion(
+        _env_file=None,
+        app_env="testing",
+        postgres_db="base_ficticia",
+        postgres_user="usuario_ficticio",
+        postgres_password="clave_ficticia",
+    )
+    motor = MagicMock(spec=Engine)
+    crear_motor = MagicMock(return_value=motor)
+    monkeypatch.setattr("app.aplicacion.crear_motor_bd", crear_motor)
+
+    app = crear_aplicacion(configuracion)
+    crear_motor.assert_not_called()
+    assert app.state.motor_bd is None
+
+    def ejecutar_cliente():
+        with TestClient(app) as cliente:
+            crear_motor.assert_called_once_with(configuracion)
+            assert app.state.motor_bd is motor
+            assert cliente.get("/api/v1/health").status_code == 200
+            motor.connect.assert_not_called()
+            if fallo:
+                raise RuntimeError("Fallo ficticio durante el uso de la aplicación")
+
+    if fallo:
+        with pytest.raises(RuntimeError, match="Fallo ficticio"):
+            ejecutar_cliente()
+    else:
+        ejecutar_cliente()
+
+    motor.dispose.assert_called_once_with()
+    assert app.state.motor_bd is None

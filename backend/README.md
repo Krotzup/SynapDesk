@@ -100,7 +100,7 @@ La URL se construye mediante `URL.create`, para conservar contraseñas con carac
 
 Si el backend se ejecuta en un contenedor en el futuro, deberá utilizar el hostname del servicio (`db`) y su puerto interno (`5432`). La configuración actual corresponde al backend ejecutado desde CMD en tu PC.
 
-La configuración se carga al iniciar cada proceso. Reinicia Uvicorn cuando modifiques `.env`.
+La configuración se carga al crear la aplicación. El punto de entrada `app.main:app` crea la instancia al importarse; reinicia Uvicorn cuando modifiques `.env`. Importar la fábrica desde `app.aplicacion` no crea una instancia, no lee configuración local ni crea un motor PostgreSQL. Sin configuración explícita, la fábrica conserva la carga y validación habituales. El motor se crea durante el inicio del ciclo de vida y se libera al detener la aplicación; las conexiones se abren cuando se realizan consultas.
 
 ## Ejecutar la API
 
@@ -163,7 +163,11 @@ Desde `backend/`, con el entorno activo y dependencias de desarrollo instaladas:
 python -m pytest pruebas -q
 ```
 
-Se esperan **10 pruebas aprobadas y 12 omitidas**. Las pruebas unitarias utilizan configuración explícita y sustituyen el acceso a PostgreSQL cuando corresponde. Comprueban también que un fallo no publique información interna y que la selección de testing use sus propias credenciales. No necesitan una base funcionando.
+Las pruebas locales importan la fábrica desde `app.aplicacion`, utilizan configuración explícita y sustituyen el acceso a PostgreSQL cuando corresponde. El fixture de [conftest.py](pruebas/conftest.py) desactiva la lectura del `.env` real y aísla las variables de configuración del proceso para estas pruebas; las pruebas de integración conservan su selección explícita de `db_test`. No necesitan una base funcionando.
+
+Las regresiones de [test_configuracion.py](pruebas/test_configuracion.py) utilizan archivos ficticios en directorios temporales. Comprueban importaciones frente a configuración inválida, carga y validación habituales al invocar la fábrica sin parámetros y el punto de entrada `app.main:app` sin creación de motor al importarse. También se comprueban CORS, salud, disponibilidad, errores públicos sin datos internos y liberación del motor al finalizar el ciclo de vida, incluso ante excepciones.
+
+Validación local de la reconciliación, el 30 de octubre de 2026 en Windows con Python 3.12.10: **21 pruebas aprobadas y 12 omitidas**, tanto con el entorno habitual como con variables ambientales inválidas; `python -m pip check` sin dependencias rotas. No se instalaron dependencias ni se accedió a PostgreSQL real. La revisión Alembic y el DDL de ambos modelos se contrastaron en memoria; esta comprobación no sustituye las pruebas de integración.
 
 Las doce pruebas de integración se omiten salvo que `EJECUTAR_PRUEBAS_BD=1`. Utilizan exclusivamente las variables `POSTGRES_TEST_*`. Verifican PostgreSQL 17, pgvector 0.8.6, disponibilidad, persistencia, restricciones y correspondencia entre modelos y migración.
 
@@ -188,7 +192,7 @@ python -m pytest pruebas/integracion -q
 set EJECUTAR_PRUEBAS_BD=
 ```
 
-Se esperan **12 pruebas aprobadas**. El último comando elimina la variable en esa ventana. Si quieres ejecutar todas las pruebas con integración habilitada, utiliza `python -m pytest pruebas -q` antes de eliminarla: se esperan **22 pruebas aprobadas**.
+Se esperan **12 pruebas de integración aprobadas**. El último comando elimina la variable en esa ventana. Si quieres ejecutar todas las pruebas con integración habilitada, utiliza `python -m pytest pruebas -q` antes de eliminarla.
 
 Para detener solamente la base de pruebas, desde la raíz:
 
@@ -239,9 +243,10 @@ Consulta el [procedimiento de migraciones](migraciones/README.md) antes de incor
 
 | Ruta | Responsabilidad |
 | --- | --- |
-| `app/main.py` | Creación de la aplicación y middleware |
+| `app/aplicacion.py` | Fábrica de aplicación, middleware y ciclo de vida PostgreSQL |
+| `app/main.py` | Punto de entrada de Uvicorn y creación de la instancia `app` |
 | `app/configuracion.py` | Configuración validada por entorno |
-| `app/api/salud.py` | Ruta y respuesta de salud |
+| `app/api/salud.py` | Rutas y respuestas de salud y disponibilidad |
 | `app/persistencia/conexion.py` | URL, motor PostgreSQL y dependencia de acceso |
 | `app/persistencia/base.py` | Base declarativa y nombres de restricciones |
 | `app/persistencia/entornos.py` | Selección de base principal o testing |

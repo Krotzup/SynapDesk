@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
-from app.main import crear_aplicacion
+from app.aplicacion import crear_aplicacion
 from app.persistencia.conexion import crear_motor_bd
 
 pytestmark = pytest.mark.skipif(

@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app.configuracion import Configuracion
-from app.main import crear_aplicacion
+from app.aplicacion import crear_aplicacion
 
 
 def test_salud_responde_con_el_contrato_esperado() -> None:

@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app.configuracion import Configuracion
-from app.main import crear_aplicacion
+from app.aplicacion import crear_aplicacion
 
 
 def crear_cliente() -> TestClient:
