@@ -19,6 +19,8 @@ def predict(
     body: str,
     business_rules: bool | None = None,
 ) -> dict[str, object]:
+    if not subject.strip() and not body.strip():
+        raise ValueError("El ticket debe incluir asunto o descripcion.")
     artifact = joblib.load(model_path)
     text = build_text(subject, body)
     if business_rules is None:
@@ -89,6 +91,9 @@ if __name__ == "__main__":
         business_rules = True
     if args.disable_business_rules:
         business_rules = False
+
+    if not args.subject.strip() and not args.body.strip():
+        raise SystemExit("Error de entrada: el ticket debe incluir asunto o descripcion.")
 
     result = predict(
         Path(args.model),

@@ -25,6 +25,34 @@ El dataset y los artefactos generados no se versionan en Git. Debe confirmarse
 la licencia, procedencia y ausencia de informacion sensible antes de compartir
 el CSV fuera del entorno local.
 
+## Auditoria local de etiquetas
+
+La preparacion existente normaliza textos y etiquetas, descarta filas vacias y
+duplicados exactos. Para revisar posibles inconsistencias de prioridad sin
+alterar el CSV original ni las etiquetas usadas para entrenar:
+
+```bash
+python ml/audit_ticket_dataset.py \
+  --input-csv ml/data/raw/tickets_esp.csv \
+  --language es \
+  --output-dir ml/artifacts/data_quality
+```
+
+Si el CSV esta fuera del repositorio, sustituye `--input-csv` por su ruta local.
+El script genera `data_quality.json` con conteos y SHA-256, y
+`priority_review_candidates.csv` con el numero de fila del registro en el CSV
+(incluyendo la cabecera), la prioridad actual y la señal detectada. La lista no
+incluye el texto del ticket. Ambos archivos quedan en `ml/artifacts/`, excluido
+de Git.
+
+La ejecucion con el CSV completo encontro 2 duplicados exactos, ninguna fila
+sin texto y ningun texto con prioridades contradictorias. Encontro tambien
+132 candidatos: 113 etiquetados `medium` y 19 `low` pese a contener una señal
+lexical de urgencia. Son casos para revisar, no errores confirmados. No se
+cambio ninguna etiqueta ni se reentreno el modelo a partir de la lista. La
+correccion de prioridades exige criterios funcionales aprobados y revision
+humana de los tickets originales.
+
 ## Instalacion
 
 Desde la raiz del repositorio, usando Git Bash:
@@ -49,9 +77,12 @@ versiona porque puede contener datos externos o sensibles. Para verificar el
 pipeline sin exponer datos reales se incluye
 `ml/samples/tickets_esp_sintetico.csv`.
 
-- Registros originales: 2.239.
-- Registros entrenables: 2.237, despues de eliminar duplicados exactos.
-- Idioma: todos los registros tienen `language = es`.
+- El CSV completo utilizado en la evaluacion local contiene 2.239 registros
+  en espanol; 2.237 quedan despues del filtrado y la eliminacion de duplicados.
+  Su SHA-256 es
+  `ade38dba719f54bfd06d3fcd12a4c6ff031887eca5545a98c74fac97b10db11a`.
+  El archivo permanece fuera del repositorio.
+- La muestra sintetica versionada contiene 12 tickets con `language = es`.
 - Entradas del modelo: `subject` y `body`.
 - Objetivos: `type`, `priority` y `queue`.
 - `answer` no se utiliza como entrada para evitar fuga de informacion.
@@ -146,6 +177,11 @@ contiene señales fuertes de urgencia, por ejemplo:
 - `caida total` o `caída total`;
 - `interrupcion total` o `interrupción total`.
 
+Negaciones explicitas cercanas a la señal, como `no es urgente`, `sin urgencia`
+o `no es una emergencia`, no activan la regla. La deteccion es lexical y no
+resuelve todos los matices del lenguaje; sus criterios requieren validacion
+funcional antes de activar la regla por defecto.
+
 Cuando se aplica la regla, la respuesta incluye `decision = business_rule`,
 `decision_source`, `rule`, `trigger`, `model_label`, `model_confidence` y
 `confidence_source`. En decisiones por regla, `confidence` queda en `null`
@@ -182,22 +218,80 @@ con `git add -f`.
 | --- | --- |
 | `python ml/train_ticket_classifier.py` | Prepara el CSV y entrena el modelo. |
 | `python ml/predict_ticket.py` | Ejecuta una prediccion local. |
+| `python ml/audit_ticket_dataset.py --input-csv <ruta>` | Genera una lista local de prioridades para revision humana, sin corregir etiquetas. |
 | `python -m py_compile ml/*.py` | Comprueba la sintaxis de los scripts. |
 | `python -m unittest discover -s tests` | Ejecuta las pruebas automatizadas. |
 | `python ml/train_ticket_classifier.py --enable-business-rules` | Evalua con reglas deterministas aprobadas. |
 
-## Resultados actuales
+## Resultados del CSV completo
 
-Metricas Macro F1 sobre el conjunto de prueba:
+El 31 de octubre de 2026 se ejecuto el codigo del commit
+`5c9942457569555554b08174ee6a960794b4c354` con el CSV identificado arriba,
+`--language es` y los demas parametros predeterminados: `test_size=0.2`,
+`random_state=42`, `min_target_count=2`, `max_features=120000` y reglas de
+negocio desactivadas. Entorno de la ejecucion: Python 3.14.7, pandas 3.0.6,
+scikit-learn 1.9.1 y joblib 1.6.0. Las cifras se tomaron del `metrics.json`
+generado en esa misma ejecucion.
 
-| Salida | Macro F1 | Weighted F1 |
-| --- | ---: | ---: |
-| Clasificacion sugerida | 0,7131 | 0,7120 |
-| Prioridad solo modelo | 0,6658 | 0,6859 |
-| Area responsable | 0,7108 | 0,6479 |
+Para repetirla con una copia autorizada del mismo CSV (verifica su SHA-256
+antes de comparar resultados):
 
-Las reglas deterministas deben medirse aparte con `--enable-business-rules`
-despues de aprobar los criterios funcionales de prioridad.
+```bash
+python ml/train_ticket_classifier.py \
+  --input-csv "<ruta-local-a-tickets_esp.csv>" \
+  --language es \
+  --output-dir ml/artifacts/ticket_classifier_es
+```
+
+| Salida | train_rows | test_rows | Macro F1 | Weighted F1 |
+| --- | ---: | ---: | ---: | ---: |
+| Clasificacion sugerida (`type`) | 1.789 | 448 | 0,6835 | 0,6899 |
+| Prioridad solo modelo (`priority`) | 1.789 | 448 | 0,6225 | 0,6313 |
+| Area responsable (`queue`) | 1.789 | 448 | 0,6500 | 0,5992 |
+
+En esta particion, la interseccion de textos entre entrenamiento y prueba fue
+0 para cada uno de los tres objetivos.
+
+El CSV completo solo contiene `low`, `medium` y `high` como prioridades. Por
+ello, el modelo entrenado con este CSV no puede predecir `critical` por si
+solo; la regla experimental puede imponer esa etiqueta cuando se habilita.
+Sus criterios funcionales y su evaluacion siguen pendientes. Estas metricas
+no miden el efecto de la regla ni constituyen umbrales de aceptacion aprobados.
+
+### Interpretacion segura de la prioridad
+
+La prioridad tuvo Macro F1 de 0,6225 en la particion de prueba. En una prueba
+local, el texto `URGENTE: no puedo entrar al correo` produjo `low` con
+`confidence` aproximada de 0,638 cuando las reglas estaban desactivadas. Esto
+demuestra que esa salida puede contradecir una señal de urgencia; no es una
+prioridad lista para aplicarse automaticamente. La probabilidad del clasificador
+no se ha calibrado ni validado como medida de seguridad. El agente humano debe
+revisar el contexto antes de decidir la prioridad final.
+
+En el CSV completo, 627 tickets contienen una señal detectada por la regla
+lexical actual: 495 estan etiquetados `high`, 113 `medium` y 19 `low`.
+Tampoco existe la etiqueta `critical` en ese CSV. Por eso activar la regla por
+defecto o cambiar la prioridad de salida exige acordar criterios de negocio y
+evaluarlos con datos etiquetados para ese fin.
+
+## Verificacion reproducible con la muestra sintetica
+
+Los siguientes resultados proceden de `metrics.json` generado con el commit
+`5c9942457569555554b08174ee6a960794b4c354`, la muestra versionada de 12
+tickets y el comando de verificacion de arriba. Entorno de esta ejecucion:
+Python 3.14.7, pandas 3.0.6, scikit-learn 1.9.1 y joblib 1.6.0. Las reglas de
+negocio estuvieron desactivadas.
+
+| Salida | train_rows | test_rows | Macro F1 | Weighted F1 |
+| --- | ---: | ---: | ---: | ---: |
+| Clasificacion sugerida (`type`) | 9 | 3 | 0,1667 | 0,2222 |
+| Prioridad solo modelo (`priority`) | 9 | 3 | 0,0000 | 0,0000 |
+| Area responsable (`queue`) | 9 | 3 | 0,0000 | 0,0000 |
+
+Estos valores solo verifican que el pipeline entrena y evalua con datos
+sinteticos; tres ejemplos de prueba por objetivo no permiten estimar su calidad
+para tickets reales. La regla determinista requiere evaluacion aparte despues
+de aprobar sus criterios funcionales.
 
 ## Estado de implementacion
 

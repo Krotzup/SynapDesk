@@ -21,6 +21,29 @@ class TicketRulesTest(unittest.TestCase):
 
         self.assertEqual(trigger, "de inmediato")
 
+    def test_negated_urgency_is_not_a_trigger(self) -> None:
+        for text in (
+            "No es urgente, puede esperar.",
+            "No es una emergencia.",
+            "Sin urgencia por ahora.",
+            "No es de alta prioridad.",
+            "El servicio no se considera critico.",
+        ):
+            with self.subTest(text=text):
+                self.assertIsNone(find_urgent_trigger(text))
+
+    def test_finds_later_non_negated_urgency(self) -> None:
+        self.assertEqual(
+            find_urgent_trigger("No es urgente, pero necesito ayuda de inmediato."),
+            "de inmediato",
+        )
+
+    def test_access_problem_with_urgency_still_triggers(self) -> None:
+        self.assertEqual(
+            find_urgent_trigger("No puedo entrar al correo. Es urgente."),
+            "urgente",
+        )
+
     def test_priority_rule_forces_critical_label(self) -> None:
         adjusted, triggers = apply_priority_rule_to_labels(
             ["Caso normal", "URGENTE servicio caido"],

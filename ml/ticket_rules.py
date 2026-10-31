@@ -17,13 +17,22 @@ URGENT_PRIORITY_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+NEGATED_URGENCY_CONTEXT = re.compile(
+    r"\b(?:no\s+(?:es|se\s+considera)|sin)\s+"
+    r"(?:(?:un|una|el|la|de|caso|situaci[oó]n|ticket|ninguna?)\s+){0,2}$",
+    re.IGNORECASE,
+)
+
 
 def find_urgent_trigger(text: str) -> str | None:
-    """Return the first strong urgency phrase found in a ticket."""
-    match = URGENT_PRIORITY_PATTERN.search(text or "")
-    if match is None:
-        return None
-    return re.sub(r"\s+", " ", match.group(0)).strip().lower()
+    """Return the first non-negated strong urgency phrase in a ticket."""
+    text = text or ""
+    for match in URGENT_PRIORITY_PATTERN.finditer(text):
+        context = text[max(0, match.start() - 80) : match.start()]
+        if NEGATED_URGENCY_CONTEXT.search(context):
+            continue
+        return re.sub(r"\s+", " ", match.group(0)).strip().lower()
+    return None
 
 
 def apply_priority_rule_to_labels(

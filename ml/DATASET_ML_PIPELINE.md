@@ -24,6 +24,13 @@ se incluye un dataset sintetico en:
 ml/samples/tickets_esp_sintetico.csv
 ```
 
+La preparacion normaliza texto y etiquetas, descarta filas sin texto y elimina
+duplicados exactos. La auditoria opcional `ml/audit_ticket_dataset.py` genera
+un resumen de calidad y una lista local de filas con señales de urgencia y
+prioridad `low` o `medium`. Solo registra candidatos a revision humana: no
+reetiqueta el CSV ni altera el entrenamiento. Las filas se identifican por su
+numero de registro en el CSV original y la lista no copia el texto del ticket.
+
 ## Instalacion
 
 Desde la raiz del repositorio:
@@ -50,9 +57,13 @@ El script genera:
 - `metrics.json`: metricas por objetivo, incluyendo Macro F1 y Weighted F1.
 - `sample_prediction.json`: ejemplo de salida.
 
-El script elimina duplicados exactos por texto y etiquetas, por lo que el CSV
-de 2.239 filas produce 2.237 filas entrenables. La separacion train/test se
-hace por texto para evitar que textos duplicados aparezcan en ambos conjuntos.
+El script elimina duplicados exactos por texto y etiquetas. En la ejecucion
+local del 31 de octubre de 2026 con el CSV completo identificado en
+[ml/README.md](README.md), 2.239 filas originales dejaron 2.237 entrenables.
+`metrics.json` registro 1.789 filas de entrenamiento y 448 de prueba para cada
+objetivo. La separacion train/test prioriza grupos por texto para evitar que el
+mismo texto aparezca en ambos conjuntos; existe una ruta alternativa de
+separacion cuando la agrupacion no se puede usar.
 
 Las reglas de negocio estan desactivadas por defecto mientras se aprueban los
 criterios funcionales de prioridad. Si se ejecuta con `--enable-business-rules`,
@@ -96,6 +107,9 @@ La salida incluye `clasificacion_sugerida`, `prioridad_estimada` y
 clasificador lo permite. La prioridad puede incluir `decision`,
 `decision_source`, `rule`, `trigger`, `model_label`, `model_confidence` y
 `confidence_source` cuando se aplico una regla.
+El script rechaza una entrada si tanto el asunto como el cuerpo estan vacios.
+La regla opcional ignora negaciones explicitas cercanas a la señal, como
+`no es urgente` y `sin urgencia`.
 
 ## Modelo elegido
 
