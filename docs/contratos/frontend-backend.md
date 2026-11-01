@@ -44,7 +44,7 @@ En esa configuración local provisional, las solicitudes del frontend se dirigen
 http://localhost:8000/api/v1
 ```
 
-El puerto `3000` corresponde al frontend Next.js y no debe utilizarse como URL directa del backend. Para autenticación V1, el navegador consumirá rutas relativas `/api/v1/*` bajo el origen público del frontend; el proxy reenviará las solicitudes al backend en Render como destino interno. El navegador no consumirá directamente la URL de Render. La configuración local definitiva del proxy y cualquier excepción HTTP siguen pendientes en el [contrato de autenticación V1](autenticacion-v1.md).
+El puerto `3000` corresponde al frontend Next.js y no debe utilizarse como URL directa del backend. Para autenticación V1, el navegador consumirá rutas relativas `/api/v1/*` bajo el origen público del frontend; el proxy reenviará las solicitudes al backend en Render como destino interno. El navegador no consumirá directamente la URL de Render. El [contrato de transporte de autenticación](autenticacion-v1.md#3-arquitectura-y-despliegue) formaliza proxy de mismo origen, adaptador SSR seguro por petición, cookies necesarias, respuestas privadas sin caché compartida y secretos exclusivamente en servidor. Set-Cookie debe llegar al navegador sin exponer la credencial en JSON. La configuración concreta y el perfil HTTP local siguen sujetos a revisión; no cambian los valores de entorno ni el cliente actual por documentarlos.
 
 ## Autenticación
 
@@ -60,6 +60,10 @@ Rutas iniciales previstas:
 | `GET`  | `/api/v1/auth/me`     | Obtener el usuario autenticado |
 
 El frontend no deberá almacenar contraseñas ni recibir hashes de contraseñas. Login y `/me` utilizarán el DTO documental específico `AuthUser`, sin modificar el tipo público `User`. Se aprueban los campos obligatorios `id` (UUID como texto), `email` (correo electrónico normalizado) y `role` (`admin` o `agent`), contenidos en la envoltura `user`. No se incorporan otros campos obligatorios ni contraseñas, hashes o tokens. Los errores de autenticación conservarán `error.code`, `error.message`, `error.details` y `error.requestId`; el contrato especializado también contempla `429` y `503` cuando correspondan.
+
+El [contrato de seguridad AUTH-04](autenticacion-v1.md#6-cookies-y-csrf) formaliza como `APPROVED` Synchronizer Token, contextos del servidor anónimo y autenticado vinculado a sesión, X-CSRF-Token, origen y rotación/invalidez de contextos. Solo el token CSRF se entregaría por el campo previsto para esa prueba; las credenciales de sesión/contexto no se exponen en JSON ni se añaden a AuthUser. Los valores CSRF, Argon2id y límites mantienen `PROVISIONAL_CONFIGURATION` / `PENDING_MEASUREMENT`; la retención de auditoría necesita aprobación. Los campos de respuesta CSRF, nombres concretos de cookies y códigos técnicos nuevos siguen como propuestas. La matriz detallada de permisos tiene estado `PROPOSAL_PENDING_TEAM_REVIEW`, con denegación por defecto de operaciones sin autorización definida.
+
+Logout es idempotente respecto al cierre y conserva validación de origen: devuelve 204 cuando no existe sesión válida que revocar. Si la sesión es válida, exige CSRF válido antes de confirmar su revocación; CSRF inválido devuelve 403 sin revocar ni borrar la cookie. Si PostgreSQL impide verificar una cookie presentada o confirmar una revocación requerida, devuelve 503, no un 204 ficticio. Sin cookie no hay credencial que consultar o revocar. La [precedencia de logout](autenticacion-v1.md#post-apiv1authlogout) precisa los casos; la idempotencia no evita los controles. La estructura de AuthUser y ApiErrorBody permanece intacta. No se autoriza implementación; servicios, proxy y protección de rutas se adaptarán en otra tarea.
 
 ## Usuarios
 
