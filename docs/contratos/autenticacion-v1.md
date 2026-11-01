@@ -2,27 +2,30 @@
 
 ## 1. Estado, responsables y alcance
 
-- Estado del documento: contrato AUTH-04 con decisiones del Product Owner formalizadas; parámetros provisionales y propuestas pendientes diferenciados para revisión.
+- Estado del documento: decisiones de seguridad aprobadas, parámetros provisionales y propuestas pendientes diferenciados.
 - Responsables de revisión: Product Owner y equipo SynapDesk.
-- Estado funcional: autenticación no implementada en la rama documental actual.
+- Estado funcional: autenticación no implementada.
 - Propósito: acordar interfaces compatibles para la implementación posterior de frontend y backend.
 
-Este documento distingue cuatro estados:
+Los estados de aprobación, implementación y validación son independientes:
 
-| Estado | Significado |
-| --- | --- |
-| Decisión aprobada | Requisito autorizado por el Product Owner; no implica implementación existente. |
-| Propuesta | Representación o valor que requiere confirmación o calibración. |
-| Pendiente | Aspecto todavía sin definición suficiente para implementarlo. |
-| No implementado | Funcionalidad prevista que no existe en esta rama. |
+| Dimensión | Etiqueta canónica | Significado |
+| --- | --- | --- |
+| Aprobación | APPROVED | Decisión autorizada por el Product Owner; no acredita implementación ni pruebas. |
+| Aprobación | PROPOSED | Propuesta técnica pendiente de revisión; no es un requisito definitivamente aprobado. |
+| Aprobación | PROPOSAL_PENDING_TEAM_REVIEW | Propuesta de permisos pendiente de decisión del equipo; no concede acceso. |
+| Configuración | PROVISIONAL_CONFIGURATION | Valor operativo inicial, sujeto a calibración y revisión; no es un valor certificado. |
+| Validación | PENDING_MEASUREMENT | Faltan mediciones o benchmarks; no describe resultados obtenidos. |
+| Diseño | PENDING_DESIGN | Falta una definición técnica suficiente; no autoriza elegirla durante la implementación. |
+| Implementación | IMPLEMENTATION_PENDING | Requisito de implementación u operación aún no cumplido. |
+| Implementación | NOT_IMPLEMENTED | Funcionalidad cuyo código todavía no existe. |
+| Implementación | IMPLEMENTED | Funcionalidad presente y contrastada en archivos; no implica aprobación o validación funcional automática. |
 
-Las etiquetas equivalentes usadas en esta revisión son `APPROVED`, `PROPOSED`, `PENDING_DESIGN` e `IMPLEMENTED`. Solo se utiliza `IMPLEMENTED` para hechos contrastados en archivos; ninguna propuesta pasa a aprobada por describirse con detalle.
+«Decisión aprobada», «propuesta», «pendiente de diseño» y «no implementado» corresponden respectivamente a APPROVED, PROPOSED, PENDING_DESIGN y NOT_IMPLEMENTED. CSRF_IMPLEMENTATION_GATE es un indicador de preparación, no una etiqueta de aprobación: usa IMPLEMENTATION_PENDING mientras falten configuración interoperable y requisitos operativos. No se utilizan BLOCKED_UNTIL_DEFINED ni etiquetas compuestas como sustitutos de estos estados. Las mediciones y verificaciones realizadas se describen separadamente con su evidencia.
 
-La aprobación explícita de publicación formaliza Synchronizer Token, contextos servidor anónimo y autenticado ligado a sesión, X-CSRF-Token, origen, protección de mutaciones e invalidación/rotación de contextos. También formaliza el transporte Next.js de mismo origen y el logout idempotente de sección 7. No aprueba valores numéricos, nombres concretos de cookies ni la matriz detallada. `PROVISIONAL_CONFIGURATION` identifica valores iniciales; `PENDING_MEASUREMENT` indica calibración sin mediciones realizadas; `PROPOSAL_PENDING_TEAM_REVIEW` identifica permisos no aprobados.
+Synchronizer Token, los contextos servidor anónimo y autenticado ligado a sesión, X-CSRF-Token, origen estricto, protección de mutaciones e invalidación/rotación de contextos están aprobados. También lo están el transporte Next.js de mismo origen y el logout idempotente de sección 7. Los valores numéricos, nombres concretos de cookies y permisos detallados conservan sus estados provisionales o de propuesta.
 
-Base original de AUTH-04: `main` en `955fc42`. Para publicar se actualizó main y esta rama mediante fast-forward a `cb163b4`, incluyendo PR #13, #14 y #21, sin cambios en estos dos contratos ni en el código de autenticación. PostgreSQL/FastAPI ya estaba incorporado mediante PR #20 y el frontend mediante PR #19. Existen fábrica FastAPI, modelos de usuarios y tickets, revisión `0001_usuarios_tickets`, `/health` y `/ready`. No existen rutas de autenticación, tablas de sesiones ni protección efectiva del dashboard. El login es visual; el logout del encabezado solo redirige. Los grupos de rutas de Next.js no autentican por sí mismos.
-
-No se dispone del informe completo AUTH-03 para lectura en esta tarea. Los parámetros atribuidos a ese análisis se toman exclusivamente del encargo AUTH-04 y se registran como propuestas. No se afirma haber verificado conclusiones adicionales de ese informe.
+Existen fábrica FastAPI, modelos de usuarios y tickets, revisión `0001_usuarios_tickets`, `/health` y `/ready`. No existen rutas de autenticación, tablas de sesiones ni protección efectiva del dashboard. El login es visual; el logout del encabezado solo redirige. Los grupos de rutas de Next.js no autentican por sí mismos.
 
 V1 incluye obtención de contexto CSRF, login, consulta de identidad y logout individual. No incluye registro público, MFA, OAuth ni recuperación de contraseña por correo. El alta inicial se realizará mediante comando administrativo, sin contraseñas predeterminadas. No se especifican aquí el nombre ni las opciones de ese comando.
 
@@ -46,7 +49,7 @@ Referencias técnicas consultadas el 30 de octubre de 2026:
 - [MDN: Set-Cookie](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie): ámbito y atributos de cookies.
 - [Next.js: cookies](https://nextjs.org/docs/app/api-reference/functions/cookies): lectura en Server Components y escritura en Route Handlers o Server Functions. La consulta corresponde a la documentación vigente; el repositorio declara Next.js 16.3.4 y requerirá verificar el adaptador con esa versión antes de implementar.
 
-Las fuentes respaldan mecanismos generales; no aprueban parámetros, permisos ni decisiones de producto de SynapDesk. Los diseños siguientes son propuestas propias para este contrato.
+Las fuentes respaldan mecanismos generales; no aprueban parámetros, permisos ni decisiones de producto de SynapDesk. El estado de cada decisión se identifica en su sección.
 
 Se conservan JSON, prefijo /api/v1, campos camelCase, UUID representados como texto y fechas ISO 8601 en UTC. Los valores técnicos de roles permanecen en inglés; documentación y mensajes públicos se redactan en español. Los ejemplos utilizan datos ficticios.
 
@@ -79,11 +82,21 @@ HTTPS será obligatorio en producción. El proxy no sustituye la autorización d
 - HTTPS en ambos tramos de producción. No introducir secretos en variables `NEXT_PUBLIC_*`. Para el flujo público de mismo origen no se propone habilitar CORS con credenciales ni comodines; mantener cerrado el acceso de otros orígenes. CORS no constituye autorización ni autentica al proxy.
 - Respuestas de autenticación, incluidas las de error: `Cache-Control: no-store`; sin caché compartida, prerenderizado estático ni reutilización de respuestas entre usuarios. Las peticiones servidor a servidor usarán también `cache: no-store`.
 
+### Configuración del destino del proxy
+
+**APPROVED:** el navegador utiliza rutas relativas `/api/v1/*`. El destino FastAPI se configura exclusivamente en el servidor Next.js mediante el nombre contractual previsto `BACKEND_INTERNAL_URL`. Esta variable es un requisito futuro, con estado IMPLEMENTATION_PENDING: no está incorporada a la configuración ni a los ejemplos de entorno actuales. No se expone mediante NEXT_PUBLIC_* ni se acepta su valor desde parámetros, cabeceras o cuerpos controlados por el cliente.
+
+En desarrollo, un flujo coherente es navegador en `http://localhost:3000` y destino FastAPI `http://localhost:8000`: el navegador solicita `http://localhost:3000/api/v1/...` y Next.js reenvía al backend conservando `/api/v1/*`, sin omitir ni duplicar el prefijo. Se debe usar un host consistente; no mezclar localhost y 127.0.0.1 dentro del flujo de cookies. Configurar el origen público permitido de forma explícita; el destino interno no lo sustituye.
+
+NEXT_PUBLIC_API_URL no se utilizará para autenticación del navegador mediante proxy. Sus usos actuales para otras funcionalidades no se eliminan ni se consideran migrados por este contrato. El proxy conservará solo cookies/cabeceras autorizadas y cada Set-Cookie separado, sin confiar en cabeceras de proxy arbitrarias. La validación de origen no se deduce de un destino elegido por el cliente.
+
 ### SSR aprobado y adaptaciones pendientes
 
 Un Server Component utilizará un adaptador exclusivo de servidor para leer las cookies de la petición actual y construir un encabezado `Cookie` con la lista permitida. No se debe suponer que un `fetch` de Node.js reenvía automáticamente las cookies del navegador ni conserva su almacén. El adaptador llamará solo al destino backend configurado; nunca guardará identidad o cookies en variables globales compartidas entre peticiones.
 
-La lectura de identidad por SSR no exige inventar un `Origin` si la petición de navegación carece de él. Las mutaciones conservarán el origen real y los controles descritos en la sección 6. Login, logout y bootstrap CSRF se canalizarán por una respuesta del proxy al navegador: un `Set-Cookie` recibido por un fetch durante el render de un Server Component no se propaga automáticamente al navegador. Next.js permite leer cookies al renderizar, pero su escritura debe ocurrir en un contexto admitido, como un Route Handler; véase la referencia oficial anterior.
+La lectura de identidad por SSR no exige inventar un `Origin` si la petición de navegación carece de él. Un `Set-Cookie` recibido por un fetch durante el render de un Server Component no se propaga automáticamente al navegador. Login, logout y bootstrap CSRF se canalizan por una respuesta del proxy al navegador; el proxy debe transmitir sus cabeceras correctamente.
+
+**APPROVED para V1:** las mutaciones autenticadas de negocio se realizan con fetch desde componentes o servicios cliente a `/api/v1/*` a través del proxy. Esto incluye crear/modificar tickets, acciones mutables del asistente, login y logout con sus requisitos respectivos, y cualquier operación autenticada que altere datos. No se utilizarán Server Actions ni Server Functions para esas mutaciones en V1. No se agregan excepciones para scripts o clientes externos: el proxy conserva el Origin real y FastAPI aplica el mismo control. Las lecturas SSR siguen permitidas mediante el adaptador por petición, con identidad, cookies autorizadas y ausencia de caché compartida; no son un transporte alternativo para mutaciones durante el render.
 
 | Adaptación futura | Evidencia actual | Cambio requerido, sin implementarlo aquí |
 | --- | --- | --- |
@@ -100,7 +113,7 @@ Backend se encargará de DTO, cookies, persistencia, CSRF, origen, límites, aud
 
 ## 4. Identidad y DTO AuthUser
 
-**Decisión aprobada:** AuthUser será un DTO específico de autenticación, reutilizado por login y /me. No reemplaza ni modifica el tipo público User. Esta tarea lo define únicamente en documentación.
+**Decisión aprobada:** AuthUser será un DTO específico de autenticación, reutilizado por login y /me. No reemplaza ni modifica el tipo público User. Su definición contractual no implica que exista un tipo o endpoint implementado.
 
 **Decisión aprobada:** AuthUser tiene exactamente los siguientes tres campos obligatorios, basados en los nombres públicos existentes:
 
@@ -126,7 +139,7 @@ Cuerpo de respuesta aprobado, compartido por login y /me:
 
 AuthUser representa el objeto contenido en user. La envoltura user y los campos obligatorios id, email y role son decisiones aprobadas. Esta definición documental no implica que la funcionalidad esté implementada.
 
-Nunca se incluirán contraseñas, hashes, tokens de sesión ni datos internos. El servicio provisional que espera User directo para /me requerirá adaptación posterior a esta definición aprobada; no se modifica en esta tarea.
+Nunca se incluirán contraseñas, hashes, tokens de sesión ni datos internos. El servicio provisional que espera User directo para /me requerirá adaptación posterior a esta definición aprobada.
 
 ## 5. Gestión de sesiones
 
@@ -220,9 +233,9 @@ GET /api/v1/auth/csrf permitirá obtener contexto/token para solicitudes anónim
 
 - CSRF_PROTOCOL_STATUS: APPROVED.
 - CSRF_CONFIGURATION_STATUS: PROVISIONAL_CONFIGURATION / PENDING_MEASUREMENT.
-- CSRF_IMPLEMENTATION_GATE: PENDING_CONFIGURATION_AND_IMPLEMENTATION_AUTHORIZATION.
+- CSRF_IMPLEMENTATION_GATE: IMPLEMENTATION_PENDING.
 
-Estos estados separan aprobación del mecanismo, calibración de parámetros y autorización para programarlo. Esta publicación no autoriza implementación ni certifica la configuración propuesta.
+Estos estados separan aprobación del mecanismo, calibración de parámetros y requisitos de implementación. La aprobación del contrato no acredita código implementado ni certifica la configuración propuesta.
 
 ### Synchronizer Token aprobado y configuración provisional
 
@@ -237,22 +250,37 @@ Se aprueba el patrón sincronizado porque PostgreSQL será la autoridad de conte
 | Contexto anónimo | 15 minutos desde creación, sin prolongarlo por emitir tokens. Credencial CSPRNG de 32 bytes, digest en contextos_csrf y cookie técnica HttpOnly de solo host. |
 | Cookies de contexto anónimo | Nombres propuestos `__Host-synapdesk_csrf_context` en HTTPS y `synapdesk_csrf_context_dev` en HTTP local; mismos atributos del perfil de sesión, Max-Age limitado a los 15 minutos restantes. No autentican usuarios. |
 | Contexto autenticado | Vinculado mediante FK a la sesión; no requiere otra cookie técnica. Vigencia limitada por revocación, inactividad y máximo absoluto de esa sesión. |
-| Concurrencia | Hasta ocho tokens no vencidos por contexto. Bloquear la fila del contexto al emitir, retirar vencidos y, si se alcanza el máximo, invalidar el más antiguo antes de añadir otro. |
+| Concurrencia | Máximo provisional de ocho tokens no vencidos por contexto. Bloquear el contexto al emitir y retirar vencidos. No expulsar tokens vigentes para renovar, pues pueden estar en uso. Se propone aplazar o rechazar una nueva emisión al llegar al máximo, con 429 y espera derivada del vencimiento; no repetir por ello una mutación. |
 
-Los valores 32 bytes, 10 minutos, 15 minutos y ocho tokens tienen estado `PROVISIONAL_CONFIGURATION` y `PENDING_MEASUREMENT`; no son resultados medidos ni parámetros definitivamente aprobados. Los nombres de cookies de contexto, digest/representación, campos JSON y sustitución del token más antiguo siguen siendo propuestas. X-CSRF-Token y la separación/vinculación de contextos ya están aprobados.
+Los valores 32 bytes, 10 minutos, 15 minutos y ocho tokens tienen estado `PROVISIONAL_CONFIGURATION` y `PENDING_MEASUREMENT`; no son resultados medidos ni parámetros definitivamente aprobados. Los nombres de cookies de contexto, digest/representación, campos JSON y respuesta de saturación siguen siendo propuestas. X-CSRF-Token, la separación/vinculación de contextos y la conservación de tokens vigentes durante la renovación ya están aprobados.
 
 El token se conserva únicamente en memoria del cliente y puede reutilizarse mientras sea válido y permanezca en el contexto: no es de un solo uso. Esto permite solicitudes simultáneas, pero no garantiza impedir una repetición si un atacante obtiene token y cookie vigentes. Expiración, cambio de contexto y revocación cortan su reutilización; la idempotencia de futuras operaciones de negocio debe diseñarse aparte. CSRF no soluciona XSS.
 
-### Origen y recuperación — PROPOSED
+### Origen y recuperación aprobados; detalles de lectura propuestos
 
-- En POST y demás operaciones mutables exigir `Origin` presente y exactamente permitido, sin coincidencias por sufijo o comodines. Rechazar `Origin: null`, múltiples valores o valores inválidos. No usar Referer como sustituto ni fabricar Origin en el proxy cuando falta. Propuesta de rechazo: 403 con `ORIGIN_INVALID`, antes de validar credenciales.
+- **APPROVED:** en POST y demás operaciones HTTP mutables del navegador exigir Origin presente y coincidencia exacta con un origen público permitido y configurado, sin sufijos ni comodines. Rechazar Origin ausente, null, ambiguo, múltiple, inválido o externo no permitido mediante HTTP 403 ORIGIN_INVALID, con ApiErrorBody, antes de cualquier efecto de la mutación. No utilizar Referer como sustituto ni fabricar Origin en el proxy para ocultar una solicitud inválida. Aplica también a logout sin sesión válida; no hay excepciones implícitas para Server Actions, scripts ni clientes externos.
 - Rechazar cookies de autenticación duplicadas del mismo nombre o cabeceras CSRF ambiguas, sin elegir silenciosamente el primer o último valor. La representación exacta del rechazo se revisará con el catálogo de errores, sin aceptar una identidad ambigua.
 - En GET csrf, validar Origin si existe. Si falta, exigir `Sec-Fetch-Site: same-origin` para el bootstrap del navegador. Rechazar los otros casos; el adaptador SSR no obtiene CSRF ni muta durante render. No utilizar esa cabecera como identidad del proxy. En GET me puede faltar Origin por navegación/SSR; si existe se valida, y ninguna lectura recibe permisos por presentar esa cabecera.
-- Un token faltante, malformado, vencido, de otro contexto o invalidado devuelve 403 con el código propuesto `CSRF_INVALID` y mensaje genérico. No revelar cuál de esas causas ocurrió ni revocar por ello sesiones independientes. La comparación incluye contexto, vigencia y estado de sesión; no basta encontrar un digest en cualquier fila.
+- **APPROVED:** cuando la operación exige CSRF, un token faltante, malformado, vencido, de otro contexto o invalidado devuelve HTTP 403 CSRF_INVALID con ApiErrorBody. Este rechazo ocurre antes de ejecutar efectos de negocio, incluida creación o revocación de sesión; no confirma ni deja en curso la mutación solicitada. Puede registrar un evento saneado de rechazo o control de seguridad, sin ejecutar el efecto de negocio. No revelar la causa particular ni revocar sesiones independientes. La comparación incluye contexto, vigencia y estado de sesión; no basta encontrar el digest en cualquier fila. Se conserva la excepción de logout sin sesión válida, que no requiere CSRF para una revocación inexistente.
 - En operaciones que requieren sesión, proponer comprobar origen, sesión válida, CSRF y permisos en ese orden antes de los efectos; sin sesión válida se obtiene 401, no un 403 CSRF que oculte la necesidad de volver a entrar. Login permite contexto anónimo o autenticado, según la cookie validada. Logout es la excepción aprobada: ausencia confirmada de sesión válida devuelve 204, según sección 7.
-- Tras un 403 CSRF, descartar el token local y obtener otro antes de que la persona reintente. No repetir automáticamente una mutación con resultado desconocido. Tras 401, limpiar identidad local, consultar csrf anónimo y preparar un nuevo login. Ante una cookie de sesión inválida, csrf puede emitir contexto anónimo sin rehabilitarla.
-- Serializar bootstrap en el cliente. Si peticiones anónimas iniciales compiten sin cookie, puede quedar un token ligado a un contexto diferente del que ganó en el navegador: rechazarlo y repetir solo la obtención de contexto. Una novena emisión puede invalidar un token aún en vuelo; el 403 y la recuperación son parte del comportamiento propuesto.
+- Tras 401, limpiar identidad local, consultar csrf anónimo y preparar un nuevo login. Ante una cookie de sesión inválida, csrf puede emitir contexto anónimo sin rehabilitarla. No transformar esa recuperación en un reintento autenticado automático de la operación anterior.
+- Coordinar bootstrap y renovación por contexto. Si dos peticiones anónimas iniciales compiten sin cookie, puede quedar un token ligado a un contexto distinto del instalado en el navegador: no asumir continuidad del contexto para repetir una mutación. Obtener contexto de nuevo antes de una nueva acción y aplicar las comprobaciones de recuperación que siguen.
 - No ampliar actividad por pedir csrf. Tras login invalidar todos los tokens del contexto previo y borrar su cookie anónima si existía; la sesión nueva requiere otro GET csrf. Logout válido revoca el contexto autenticado y sus tokens junto con la sesión.
+
+### Renovación y reintento del cliente — APPROVED
+
+El cliente puede renovar preventivamente mediante GET `/api/v1/auth/csrf` cuando se acerque expiresAt. Mantiene el token únicamente en memoria del contexto cliente y coordina las renovaciones concurrentes para compartir una obtención en curso. La renovación no prolonga por sí sola la inactividad de la sesión ni invalida otros tokens todavía vigentes en uso; estos conservan su caducidad normal y pueden invalidarse por cambio de contexto o revocación. El margen preventivo y los valores de duración/capacidad siguen siendo configuración provisional; no se fija un número adicional.
+
+Solo ante una respuesta explícita HTTP 403 con `error.code = CSRF_INVALID` cuya garantía de rechazo previo a efectos esté vigente, se permite:
+
+1. Obtener un token nuevo mediante GET csrf.
+2. Confirmar que el contexto de autenticación sigue siendo el esperado para la operación original.
+3. Reintentar esa misma mutación una sola vez como máximo con el token nuevo.
+4. Si la renovación falla, no se confirma continuidad del contexto o el reintento falla, devolver el error al llamador sin un nuevo ciclo automático.
+
+No aplicar ese reintento a otros 403, HTTP 500/503, timeouts, fallos de red, respuestas malformadas o situaciones donde no pueda descartarse que la operación se ejecutó. No reiniciar el contador al pasar por capas de cliente distintas. Un segundo CSRF_INVALID se entrega al llamador.
+
+El cliente debe conservar una referencia al contexto esperado al iniciar la petición y descartar el reintento si hubo login, logout, pérdida de autenticación o cambio de contexto, incluidos cambios de otra pestaña. Puede coordinar una generación local del contexto y solicitudes pendientes, sin exponer cookies HttpOnly ni añadir campos obligatorios a AuthUser. La igualdad de id/role en me no demuestra por sí sola que sea la misma sesión; si no se puede confirmar continuidad, no reintentar automáticamente. La vinculación servidor del token sigue siendo obligatoria y no se sustituye por esa comprobación cliente.
 
 ### Flujo con mecanismo aprobado y configuración provisional
 
@@ -264,7 +292,7 @@ El token se conserva únicamente en memoria del cliente y puede reutilizarse mie
 
 ## 7. Endpoints de autenticación
 
-Todos los endpoints siguientes están **no implementados** en esta rama.
+Todos los endpoints de autenticación siguientes están NOT_IMPLEMENTED.
 
 Las entradas y salidas adicionales de esta sección se etiquetan `PROPOSED` salvo decisiones explícitas APPROVED, incluidos X-CSRF-Token y la semántica de logout. AuthUser y su envoltura permanecen intactos. Las respuestas privadas no tendrán caché compartida; se concreta mediante Cache-Control: no-store. No se aceptan IDs de usuario, roles ni secretos de sesión en el cuerpo como sustitución de la identidad backend.
 
@@ -338,7 +366,7 @@ HTTP/1.1 204 No Content
 
 #### Precedencia HTTP de logout — APPROVED
 
-1. Aplicar validación de origen antes de cualquier cierre o borrado: un origen rechazado devuelve 403. La propuesta de origen estricto de sección 6 rechaza también Origin ausente/null. No revocar ni borrar cookies por ese rechazo.
+1. Aplicar la validación aprobada de Origin estricto antes de cualquier cierre o borrado: Origin ausente, null, ambiguo/múltiple o no permitido devuelve HTTP 403 ORIGIN_INVALID, incluso sin sesión válida. El proxy no fabrica Origin. No revocar ni borrar cookies por ese rechazo.
 2. Validar la representación de la solicitud sin exponer datos recibidos: 400/422 cuando corresponda. El cuerpo `{}` y los códigos técnicos concretos siguen siendo propuestas del contrato.
 3. Si no se presenta cookie de sesión, no hay credencial que consultar o revocar: devolver 204 sin exigir CSRF ni afirmar revocación. Este caso no necesita una consulta PostgreSQL para acreditar ausencia de cookie.
 4. Si se presenta cookie, comprobar su validez. Si una consulta necesaria falla, devolver 503 y no borrar la cookie ni simular éxito. Si se confirma sesión inexistente, vencida o ya revocada, devolver 204; no exigir un token CSRF de una sesión ya inválida ni registrar una nueva revocación como realizada.
@@ -385,22 +413,25 @@ La misma respuesta pública se aplicará a los tres casos de rechazo de credenci
 | 500 | Error interno. |
 | 503 | Servicio indisponible. |
 
-### Catálogo y prioridad recomendados — PROPOSED
+### Catálogo aprobado y propuestas complementarias
 
-| Situación | HTTP propuesto | code propuesto o regla |
+| Situación | HTTP | code y estado de decisión |
 | --- | --- | --- |
 | JSON o representación de solicitud malformados | 400 | Catálogo genérico pendiente; sin reflejar el cuerpo recibido. |
 | Campos requeridos, tipos o correo inválidos | 422 | Catálogo de validación pendiente; details saneado, sin contraseña ni token recibido. |
 | Cuenta inexistente, contraseña incorrecta o cuenta inactiva en login | 401 | INVALID_CREDENTIALS; mismo mensaje y estructura. |
 | me u operación protegida sin sesión válida | 401 | AUTHENTICATION_REQUIRED, sin distinguir caducidad/revocación/ausencia. |
-| Origen rechazado | 403 | ORIGIN_INVALID; mensaje genérico en español. |
-| Token CSRF ausente, inválido, vencido o de otro contexto | 403 | CSRF_INVALID; «No se pudo validar la solicitud.» |
+| Origen rechazado | 403 | ORIGIN_INVALID, APPROVED; rechazo antes de efectos. Mensaje genérico en español. |
+| Token CSRF ausente, inválido, vencido o de otro contexto, cuando se exige CSRF | 403 | CSRF_INVALID, APPROVED; rechazo previo a efectos que permite el único reintento condicionado de sección 6. El mensaje concreto sigue propuesto: «No se pudo validar la solicitud.» |
 | Sesión válida sin permiso sobre operación o recurso | 403 | FORBIDDEN, sin detalles del recurso inaccesible. |
 | Cuota de intentos o bootstrap alcanzada | 429 | RATE_LIMITED; Retry-After derivado del límite vigente, sin informar existencia de cuenta. |
 | Fallo interno inesperado | 500 | INTERNAL_ERROR; mensaje genérico y requestId. |
-| PostgreSQL o control persistente necesario indisponible | 503 | SERVICE_UNAVAILABLE; sin convertirlo en 401. |
+| Operación de aplicación temporalmente indisponible, sin causa específica pública contratada | 503 | SERVICE_UNAVAILABLE, APPROVED; también para fallos de controles persistentes de autenticación. No convertirlo en 401 ni 204. |
+| Comprobación PostgreSQL fallida en GET /api/v1/ready | 503 | DATABASE_UNAVAILABLE, IMPLEMENTED en [salud.py](../../backend/app/api/salud.py); no se cambia su contrato ni implementación. |
 
-Estos códigos, mensajes nuevos y la cabecera Retry-After requieren aprobación; no sustituyen ni amplían los campos de ApiErrorBody. El ejemplo de INVALID_CREDENTIALS conserva su condición de propuesta. Logout sin sesión válida devuelve el 204 aprobado y no sigue la fila general de 401 de recursos protegidos; aplica su propia precedencia de sección 7.
+ORIGIN_INVALID, CSRF_INVALID y el criterio de códigos 503 están aprobados. Los demás códigos nuevos, mensajes no fijados y Retry-After siguen como PROPOSED; no sustituyen ni amplían los campos de ApiErrorBody. El ejemplo de INVALID_CREDENTIALS conserva su condición de propuesta. Logout sin sesión válida devuelve el 204 aprobado y no sigue la fila general de 401 de recursos protegidos; aplica su propia precedencia de sección 7.
+
+HTTP 503 significa servicio temporalmente no disponible. SERVICE_UNAVAILABLE es el código general de aplicación cuando no se contrata una causa pública específica; DATABASE_UNAVAILABLE se conserva en ready para la comprobación PostgreSQL. Ambos mantienen los cuatro campos de ApiErrorBody. El frontend debe manejar 503 por su estado HTTP sin suponer un error.code único, sin reintentar mutaciones automáticamente y sin mostrar datos internos de infraestructura. Un fallo de PostgreSQL que impide comprobar o confirmar una revocación requerida nunca se representa como 204 ficticio.
 
 Proponer controles baratos de origen y sintaxis antes del trabajo criptográfico, sesión antes de CSRF en recursos protegidos y permisos antes de efectos. El limitador de bootstrap/login debe reservar capacidad antes de crear registros o ejecutar Argon2id, incluso frente a peticiones concurrentes. Una cuota agotada puede impedir evaluar credenciales; no revelar esa evaluación. El orden fino entre errores de sintaxis y validación de entrada deberá fijarse con los esquemas HTTP sin cambiar la forma del error.
 
@@ -434,7 +465,7 @@ La comprobación de usuario activo y rol vigente es aprobada; la invalidación m
 
 Argon2id es una decisión aprobada. Se propone iniciar la calibración con **64 MiB de memoria, tres iteraciones y paralelismo uno** (`m=65536 KiB`, `t=3`, `p=1`), sin afirmar resultados de benchmark ni aprobarlos para producción. Medir latencia, memoria y concurrencia en el entorno objetivo, incluidas credenciales inválidas y hash ficticio. Elegir una biblioteca mantenida, sin fijar aquí una dependencia ni modificar requirements.
 
-Estado de estos valores y del presupuesto de concurrencia: `PROVISIONAL_CONFIGURATION` / `PENDING_MEASUREMENT`. Ningún rendimiento está medido o certificado en esta tarea.
+Estado de estos valores y del presupuesto de concurrencia: `PROVISIONAL_CONFIGURATION` / `PENDING_MEASUREMENT`. No hay resultados de rendimiento medidos o certificados.
 
 Proponer sal aleatoria individual administrada por la biblioteca y almacenamiento del hash codificado con sus parámetros. Tras un login válido, rehash si la política aprobada cambió, evitando sobrescribir un cambio concurrente de contraseña. Para cuentas inexistentes usar el hash ficticio citado en login; no generar una contraseña predeterminada de usuario.
 
@@ -498,24 +529,26 @@ Eventos, trazabilidad y minimización de información sensible se conservan como
 ### Verificaciones del diseño propuesto, tras su aprobación
 
 - Contextos anónimos duran como máximo 15 minutos; los tokens propuestos duran como máximo 10, recortados por su contexto/sesión. Probar igualdad en el límite, nueva emisión y contexto ya revocado.
-- Hasta ocho tokens vigentes por contexto, sin exceder el máximo bajo emisión concurrente; verificar recuperación cuando se invalida el más antiguo y cuando dos bootstraps compiten.
-- Un token de otra sesión o anónimo anterior al login no autoriza mutaciones sobre una sesión válida; logout sin sesión válida aplica su excepción aprobada sin revocación. La propuesta de Origin estricto rechaza su ausencia/null/valor no permitido. GET csrf sin Origin solo acepta el bootstrap de mismo origen definido.
+- Hasta el máximo provisional de ocho tokens vigentes por contexto, sin excederlo bajo emisión concurrente ni expulsar tokens aún vigentes para renovar. Verificar saturación, vencimientos y dos bootstraps en competencia.
+- Renovación preventiva coordinada antes de expiresAt, sin extender inactividad ni invalidar tokens vigentes en uso. Probar un único reintento tras 403 CSRF_INVALID previo a efectos, continuidad del contexto, segundo rechazo, cambio de sesión y ausencia de reintento para otros errores o resultados desconocidos.
+- Un token de otra sesión o anónimo anterior al login no autoriza mutaciones sobre una sesión válida; logout sin sesión válida aplica su excepción aprobada sin revocación. Origin estricto rechaza ausencia/null/ambigüedad/origen no permitido también en ese logout. GET csrf sin Origin conserva solo la regla específica de lectura, sin habilitar bypass de mutaciones.
 - Login concurrente con el mismo contexto no deja dos sesiones autorizadas; un fallo no revoca la sesión anterior válida. Rollback o caída de PostgreSQL no emiten éxito ni cookie nueva.
 - Logout compite con peticiones protegidas sin resucitar sesión ni actividad; distinguir efectos confirmados antes de revocar de autorizaciones posteriores. Probar también pérdida de respuesta y coordinación entre pestañas.
 - Cookies de ambos perfiles respetan ámbito/atributos, borrado y máximo absoluto; una cookie conservada no supera la vigencia del servidor. No mezclar perfiles local/producción.
 - SSR reenvía solo cookies autorizadas, conserva identidad por petición y no cachea datos entre usuarios. Los Set-Cookie de login/logout/bootstrap llegan al navegador como cabeceras separadas, también al producir errores.
+- Las mutaciones de V1 usan fetch cliente y proxy de mismo origen, sin Server Actions/Server Functions de negocio. El destino se obtiene del futuro BACKEND_INTERNAL_URL exclusivo de servidor y nunca de entrada del cliente. HTTP 503 se maneja sin asumir un único error.code y sin repetir automáticamente una mutación.
 - El limitador persiste tras reinicios, maneja reservas concurrentes y no permite eludir bootstrap borrando cookies. La auditoría de éxitos se confirma con la sesión; una caída no concede acceso ni registra secretos.
 - La futura matriz aprobada se aplica en detalle, listados y métricas; los mocks no constituyen evidencia de permisos backend.
 
-Estos criterios describen verificaciones futuras. No se han ejecutado pruebas funcionales como parte de la redacción documental.
+Estos criterios describen verificaciones funcionales futuras; su definición no constituye evidencia de pruebas superadas.
 
 ## 12. Dependencias y decisiones pendientes
 
 | Tema | Estado y definición necesaria |
 | --- | --- |
-| AuthUser | Definición aprobada: id, email y role obligatorios dentro de user; adaptar después los consumidores provisionales sin modificar User en esta tarea. |
+| AuthUser | Definición aprobada: id, email y role obligatorios dentro de user; adaptar los consumidores provisionales sin sustituir el tipo User. |
 | Éxitos HTTP | Confirmar propuesta 200 para csrf, login y me; 204 de logout ya aprobado con la precedencia de sección 7. |
-| CSRF y origen | APPROVED: Synchronizer Token, contextos servidor, separación anónimo/autenticado, X-CSRF-Token, origen y rotación/invalidez. PROVISIONAL_CONFIGURATION / PENDING_MEASUREMENT: 32 bytes, 10 minutos/token, 15/contexto anónimo y ocho tokens/contexto. Revisar digest/representación, cuerpo csrfToken/expiresAt, sustitución del más antiguo, perfiles y reglas exactas de origen ausente. |
+| CSRF y origen | APPROVED: Synchronizer Token, contextos, X-CSRF-Token, renovación preventiva coordinada, único reintento condicionado a CSRF_INVALID previo a efectos y continuidad del contexto, y rechazo de Origin ausente/null/ambiguo/no permitido en mutaciones. PROVISIONAL_CONFIGURATION / PENDING_MEASUREMENT: 32 bytes, 10 minutos/token, 15/contexto anónimo y ocho tokens/contexto. Revisar digest/representación, campos JSON, perfiles y respuesta de saturación sin expulsar tokens vigentes. |
 | Cookies | Aprobar nombres, perfiles producción/local, Max-Age hasta expiración absoluta y borrado descritos en sección 6. Elegir origen local único y lista exacta de cookies autorizadas. |
 | Sesiones | Aprobar credencial aleatoria/digest, tablas conceptuales, actualización por petición, orden de bloqueos y transacciones, recuperación sin borrar cookie en lecturas y tratamiento de respuesta perdida. Precisar limpieza y coordinación entre pestañas antes de implementar. |
 | Logout | APPROVED: idempotente, 204 sin sesión válida que revocar; origen obligatorio y CSRF para revocar sesión válida, sin 204 ficticio ante fallo PostgreSQL. Detalles operativos de borrado/concurrencia conservan propuestas, sin reabrir la decisión 204/401. |
@@ -524,10 +557,10 @@ Estos criterios describen verificaciones futuras. No se han ejecutado pruebas fu
 | Intentos | Aprobar claves por cuenta/IP/bootstrap y diseño de reservas; fijar umbrales, ventanas, desbloqueo, protección de claves y tratamiento verificado del proxy. |
 | Auditoría | Aprobar catálogo y atomicidad propuesta; acordar campos, acceso, retención, purga y datos personales. |
 | Permisos | PROPOSAL_PENDING_TEAM_REVIEW: revisar cada celda y alcance por recurso, especialmente directorio de usuarios, tickets de equipo y métricas de agent; denegar por defecto operaciones sin autorización definida. |
-| Errores | Aprobar códigos propuestos, HTTP, Retry-After y precedencia restante, conservando los cuatro campos dentro de error. |
-| Proxy y despliegue | APPROVED: mismo origen, cookies necesarias, adaptador seguro por petición, respuestas privadas sin caché compartida y secretos en servidor. Revisar elección operativa de Route Handlers, orígenes públicos, autenticidad del intermediario/cliente y acceso directo a Render. |
+| Errores | APPROVED: 403 ORIGIN_INVALID/CSRF_INVALID y criterio 503 SERVICE_UNAVAILABLE general frente a DATABASE_UNAVAILABLE de ready. Otros códigos propuestos, mensajes, Retry-After y detalles restantes requieren revisión, conservando los cuatro campos dentro de error. |
+| Proxy y despliegue | APPROVED: mismo origen, fetch cliente para mutaciones V1 sin Server Actions/Server Functions, cookies necesarias, adaptador SSR seguro por petición, no-store y secretos en servidor. BACKEND_INTERNAL_URL es requisito futuro IMPLEMENTATION_PENDING. Revisar configuración operativa, orígenes concretos, autenticidad del intermediario/IP y acceso directo a Render. |
 | Alta administrativa | Definir procedimiento del comando y entrega segura de credenciales. |
 
-La persistencia conceptual y los mecanismos de seguridad ya tienen propuestas en este documento; su aprobación, esquema definitivo y configuración quedan para revisión y etapas posteriores autorizadas. La arquitectura aprobada por el Product Owner todavía debe reflejarse, cuando se autorice, en documentos de arquitectura que describen intención o estado anterior. Esta tarea no modifica ADR, configuración, modelos, migraciones ni vistas.
+La persistencia conceptual conserva propuestas de esquema y operación pendientes de revisión; no modifica el estado de los mecanismos ya aprobados. La configuración interoperable y los requisitos operativos deberán concretarse antes de implementar, manteniendo la correspondencia entre contratos y documentación de arquitectura.
 
-La revisión humana de este borrador no equivale a autorización para implementar, ejecutar migraciones o desplegar.
+La aprobación documental no equivale a implementación, migración aplicada o despliegue validado.
