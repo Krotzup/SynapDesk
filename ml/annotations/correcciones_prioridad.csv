@@ -1,0 +1,64 @@
+numero_fila,prioridad_original,prioridad_corregida,motivo
+10,medium,high,Varios miembros del equipo no pueden recibir asignaciones de tickets; interrupción severa del flujo de trabajo del equipo.
+131,medium,high,Servidor inactivo y servicio de consultoría afectado; se requiere restaurar su funcionalidad.
+158,medium,medium,"dudoso: problemas de permisos sin acceso indebido confirmado, caída del servicio ni alcance del bloqueo acreditado."
+161,medium,medium,dudoso: error 403 individual; no se acredita bloqueo de todo el trabajo ni ausencia de alternativa.
+239,medium,medium,dudoso: solicita optimización de configuración y recursos; no acredita caída ni impacto operativo inmediato; texto incompleto.
+351,medium,high,Inactividad significativa del servidor con interrupciones importantes para el equipo y las operaciones.
+367,medium,medium,dudoso: conectividad de un dispositivo con alcance e impacto sin detallar; texto incompleto.
+397,medium,high,Varios usuarios sufren desconexiones durante reuniones activas; afectación colectiva del trabajo.
+470,medium,medium,"dudoso: fallos intermitentes de estabilidad sin caída efectiva, alcance colectivo ni bloqueo operativo concretado."
+509,medium,medium,dudoso: parpadeo de pantalla de un equipo individual sin imposibilidad de trabajar ni ausencia de alternativa acreditadas.
+562,medium,high,Errores recurrentes del servidor interrumpen las operaciones y la gestión del flujo de trabajo del equipo.
+605,medium,medium,dudoso: apagados de un equipo individual con productividad afectada; no se acredita bloqueo total sin alternativa.
+633,medium,high,"Se reporta tiempo de inactividad del servidor, que afecta la continuidad del servicio contratado."
+640,low,low,dudoso: retrasos en respuestas de soporte sin caída ni bloqueo operativo concreto; no basta la solicitud de urgencia.
+644,medium,medium,dudoso: problema limitado a impresión móvil de un equipo; no se acredita impacto colectivo ni imposibilidad de trabajar.
+657,medium,medium,dudoso: falla de impresión inalámbrica individual sin evidencia de que no exista otro medio de impresión.
+670,medium,medium,"dudoso: equipo individual no enciende; aunque es importante para tareas diarias, no se acredita ausencia de alternativa laboral."
+672,medium,high,Discrepancias de facturación con impacto financiero significativo expresamente reportado.
+681,medium,medium,dudoso: error individual de gestión de proyectos con retrasos; no se acredita caída ni bloqueo laboral sin alternativa.
+686,medium,high,Problemas de despliegue afectan al equipo y provocan retrasos significativos del proyecto.
+711,medium,medium,dudoso: dificultad de configuración e integración de correo de un cliente sin caída ni bloqueo operativo precisado.
+718,medium,high,La base de datos se bloquea repetidamente y requiere restaurar su disponibilidad.
+750,medium,high,Interrupción del sistema de tickets tras mantenimiento afecta al servicio de consultoría.
+775,medium,high,Dificultades de provisión de recursos en la nube afectan la capacidad de despliegue del equipo.
+776,medium,high,La aplicación no responde como se espera y se informa impacto significativo en las operaciones.
+855,medium,high,El equipo no puede seguir adecuadamente sus asignaciones; afectación colectiva de la gestión del proyecto.
+880,medium,high,Funcionamiento defectuoso del sistema afecta a múltiples equipos de desarrollo y sus tareas de gestión.
+953,medium,medium,dudoso: petición de cambio de configuración para mejorar el proceso; no demuestra caída ni bloqueo operativo inmediato.
+954,medium,high,Fallo del tablero obstaculiza el seguimiento de tareas del proyecto para el equipo.
+1067,medium,high,Problemas al desplegar una instancia causan interrupciones del servicio y afectan la atención a clientes.
+1075,medium,medium,dudoso: dificultad de carga de un equipo individual sin imposibilidad de trabajar ni ausencia de alternativa acreditadas.
+1194,medium,high,Fallo de pago impide completar la compra de una suscripción; impacto directo sobre una transacción de venta.
+1225,medium,high,Corte de servicio durante mantenimiento interrumpe aplicaciones en la nube y su disponibilidad.
+1228,medium,high,Interrupción inesperada de AWS afecta la accesibilidad en la nube y la productividad general.
+1235,medium,high,Todos los dispositivos de la oficina quedan sin red; inactividad generalizada y operaciones interrumpidas.
+1248,medium,high,Caída no programada del servicio afecta significativamente el acceso a un servidor virtual.
+1263,medium,high,Un error de configuración deja el sitio web sin disponibilidad durante varias horas.
+1342,medium,medium,dudoso: solicita optimizar permisos y eficiencia; no describe acceso bloqueado ni incidente de seguridad activo.
+1390,medium,high,La aplicación principal de nómina falla durante el procesamiento; operación de negocio interrumpida.
+1489,medium,medium,dudoso: fallos de navegador individuales; la afectación a otros es referida sin confirmar y no se acredita ausencia de alternativas.
+1557,medium,medium,"dudoso: solicitud de configuración para mejorar recursos, sin caída ni impacto inmediato descritos."
+1560,medium,high,Fallo de servidor afecta el servicio de consultoría y requiere restaurar su funcionamiento.
+1633,medium,high,El equipo sufre inactividad y problemas de acceso intermitentes en infraestructura AWS.
+1720,medium,medium,"dudoso: se mencionan vulnerabilidades sin compromiso, explotación ni caída acreditados; impacto sin concretar."
+1736,medium,medium,dudoso: inconsistencias y consulta de tarifas sin impacto financiero cuantificado ni bloqueo operativo precisado.
+1763,medium,high,Fallos recurrentes del servidor interrumpen significativamente los procesos del negocio.
+1774,medium,medium,dudoso: afectación del flujo de una persona sin caída de servicio ni bloqueo total sin alternativa acreditado.
+1786,low,low,dudoso: petición genérica de ayuda sin describir los problemas ni su impacto; la inmediatez solicitada no basta.
+1831,medium,high,Fallo del sistema de tickets tras mantenimiento afecta al servicio de asesoramiento de TI.
+1852,medium,high,Fallos inesperados del servidor afectan considerablemente a los procesos del negocio.
+1854,medium,high,Fallos inesperados del servidor tienen impacto significativo en procesos del negocio.
+1863,medium,medium,dudoso: diferencias de facturación de un cliente sin impacto económico concretado ni operación bloqueada.
+1874,medium,high,Fallos inesperados del servidor afectan significativamente a los procesos del negocio.
+1915,medium,medium,dudoso: problema individual de impresión inalámbrica sin afectación colectiva ni falta de alternativa acreditada.
+1920,low,medium,"Equipo individual que no arranca tras actualizar, con uso profesional afectado; incidencia efectiva, sin alcance colectivo ni ausencia de alternativa acreditados."
+1943,medium,medium,"dudoso: dificultades para actualizar configuración de seguridad sin incidente, compromiso ni caída del servicio descritos."
+2002,medium,high,El sistema de seguimiento falla y retrasa significativamente a varios equipos de desarrollo.
+2023,medium,high,Problemas de instancia AWS provocan interrupciones de servicio en la empresa.
+2025,medium,high,La provisión de AWS provoca interrupciones en procesos operativos y en el servicio a clientes.
+2097,medium,high,Se reportan cargos inesperados de importe considerable en facturación AWS; impacto financiero directo.
+2121,medium,high,Todos los equipos de la oficina pierden conectividad y se interrumpen sus procesos.
+2122,medium,high,Fallo de recursos de cómputo afecta a varios usuarios y perturba considerablemente los procesos.
+2145,medium,high,Inactividad no programada de AWS afecta el acceso a servidores virtuales de clientes.
