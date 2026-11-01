@@ -33,8 +33,16 @@ numero_fila,prioridad_original,prioridad_corregida,motivo
 Los números identifican registros CSV del archivo fuente, incluida la cabecera
 (primer ticket = 2). Un campo multilínea no incrementa este número. No se usa
 el índice después de filtrar ni se confunde con `indice_original` del dataset.
-Los motivos describen impacto sin copiar datos sensibles. Los archivos reales
-deben guardarse en `ml/data/` o `ml/artifacts/`, ambos excluidos de Git.
+Los motivos describen impacto sin copiar datos sensibles. Los CSV de tickets
+y archivos de revisión que contengan información sensible deben guardarse en
+`ml/data/` o `ml/artifacts/`, ambos excluidos de Git. Se pueden versionar
+anotaciones sin textos ni identificadores personales junto con su manifiesto,
+después de revisar su contenido.
+
+`ml/annotations/correcciones_prioridad.csv` contiene las 63 decisiones revisadas
+para el original identificado por el manifiesto del mismo directorio. No
+contiene tickets ni se aplica automáticamente a otras fuentes. La revisión
+asistida no implica aprobación independiente de la responsable de datos.
 
 El manifiesto JSON contiene `source_sha256`, `corrections_sha256` y
 `criteria_version`. Los hashes se calculan sobre bytes: cambian al reexportar
@@ -70,6 +78,11 @@ Ejecutar entrenamiento (una línea, válida también en CMD):
 python ml/train_ticket_classifier.py --input-csv ml/data/raw/tickets_esp.csv --corrections-csv ml/data/correcciones_prioridad.csv --corrections-manifest ml/data/correcciones_prioridad.json --output-dir ml/artifacts/ticket_classifier_es
 ```
 
+Para reproducir las anotaciones incluidas en el repositorio, usar
+`--corrections-csv ml/annotations/correcciones_prioridad.csv` y
+`--corrections-manifest ml/annotations/correcciones_prioridad.json`. Su
+manifiesto ya está generado; no regenerarlo para hacer coincidir otro origen.
+
 El entrenamiento rechaza hashes incompatibles, registros repetidos o
 inexistentes, prioridades originales distintas, etiquetas desconocidas, motivos
 vacíos y casos dudosos que pretendan cambiar la etiqueta. Las métricas registran
@@ -83,24 +96,35 @@ Revisar Macro F1, métricas por clase y errores que rebajan `high`. No cambiar
 etiquetas para incrementar una métrica. Los candidatos de la auditoría léxica
 requieren lectura humana; no son errores confirmados ni cubren todos los casos.
 
-## Exportación de Excel con columnas encapsuladas
+### Comparación controlada desde el original
 
-Para el caso observado (una fila CSV con comas dentro de la primera de tres
-columnas externas separadas por punto y coma), hay una utilidad acotada:
+Usar la descarga original intacta como `--input-csv` en ambos experimentos.
+Una copia reexportada desde Excel puede haber cambiado textos, columnas o
+registros, aunque tenga el mismo nombre. Comprobar su SHA-256 antes de usarla.
 
 ```text
-python ml/reconcile_ticket_export.py --original "ruta/csv original.csv" --edited "ruta/tickets_esp_utf8.csv" --original-encoding cp932 --output-dir ml/artifacts/data_reconciliation
+python ml/compare_priority_corrections.py --input-csv ml/data/raw/tickets_esp.csv --corrections-csv ml/annotations/correcciones_prioridad.csv --corrections-manifest ml/annotations/correcciones_prioridad.json --output-dir ml/artifacts/priority_comparison --random-state 42
 ```
 
-CP932 es la codificación comprobada de esa referencia concreta; no se adopta
-como codificación general del dataset. El editado debe ser UTF-8. El resultado
-usa la información editada y la referencia solo para comprobar la estructura.
-Si se eliminó un tag junto con su separador y la correspondencia es única,
-se restituye una celda vacía; no se recupera el valor eliminado. No se reparan
-cuerpos/respuestas ambiguos. Los registros se conservan completos en el JSON
-de revisión, separados de la copia entrenable; el informe cuenta ambos grupos,
-registra cada reparación y conserva hashes para comprobar reproducibilidad.
+El comando entrena dos veces: sin correcciones y con ellas, siempre sin reglas.
+Exige la misma población preparada, orden, textos y demás campos; solo admite
+diferencias de prioridad. Si el filtrado o la deduplicación cambian la población,
+falla antes de entrenar. Verifica también la misma partición, con grupos por
+texto y semilla fija. No modifica el original ni ajusta motivos con predicciones.
 
-Esta separación estructural no sustituye la revisión semántica de prioridades.
-Las métricas de una copia parcial deben indicar cuántos registros quedaron
-fuera del entrenamiento y no atribuirse al archivo completo.
+`comparison.json` registra hashes de origen, población y partición, conteos,
+Macro F1, Weighted F1, precisión/recall/F1 por clase y matrices de confusión:
+
+- `native_reference`: cada modelo evaluado con sus propias etiquetas de prueba.
+  Sirve para reproducir cada entrenamiento. Si cambiaron las etiquetas, sus
+  valores no demuestran por sí solos una mejora.
+- `common_corrected_reference`: ambos modelos evaluados contra las mismas
+  etiquetas revisadas de los mismos tickets. Esta es la comparación principal.
+  La referencia revisada sigue requiriendo validación de la responsable de datos.
+- `high_detection`: cantidad de `high` según la referencia, detectados,
+  omitidos, falsas alarmas y recall. Si no hay `high`, el recall es `null`.
+
+Los directorios `baseline/` y `corrected/` conservan sus métricas y artefactos.
+Una corrección trazable no garantiza mejorar el rendimiento: informar también
+regresiones y no adoptar un modelo como superior sin evidencia. Las notas de
+revisión y publicación corresponden al PR, no a documentos permanentes del módulo.

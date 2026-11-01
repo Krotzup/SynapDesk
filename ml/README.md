@@ -21,9 +21,9 @@ asistencia para el agente; la decision final permanece bajo supervision humana.
   o el dataset sintetico versionado en `ml/samples/tickets_esp_sintetico.csv`
   para verificar el pipeline.
 
-El dataset y los artefactos generados no se versionan en Git. Debe confirmarse
-la licencia, procedencia y ausencia de informacion sensible antes de compartir
-el CSV fuera del entorno local.
+El dataset de tickets y los artefactos generados no se versionan en Git. Debe
+confirmarse la licencia, procedencia y ausencia de informacion sensible antes
+de compartir el CSV fuera del entorno local.
 
 El lector exige CSV con comas, comillas válidas y UTF-8 (admite BOM). Rechaza
 filas con campos desalineados sin omitirlas ni sustituir caracteres. Renombrar
@@ -53,13 +53,9 @@ El script genera `data_quality.json` con conteos y SHA-256, y
 incluye el texto del ticket. Ambos archivos quedan en `ml/artifacts/`, excluido
 de Git.
 
-La ejecución histórica anterior a esta revisión con el CSV completo encontró 2 duplicados exactos, ninguna fila
-sin texto y ningun texto con prioridades contradictorias. Encontro tambien
-132 candidatos: 113 etiquetados `medium` y 19 `low` pese a contener una señal
-lexical de urgencia. Son casos para revisar, no errores confirmados. No se
-cambio ninguna etiqueta ni se reentreno el modelo a partir de la lista. La
-correccion de prioridades exige criterios funcionales aprobados y revision
-humana de los tickets originales.
+Los candidatos léxicos son casos para revisar, no errores confirmados. La
+corrección de prioridades exige lectura del asunto y cuerpo originales y
+criterios de impacto; una palabra de urgencia aislada no justifica un cambio.
 
 Para aplicar correcciones humanas sin modificar el CSV fuente, consulta
 [Correcciones reproducibles de prioridad](CORRECCIONES_PRIORIDAD.md).
@@ -249,95 +245,85 @@ con `git add -f`.
 | --- | --- |
 | `python ml/train_ticket_classifier.py` | Prepara el CSV y entrena el modelo. |
 | `python ml/predict_ticket.py` | Ejecuta una prediccion local. |
+| `python ml/compare_priority_corrections.py --help` | Compara original y correcciones sobre la misma población, partición y referencia. |
 | `python ml/audit_ticket_dataset.py --input-csv <ruta>` | Genera una lista local de prioridades para revision humana, sin corregir etiquetas. |
 | `python -m py_compile ml/*.py` | Comprueba la sintaxis de los scripts. |
 | `python -m unittest discover -s tests -t . -v` | Ejecuta las pruebas sin colisión entre `tests.ml` y el módulo `ml`. |
 | `python ml/train_ticket_classifier.py --enable-business-rules` | Evalua con reglas deterministas aprobadas. |
 
-## Resultados de la copia editada validada (1 de noviembre de 2026)
+## Evaluación reproducida desde el original intacto
 
-Se utilizó la información de `tickets_esp_utf8.csv` y la estructura de su
-referencia, sin modificar ninguna fuente. La utilidad
-`reconcile_ticket_export.py` produjo 2.220 registros de estructura comprobada;
-19 registros ambiguos fueron excluidos del conjunto final por autorización del
-usuario y permanecen respaldados. La copia final es
-`ml/artifacts/revision_pr13/dataset_final/tickets_esp_utf8_sin_ambiguos.csv`.
-Los 139 registros
-editados se conservan íntegramente en las copias y diferencias locales. De los
-63 cambios manuales de prioridad, 62 están en la copia entrenable y uno en revisión.
+Ejecución del 1 de noviembre de 2026 con el SHA-256 del original identificado
+arriba, Python 3.12.4 y las dependencias exactas de `requirements.txt`.
+Se entrenó sin correcciones y con correcciones usando `random_state=42`,
+`test_size=0.2`, `min_target_count=2`, `max_features=120000`, unigramas/bigramas
+y reglas desactivadas. Ambos conjuntos contienen los mismos 2.237 registros,
+con 1.789 de entrenamiento y 448 de prueba, sin textos compartidos. Solo
+cambia `priority`; se conservaron los textos y demás campos del original.
 
-El entrenamiento con Python 3.12.4 y las dependencias fijadas, sin reglas,
-conservó 2.218 registros después de deduplicar: 1.774/444 por objetivo y cero
-textos compartidos entre particiones.
+El archivo separado contiene 63 decisiones según `prioridad-impacto-v1`:
+38 cambios (37 de `medium` a `high` y uno de `low` a `medium`) y 25 casos
+`dudoso:` que conservan su etiqueta original. La revisión fue asistida,
+previa al entrenamiento y sin consultar predicciones; requiere validación de
+la responsable de datos. El manifiesto vincula las decisiones al SHA-256 del
+original. No se utilizan motivos de importación manual como justificación.
 
-| Objetivo | Macro F1 | Weighted F1 |
+Para reproducir ambos experimentos y la comparación, seguir
+[Correcciones reproducibles de prioridad](CORRECCIONES_PRIORIDAD.md).
+Las anotaciones sin textos ni datos personales y su manifiesto están en
+`ml/annotations/` para revisión y reproducción. Los tickets, métricas completas
+y modelos permanecen locales; las notas del proceso corresponden al PR.
+
+### Misma referencia revisada para ambos modelos
+
+La comparación principal evalúa ambos modelos sobre los mismos 448 tickets
+con las mismas etiquetas revisadas. Hay 171 tickets `high` en esa referencia.
+
+| Métrica de prioridad | Modelo sin correcciones | Modelo con correcciones |
 | --- | ---: | ---: |
-| Tipo | 0,6984 | 0,7116 |
-| Prioridad | 0,6191 | 0,6540 |
-| Área/cola | 0,6886 | 0,6084 |
+| Macro F1 | 0,6338 | 0,6263 |
+| Weighted F1 | 0,6453 | 0,6366 |
+| `high` detectados | 124 / 171 | 123 / 171 |
+| `high` omitidos | 47 | 48 |
+| Falsas alarmas `high` | 56 | 59 |
+| Recall `high` | 0,7251 | 0,7193 |
 
-La copia aprende prioridades `low`, `medium` y `high`. Los valores corresponden
-al conjunto final seleccionado, con 19 exclusiones declaradas; no constituyen
-mejora demostrada sobre el experimento
-histórico: cambiaron textos, población y particiones. Las métricas completas,
-artefacto, auditoría y comprobaciones de inferencia están localmente en
-`ml/artifacts/revision_pr13/`, excluido de Git. La auditoría actual identifica
-55 candidatos léxicos para revisión humana, no 55 errores confirmados.
-
-## Resultados históricos del CSV completo (anteriores a esta revisión)
-
-Los siguientes valores identifican el dataset y código anteriores. No son
-resultados del CSV actualizado ni de esta revisión. No deben atribuirse al
-archivo nuevo hasta completar su validación y entrenamiento.
-
-El 31 de octubre de 2026 se ejecuto el codigo del commit
-`5c9942457569555554b08174ee6a960794b4c354` con el CSV identificado arriba,
-`--language es` y los demas parametros predeterminados: `test_size=0.2`,
-`random_state=42`, `min_target_count=2`, `max_features=120000` y reglas de
-negocio desactivadas. Entorno de la ejecucion: Python 3.14.7, pandas 3.0.6,
-scikit-learn 1.9.1 y joblib 1.6.0. Las cifras se tomaron del `metrics.json`
-generado en esa misma ejecucion.
-
-Para repetirla con una copia autorizada del mismo CSV (verifica su SHA-256
-antes de comparar resultados):
-
-```bash
-python ml/train_ticket_classifier.py \
-  --input-csv "<ruta-local-a-tickets_esp.csv>" \
-  --language es \
-  --output-dir ml/artifacts/ticket_classifier_es
-```
-
-| Salida | train_rows | test_rows | Macro F1 | Weighted F1 |
+| Clase | Soporte común | Precisión sin/con correcciones | Recall sin/con correcciones | F1 sin/con correcciones |
 | --- | ---: | ---: | ---: | ---: |
-| Clasificacion sugerida (`type`) | 1.789 | 448 | 0,6835 | 0,6899 |
-| Prioridad solo modelo (`priority`) | 1.789 | 448 | 0,6225 | 0,6313 |
-| Area responsable (`queue`) | 1.789 | 448 | 0,6500 | 0,5992 |
+| `high` | 171 | 0,6889 / 0,6758 | 0,7251 / 0,7193 | 0,7066 / 0,6969 |
+| `medium` | 188 | 0,6080 / 0,6062 | 0,6436 / 0,6223 | 0,6253 / 0,6142 |
+| `low` | 89 | 0,6522 / 0,6301 | 0,5056 / 0,5169 | 0,5696 / 0,5679 |
 
-En esta particion, la interseccion de textos entre entrenamiento y prueba fue
-0 para cada uno de los tres objetivos.
+Las correcciones no mejoraron la detección de `high` en esta partición: el
+modelo corregido detectó un caso menos y produjo tres falsas alarmas más.
+No se presenta como superior ni se ajustaron etiquetas para mejorar métricas.
+La referencia revisada no sustituye una validación independiente; una sola
+partición tampoco permite concluir diferencias estadísticamente significativas.
 
-El CSV completo solo contiene `low`, `medium` y `high` como prioridades. Por
-ello, el modelo entrenado con este CSV no puede predecir `critical` por si
-solo; la regla experimental puede imponer esa etiqueta cuando se habilita.
-Sus criterios funcionales y su evaluacion siguen pendientes. Estas metricas
-no miden el efecto de la regla ni constituyen umbrales de aceptacion aprobados.
+### Referencia propia de cada entrenamiento
 
-### Interpretacion segura de la prioridad
+| Objetivo | Sin correcciones: Macro / Weighted F1 | Con correcciones: Macro / Weighted F1 |
+| --- | ---: | ---: |
+| Tipo (`type`) | 0,6835 / 0,6899 | 0,6835 / 0,6899 |
+| Prioridad (`priority`) | 0,6225 / 0,6313 | 0,6263 / 0,6366 |
+| Área/cola (`queue`) | 0,6500 / 0,5992 | 0,6500 / 0,5992 |
 
-La prioridad tuvo Macro F1 de 0,6225 en la particion de prueba. En una prueba
-local, el texto `URGENTE: no puedo entrar al correo` produjo `low` con
-`confidence` aproximada de 0,638 cuando las reglas estaban desactivadas. Esto
-demuestra que esa salida puede contradecir una señal de urgencia; no es una
-prioridad lista para aplicarse automaticamente. La probabilidad del clasificador
-no se ha calibrado ni validado como medida de seguridad. El agente humano debe
-revisar el contexto antes de decidir la prioridad final.
+En la prueba cambian 13 etiquetas de prioridad. Por eso el resultado propio
+sin correcciones tiene 159 `high` (detecta 115), mientras el corregido tiene
+171 (detecta 123). Esos conteos con denominadores distintos no prueban mejora;
+para comparar usar la referencia común de la tabla anterior. `comparison.json`
+conserva ambas referencias, métricas por clase y matrices de confusión.
 
-En esa auditoría histórica del CSV completo, 627 tickets contenían una señal
-detectada por la regla léxica de entonces: 495 estaban etiquetados `high`, 113 `medium` y 19 `low`.
-Tampoco existe la etiqueta `critical` en ese CSV. Por eso activar la regla por
-defecto o cambiar la prioridad de salida exige acordar criterios de negocio y
-evaluarlos con datos etiquetados para ese fin.
+Estos resultados reemplazan la evaluación de la copia reexportada desde Excel:
+se recuperó el original completo, sin excluir los 19 registros dañados por esa
+exportación y sin aplicar sus cambios de texto o eliminación de etiquetas.
+Las copias anteriores permanecen preservadas localmente.
+
+El original solo contiene prioridades `low`, `medium` y `high`. El modelo
+entrenado no aprende `critical`; la regla experimental puede imponerla si se
+habilita. Estas métricas no evalúan esa regla ni son umbrales de aceptación
+aprobados. Las probabilidades no están calibradas; la prioridad final requiere
+revisión del contexto por el agente humano.
 
 ## Verificacion reproducible con la muestra sintetica
 
@@ -374,7 +360,6 @@ de aprobar sus criterios funcionales.
 - [Pipeline de dataset y modelo](DATASET_ML_PIPELINE.md)
 - [Estrategia de entornos](../docs/arquitectura/entornos.md)
 - [Correcciones de prioridad](CORRECCIONES_PRIORIDAD.md)
-- [Seguimiento de la revisión del PR #13](REVISION_PR13.md)
 
 El backend FastAPI y el servicio de inferencia se integraran en una etapa
 posterior. Actualmente `compose.yaml` levanta PostgreSQL y pgvector, pero no

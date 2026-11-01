@@ -57,16 +57,14 @@ El script genera:
 - `metrics.json`: metricas por objetivo, incluyendo Macro F1 y Weighted F1.
 - `sample_prediction.json`: ejemplo de salida.
 
-El script elimina duplicados exactos por texto y etiquetas. En la ejecucion
-local del 31 de octubre de 2026 con el CSV completo identificado en
-[ml/README.md](README.md), 2.239 filas originales dejaron 2.237 entrenables.
-`metrics.json` registro 1.789 filas de entrenamiento y 448 de prueba para cada
-objetivo. La separacion train/test prioriza grupos por texto para evitar que el
-mismo texto aparezca en ambos conjuntos; existe una ruta alternativa de
-separación cuando la agrupación no se podía usar. En esta revisión se elimina
-esa alternativa: si no hay grupos suficientes o la partición de entrenamiento
-queda con una sola clase, se informa un error en lugar de permitir fuga de texto.
-Los conteos históricos anteriores no certifican el archivo actualizado.
+El script elimina duplicados exactos por texto y etiquetas. La separación
+train/test agrupa por texto para que el mismo texto no aparezca en ambos
+conjuntos. Si no hay grupos suficientes o la partición de entrenamiento queda
+con una sola clase, informa un error sin recurrir a separar filas del mismo grupo.
+Los conteos y métricas reproducidos del CSV original están en
+[README.md](README.md). Para comparar correcciones sobre los mismos registros,
+usar `compare_priority_corrections.py` según
+[CORRECCIONES_PRIORIDAD.md](CORRECCIONES_PRIORIDAD.md).
 
 Las reglas de negocio estan desactivadas por defecto mientras se aprueban los
 criterios funcionales de prioridad. Si se ejecuta con `--enable-business-rules`,
