@@ -23,6 +23,11 @@ export function formatScore(score: number): string {
   return scoreFormatter.format(score);
 }
 
+/** Los fragmentos recuperados pueden comenzar a mitad de una oración. */
+export function formatExcerpt(excerpt: string): string {
+  return /^\p{Ll}/u.test(excerpt) ? `…${excerpt}` : excerpt;
+}
+
 /** Versión corta del UUID para mostrar en tablas y encabezados. */
 export function shortId(id: string): string {
   return id.slice(0, 8);

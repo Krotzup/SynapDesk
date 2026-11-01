@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PriorityBadge, StatusBadge } from "@/components/ui/Badge";
 import { isApiError } from "@/lib/errors";
-import { formatDateTime, formatScore, shortId } from "@/lib/format";
+import { formatDateTime, formatExcerpt, formatScore, shortId } from "@/lib/format";
 import { recommendationsService } from "@/services/recommendations";
 import { ticketsService } from "@/services/tickets";
 import { RecommendationStatus, Ticket } from "@/types";
@@ -25,11 +25,6 @@ async function getTicket(id: string): Promise<Ticket> {
     if (isApiError(error) && error.error.code === "TICKET_NOT_FOUND") notFound();
     throw error;
   }
-}
-
-// Los fragmentos recuperados pueden comenzar a mitad de una oración.
-function formatExcerpt(excerpt: string): string {
-  return /^\p{Ll}/u.test(excerpt) ? `…${excerpt}` : excerpt;
 }
 
 export default async function TicketDetailPage({ params }: TicketDetailPageProps) {

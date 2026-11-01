@@ -218,7 +218,7 @@ function notFound() {
 }
 
 // Minúsculas y sin tildes, para que "mendez" encuentre "Méndez".
-function normalizeText(value: string): string {
+export function normalizeText(value: string): string {
   return value
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
