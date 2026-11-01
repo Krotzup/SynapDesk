@@ -32,33 +32,34 @@ Ejemplo de fecha:
 
 ## URL base
 
-En desarrollo local:
+Configuración provisional documentada para desarrollo local:
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
-Las solicitudes del frontend utilizarán:
+En esa configuración local provisional, las solicitudes del frontend se dirigen directamente a:
 
 ```text
 http://localhost:8000/api/v1
 ```
 
-El puerto `3000` corresponde al frontend Next.js y no debe utilizarse como URL del backend.
+El puerto `3000` corresponde al frontend Next.js y no debe utilizarse como URL directa del backend. Para autenticación V1, el navegador consumirá rutas relativas `/api/v1/*` bajo el origen público del frontend; el proxy reenviará las solicitudes al backend en Render como destino interno. El navegador no consumirá directamente la URL de Render. La configuración local definitiva del proxy y cualquier excepción HTTP siguen pendientes en el [contrato de autenticación V1](autenticacion-v1.md).
 
 ## Autenticación
 
-El mecanismo definitivo de autenticación todavía debe documentarse mediante una decisión técnica.
+El Product Owner aprobó sesiones opacas persistidas en PostgreSQL, administradas por FastAPI y transportadas mediante cookie HttpOnly, con acceso público a través de un proxy del mismo origen. La especificación, sus propuestas y decisiones pendientes se concentran en el [contrato de autenticación V1](autenticacion-v1.md), actualmente en borrador para revisión humana. La autenticación todavía no está implementada en esta rama documental.
 
 Rutas iniciales previstas:
 
 | Método | Ruta                  | Propósito                      |
 | ------ | --------------------- | ------------------------------ |
+| `GET`  | `/api/v1/auth/csrf`   | Obtener contexto/token CSRF     |
 | `POST` | `/api/v1/auth/login`  | Iniciar sesión                 |
 | `POST` | `/api/v1/auth/logout` | Cerrar sesión                  |
 | `GET`  | `/api/v1/auth/me`     | Obtener el usuario autenticado |
 
-El frontend no deberá almacenar contraseñas ni recibir hashes de contraseñas.
+El frontend no deberá almacenar contraseñas ni recibir hashes de contraseñas. Login y `/me` utilizarán el DTO documental específico `AuthUser`, sin modificar el tipo público `User`. Se aprueban los campos obligatorios `id` (UUID como texto), `email` (correo electrónico normalizado) y `role` (`admin` o `agent`), contenidos en la envoltura `user`. No se incorporan otros campos obligatorios ni contraseñas, hashes o tokens. Los errores de autenticación conservarán `error.code`, `error.message`, `error.details` y `error.requestId`; el contrato especializado también contempla `429` y `503` cuando correspondan.
 
 ## Usuarios
 
@@ -316,7 +317,7 @@ Cuando se apruebe este contrato, los servicios de `frontend/src/services/` deber
 
 ## Decisiones pendientes
 
-* mecanismo de autenticación y almacenamiento de sesión;
+* detalles pendientes del [contrato de autenticación V1](autenticacion-v1.md), sobre la arquitectura de sesiones ya aprobada;
 * política de CORS;
 * límites de paginación;
 * límite de tamaño y formatos de documentos;

@@ -15,3 +15,4 @@ Cada contrato deberá incluir datos de entrada, datos de salida, validaciones, e
 
 - [Contrato inicial entre frontend y backend](frontend-backend.md)
 - [Contrato inicial entre backend y Machine Learning](backend-ml.md)
+- [Contrato API de autenticación V1](autenticacion-v1.md)
