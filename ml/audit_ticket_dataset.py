@@ -2,30 +2,20 @@ from __future__ import annotations
 
 import argparse
 import csv
-import hashlib
 import json
 from collections import Counter
 from pathlib import Path
 
-import pandas as pd
-
+from dataset_io import file_sha256, read_dataset
 from ticket_rules import find_urgent_trigger
 from train_ticket_classifier import normalize_label, normalize_text, validate_columns
-
-
-def file_sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as source:
-        for chunk in iter(lambda: source.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def audit_priority_labels(
     csv_path: Path, language: str
 ) -> tuple[dict[str, object], list[dict[str, object]]]:
     """Flag priority labels for human review without changing source data."""
-    data = pd.read_csv(csv_path)
+    data = read_dataset(csv_path)
     validate_columns(data)
     requested_language = normalize_label(language)
     signal_by_priority: Counter[str] = Counter()
@@ -74,7 +64,7 @@ def audit_priority_labels(
             )
 
     report: dict[str, object] = {
-        "input_csv_sha256": file_sha256(csv_path),
+        "input_csv_sha256": data.attrs["source_sha256"],
         "input_rows": int(len(data)),
         "language": requested_language,
         "language_rows": language_rows,

@@ -63,7 +63,10 @@ local del 31 de octubre de 2026 con el CSV completo identificado en
 `metrics.json` registro 1.789 filas de entrenamiento y 448 de prueba para cada
 objetivo. La separacion train/test prioriza grupos por texto para evitar que el
 mismo texto aparezca en ambos conjuntos; existe una ruta alternativa de
-separacion cuando la agrupacion no se puede usar.
+separación cuando la agrupación no se podía usar. En esta revisión se elimina
+esa alternativa: si no hay grupos suficientes o la partición de entrenamiento
+queda con una sola clase, se informa un error en lugar de permitir fuga de texto.
+Los conteos históricos anteriores no certifican el archivo actualizado.
 
 Las reglas de negocio estan desactivadas por defecto mientras se aprueban los
 criterios funcionales de prioridad. Si se ejecuta con `--enable-business-rules`,
@@ -90,7 +93,7 @@ python ml/train_ticket_classifier.py \
 Pruebas automatizadas:
 
 ```bash
-python -m unittest discover -s tests
+python -m unittest discover -s tests -t . -v
 ```
 
 ## Prediccion local
@@ -104,12 +107,18 @@ python ml/predict_ticket.py \
 
 La salida incluye `clasificacion_sugerida`, `prioridad_estimada` y
 `area_responsable`, cada una con confianza y top 3 de clases cuando el
-clasificador lo permite. La prioridad puede incluir `decision`,
+clasificador lo permite. Todos los objetivos incluyen `decision`,
 `decision_source`, `rule`, `trigger`, `model_label`, `model_confidence` y
-`confidence_source` cuando se aplico una regla.
+`confidence_source`, con la misma estructura en muestra e inferencia. Los
+campos que no aplican son `null`; `top3` conserva el ranking estadístico.
 El script rechaza una entrada si tanto el asunto como el cuerpo estan vacios.
 La regla opcional ignora negaciones explicitas cercanas a la señal, como
 `no es urgente` y `sin urgencia`.
+
+El preprocesamiento de asunto/cuerpo se comparte desde `text_preprocessing.py`.
+La muestra de entrenamiento y la inferencia usan `prediction_output.py` para
+construir las diez claves de cada objetivo. Para correcciones de etiquetas,
+consulta [CORRECCIONES_PRIORIDAD.md](CORRECCIONES_PRIORIDAD.md).
 
 ## Modelo elegido
 

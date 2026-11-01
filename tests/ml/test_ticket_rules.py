@@ -28,9 +28,24 @@ class TicketRulesTest(unittest.TestCase):
             "Sin urgencia por ahora.",
             "No es de alta prioridad.",
             "El servicio no se considera critico.",
+            "No es nada urgente",
+            "No es para nada urgente",
+            "No urgente: revisar cuando puedan",
+            "Nada urgente, solo una consulta",
+            "No creo que sea urgente",
+            "Quiero hacer una revisión crítica del manual de VPN",
         ):
             with self.subTest(text=text):
                 self.assertIsNone(find_urgent_trigger(text))
+
+    def test_contextual_urgency_is_still_detected(self) -> None:
+        for text in (
+            "Estoy sin internet, es urgente", "Desde ayer no funciona, urgente",
+            "El servidor es crítico para facturación", "Falla crítica en el ERP",
+            "Situación crítica en bodega",
+        ):
+            with self.subTest(text=text):
+                self.assertIsNotNone(find_urgent_trigger(text))
 
     def test_finds_later_non_negated_urgency(self) -> None:
         self.assertEqual(

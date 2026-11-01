@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
+import platform
 from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
+from importlib.metadata import version
 from pathlib import Path
 from typing import Iterable
 
@@ -14,9 +15,12 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import SGDClassifier
 from sklearn.metrics import classification_report, f1_score
-from sklearn.model_selection import GroupShuffleSplit, train_test_split
+from sklearn.model_selection import GroupShuffleSplit
 from sklearn.pipeline import Pipeline
 
+from dataset_io import apply_priority_corrections, read_dataset
+from prediction_output import model_prediction
+from text_preprocessing import build_text, normalize_label, normalize_text
 from ticket_rules import (
     apply_priority_rule_to_labels,
     apply_priority_rule_to_prediction,
@@ -51,22 +55,8 @@ class TrainingConfig:
     ngram_min: int
     ngram_max: int
     business_rules_enabled: bool
-
-
-def normalize_text(value: object) -> str:
-    """Clean text without translating or changing its meaning."""
-    if pd.isna(value):
-        return ""
-    text = str(value)
-    text = text.replace("\\n", " ")
-    text = re.sub(r"\s+", " ", text)
-    return text.strip()
-
-
-def normalize_label(value: object) -> str:
-    label = normalize_text(value).lower()
-    label = re.sub(r"\s+", "_", label)
-    return label
+    corrections_csv: str | None = None
+    corrections_manifest: str | None = None
 
 
 def validate_columns(df: pd.DataFrame) -> None:
@@ -79,9 +69,16 @@ def load_and_prepare_dataset(
     csv_path: Path,
     language: str,
     min_target_count: int,
+    corrections_csv: Path | None = None,
+    corrections_manifest: Path | None = None,
 ) -> pd.DataFrame:
-    df = pd.read_csv(csv_path)
+    df = read_dataset(csv_path)
     validate_columns(df)
+    if (corrections_csv is None) != (corrections_manifest is None):
+        raise ValueError("Las correcciones requieren CSV y manifiesto juntos.")
+    if corrections_csv is not None:
+        df = apply_priority_corrections(df, corrections_csv, corrections_manifest)
+    provenance = dict(df.attrs)
 
     df["language"] = df["language"].map(normalize_label)
     prepared = df[df["language"] == normalize_label(language)].copy()
@@ -92,9 +89,10 @@ def load_and_prepare_dataset(
         (prepared["subject"].str.len() > 0) | (prepared["body"].str.len() > 0)
     ]
 
-    prepared["text"] = (
-        "Asunto: " + prepared["subject"] + "\nDescripcion: " + prepared["body"]
-    ).str.strip()
+    prepared["text"] = [
+        build_text(subject, body)
+        for subject, body in zip(prepared["subject"], prepared["body"], strict=True)
+    ]
 
     for target in TARGETS:
         prepared[target] = prepared[target].map(normalize_label)
@@ -123,7 +121,9 @@ def load_and_prepare_dataset(
                 "Reduce min_target_count o revisa el dataset."
             )
 
-    return prepared.reset_index(drop=True)
+    prepared = prepared.reset_index(drop=True)
+    prepared.attrs.update(provenance)
+    return prepared
 
 
 def build_model(max_features: int, ngram_range: tuple[int, int]) -> Pipeline:
@@ -161,68 +161,20 @@ def safe_train_test_split(
     test_size: float,
     random_state: int,
 ) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series]:
-    if df["text"].nunique() > 1:
-        try:
-            splitter = GroupShuffleSplit(
-                n_splits=1,
-                test_size=test_size,
-                random_state=random_state,
-            )
-            train_index, test_index = next(
-                splitter.split(df["text"], df[target], groups=df["text"])
-            )
-            train_df = df.iloc[train_index]
-            test_df = df.iloc[test_index]
-            if not train_df.empty and not test_df.empty:
-                return (
-                    train_df["text"],
-                    test_df["text"],
-                    train_df[target],
-                    test_df[target],
-                )
-        except ValueError:
-            pass
-
-    class_counts = df[target].value_counts()
-    stratify = df[target] if class_counts.min() >= 2 else None
-    try:
-        return train_test_split(
-            df["text"],
-            df[target],
-            test_size=test_size,
-            random_state=random_state,
-            stratify=stratify,
-        )
-    except ValueError:
-        return train_test_split(
-            df["text"],
-            df[target],
-            test_size=test_size,
-            random_state=random_state,
-            stratify=None,
-        )
+    if df["text"].nunique() < 2:
+        raise ValueError("Se requieren al menos dos grupos de texto distintos.")
+    splitter = GroupShuffleSplit(n_splits=1, test_size=test_size, random_state=random_state)
+    train_index, test_index = next(splitter.split(df["text"], df[target], groups=df["text"]))
+    train_df, test_df = df.iloc[train_index], df.iloc[test_index]
+    if train_df[target].nunique() < 2:
+        raise ValueError(f"La partición de entrenamiento de {target} requiere al menos dos clases.")
+    if set(train_df["text"]).intersection(test_df["text"]):
+        raise ValueError("La partición comparte textos entre entrenamiento y prueba.")
+    return train_df["text"], test_df["text"], train_df[target], test_df[target]
 
 
 def top_prediction(model: Pipeline, text: str) -> dict[str, object]:
-    label = model.predict([text])[0]
-    result: dict[str, object] = {"label": label}
-
-    classifier = model.named_steps["classifier"]
-    if hasattr(classifier, "predict_proba"):
-        probabilities = model.predict_proba([text])[0]
-        classes = classifier.classes_
-        ranked = sorted(
-            zip(classes, probabilities, strict=True),
-            key=lambda item: item[1],
-            reverse=True,
-        )
-        result["confidence"] = float(ranked[0][1])
-        result["top_3"] = [
-            {"label": item_label, "confidence": float(score)}
-            for item_label, score in ranked[:3]
-        ]
-
-    return result
+    return model_prediction(model, text)
 
 
 def write_json(path: Path, payload: object) -> None:
@@ -249,6 +201,8 @@ def train(config: TrainingConfig) -> None:
         csv_path=csv_path,
         language=config.language,
         min_target_count=config.min_target_count,
+        corrections_csv=Path(config.corrections_csv) if config.corrections_csv else None,
+        corrections_manifest=Path(config.corrections_manifest) if config.corrections_manifest else None,
     )
 
     prepared_path = output_dir / "prepared_tickets.csv"
@@ -260,6 +214,13 @@ def train(config: TrainingConfig) -> None:
         "rows_after_filter": int(len(df)),
         "target_distribution": target_distribution(df, TARGETS.keys()),
         "targets": TARGETS,
+        "dataset": dict(df.attrs),
+        "runtime": {
+            "python": platform.python_version(),
+            **{name: version(name) for name in (
+                "pandas", "scikit-learn", "joblib", "numpy", "scipy", "threadpoolctl",
+            )},
+        },
         "business_rules": {
             "enabled": config.business_rules_enabled,
             "urgent_priority_rule": (
@@ -309,6 +270,8 @@ def train(config: TrainingConfig) -> None:
             "source_column": target,
             "train_rows": int(len(x_train)),
             "test_rows": int(len(x_test)),
+            "shared_texts": len(set(x_train).intersection(x_test)),
+            "classes": [str(label) for label in model.named_steps["classifier"].classes_],
             "macro_f1": float(f1_score(y_test, predictions, average="macro")),
             "weighted_f1": float(f1_score(y_test, predictions, average="weighted")),
             "classification_report": report,
@@ -336,6 +299,8 @@ def train(config: TrainingConfig) -> None:
         "targets": TARGETS,
         "models": models,
         "config": asdict(config),
+        "runtime": metrics["runtime"],
+        "dataset": metrics["dataset"],
     }
 
     joblib.dump(artifact, output_dir / "ticket_classifier.joblib")
@@ -379,6 +344,8 @@ def parse_args() -> TrainingConfig:
     )
     parser.add_argument("--test-size", type=float, default=0.2)
     parser.add_argument("--random-state", type=int, default=42)
+    parser.add_argument("--corrections-csv", help="Correcciones de prioridad revisadas, sin modificar el CSV fuente.")
+    parser.add_argument("--corrections-manifest", help="Manifiesto con hashes y versión de criterios.")
     parser.add_argument(
         "--min-target-count",
         type=int,
@@ -418,6 +385,8 @@ def parse_args() -> TrainingConfig:
         ngram_min=args.ngram_min,
         ngram_max=args.ngram_max,
         business_rules_enabled=args.enable_business_rules,
+        corrections_csv=args.corrections_csv,
+        corrections_manifest=args.corrections_manifest,
     )
 
 

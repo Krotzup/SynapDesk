@@ -6,11 +6,9 @@ from pathlib import Path
 
 import joblib
 
+from prediction_output import model_prediction
+from text_preprocessing import build_text
 from ticket_rules import apply_priority_rule_to_prediction
-
-
-def build_text(subject: str, body: str) -> str:
-    return f"Asunto: {subject.strip()}\nDescripcion: {body.strip()}".strip()
 
 
 def predict(
@@ -19,10 +17,8 @@ def predict(
     body: str,
     business_rules: bool | None = None,
 ) -> dict[str, object]:
-    if not subject.strip() and not body.strip():
-        raise ValueError("El ticket debe incluir asunto o descripcion.")
-    artifact = joblib.load(model_path)
     text = build_text(subject, body)
+    artifact = joblib.load(model_path)
     if business_rules is None:
         business_rules = bool(
             artifact.get("config", {}).get("business_rules_enabled", False)
@@ -35,22 +31,7 @@ def predict(
     }
 
     for business_name, model in artifact["models"].items():
-        label = model.predict([text])[0]
-        prediction: dict[str, object] = {"label": label}
-
-        classifier = model.named_steps["classifier"]
-        if hasattr(classifier, "predict_proba"):
-            probabilities = model.predict_proba([text])[0]
-            ranked = sorted(
-                zip(classifier.classes_, probabilities, strict=True),
-                key=lambda item: item[1],
-                reverse=True,
-            )
-            prediction["confidence"] = float(ranked[0][1])
-            prediction["top3"] = [
-                {"label": item_label, "confidence": float(score)}
-                for item_label, score in ranked[:3]
-            ]
+        prediction = model_prediction(model, text)
 
         if business_name == "prioridad_estimada" and business_rules:
             prediction = apply_priority_rule_to_prediction(text, prediction)
