@@ -23,7 +23,12 @@ if TYPE_CHECKING:
 
 
 class LimiteAutenticacion(Base):
-    """Estado persistente para límites por clave y ventana operativa."""
+    """Estado por ventana; clave_digest debe recibir HMAC-SHA-256 de la identidad.
+
+    La derivación futura usará cuenta normalizada/IP verificada y una clave
+    secreta exclusiva del servidor. SHA-256 simple no anonimiza estos datos.
+    Este modelo solo almacena los 32 bytes; no implementa su derivación.
+    """
 
     __tablename__ = "limites_autenticacion"
     __table_args__ = (
@@ -82,7 +87,12 @@ class LimiteAutenticacion(Base):
 
 
 class EventoAutenticacion(Base):
-    """Evento mínimo de auditoría sin credenciales ni cabeceras completas."""
+    """Evento mínimo sin credenciales ni cabeceras completas.
+
+    Si se registra una IP verificada, su digest debe ser HMAC-SHA-256 con
+    clave secreta exclusiva del servidor, no SHA-256 simple ni IP en claro.
+    La derivación y gestión de esa clave quedan fuera de este modelo.
+    """
 
     __tablename__ = "eventos_autenticacion"
     __table_args__ = (

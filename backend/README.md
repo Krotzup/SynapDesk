@@ -21,6 +21,8 @@ Las tablas de usuarios, tickets y persistencia de autenticación se crean al apl
 
 La sesión conserva creación, última actividad, expiración absoluta y revocación; el modelo permite aplicar posteriormente los límites aprobados de ocho horas y treinta minutos. Los contextos anónimos y autenticados son identidades separadas, y un contexto admite varios tokens CSRF vigentes. Los registros de límites usan claves seudonimizadas, ventana, contadores, reservas y bloqueo; el ORM incorpora versionado optimista para evitar pérdidas silenciosas en actualizaciones concurrentes. La auditoría conserva solo referencias y contexto mínimo seguro, sin contraseñas, cookies, tokens, secretos ni cabeceras completas.
 
+Para identificadores de cuenta normalizada e IP verificada, los campos `clave_digest` e `ip_verificada_digest` deben recibir **HMAC-SHA-256 con una clave secreta exclusiva del servidor**, nunca SHA-256 simple de correo/IP. Son datos seudonimizados, no anónimos: SHA-256 sin clave permite comprobar candidatos de baja entropía. Los secretos aleatorios de sesión, contexto anónimo y token CSRF conservan SHA-256. Ambos resultados ocupan 32 bytes y son compatibles con el esquema. La derivación de identificadores, normalización, verificación de IP y gestión/rotación de la clave no están implementadas; los ejemplos HMAC de pruebas usan exclusivamente una clave ficticia pública, no válida para producción.
+
 ## Requisitos
 
 - Python 3.12 de 64 bits y pip.
@@ -176,13 +178,13 @@ Validación posterior contra PostgreSQL real, el 30 de octubre de 2026: **33 pru
 
 Sobre la base temporal inicialmente vacía se aplicó `0001_usuarios_tickets`, se verificó `alembic_version` y `alembic check` no detectó diferencias con los modelos. Un segundo `upgrade head` conservó el esquema. Las pruebas comprobaron persistencia, restricciones y reversión/reaplicación de la migración; una comprobación adicional verificó commit y rollback entre sesiones independientes. Tras las pruebas, las tablas de usuarios y tickets quedaron vacías y no quedaron conexiones cliente abiertas. Con PostgreSQL disponible, `/health` y `/ready` respondieron `200`; al detener exclusivamente el contenedor temporal, `/health` mantuvo `200` y `/ready` devolvió `503` con el error público previsto, sin credenciales, SQL ni trazas. Esta validación no utilizó la base de desarrollo ni verificó un despliegue de producción.
 
-Las doce pruebas de integración se omiten salvo que `EJECUTAR_PRUEBAS_BD=1`. Utilizan exclusivamente las variables `POSTGRES_TEST_*`. Verifican PostgreSQL 17, pgvector 0.8.6, disponibilidad, persistencia, restricciones y correspondencia entre modelos y migración.
+Las pruebas de integración se omiten salvo que `EJECUTAR_PRUEBAS_BD=1`. Utilizan exclusivamente las variables `POSTGRES_TEST_*`. Verifican PostgreSQL 17, pgvector 0.8.6, disponibilidad, persistencia, restricciones y correspondencia entre modelos y migración.
 
 Las pruebas de persistencia insertan datos ficticios y ejecutan las migraciones dentro de transacciones que se revierten al terminar. La prueba de migración revierte y reaplica la revisión dentro de esa transacción, sin realizar una reversión permanente de las tablas. Uvicorn no necesita estar iniciado para ejecutar pruebas.
 
 ### Integración con PostgreSQL real
 
-Antes de habilitar estas pruebas, verifica que host, puerto y base correspondan a una instancia exclusiva para pruebas con datos descartables. El nombre de la base por sí solo no demuestra ese aislamiento. Si no puedes comprobarlo, conserva las pruebas de integración omitidas.
+Antes de habilitar estas pruebas, verifica que host, puerto y base correspondan a una instancia exclusiva para pruebas con datos descartables. Utiliza una base temporal nueva dentro de la instancia de pruebas del puerto 5433, sin sobrescribir bases existentes ni utilizar desarrollo en 5432. Habilita `vector` en esa base temporal y configura `POSTGRES_TEST_DB` con su nombre solo para el proceso. El nombre de la base por sí solo no demuestra ese aislamiento. Si no puedes comprobarlo, conserva las pruebas de integración omitidas.
 
 En el `.env` de la raíz conserva las variables de testing existentes y agrega `POSTGRES_TEST_HOST=127.0.0.1` si falta. Se requieren `POSTGRES_TEST_DB`, `POSTGRES_TEST_USER` y `POSTGRES_TEST_PASSWORD`; el puerto por defecto es `5433`.
 
@@ -197,13 +199,13 @@ Espera a que `db_test` figure como saludable. Luego, con el entorno virtual acti
 
 ```cmd
 set EJECUTAR_PRUEBAS_BD=1
+python -m alembic -x base=testing upgrade head
+python -m alembic -x base=testing check
 python -m pytest pruebas/integracion -q
 set EJECUTAR_PRUEBAS_BD=
 ```
 
-Se esperan **20 pruebas de integración aprobadas**. El último comando elimina la variable en esa ventana. Si quieres ejecutar todas las pruebas con integración habilitada, utiliza `python -m pytest pruebas -q` antes de eliminarla.
-
-Validación AUTH-05 del 2 de noviembre de 2026: **41 pruebas aprobadas, 0 fallidas y 0 omitidas**, incluidas las 20 de integración, contra PostgreSQL 17.11 y pgvector 0.8.6 en el puerto de pruebas 5433. Se utilizó exclusivamente la base temporal `auth05_validation_20261102_01`, creada para esta ejecución y eliminada al terminar, sin conexiones activas. Se aplicaron `0001_usuarios_tickets` y `0002_autenticacion_persistencia`, se verificaron downgrade real hasta `base` y upgrade posterior hasta `head`, y `alembic check` no detectó diferencias con los modelos. La base original de pruebas conservó sus tablas vacías y la extensión vector; no se accedió a la instancia de desarrollo del puerto 5432. Limitaciones: aviso de permisos de escritura de la caché de pytest; CLI Docker no accesible desde la sesión, por lo que la validación utilizó conexión PostgreSQL directa. Estas pruebas no certifican políticas HTTP, emisión de credenciales ni concurrencia entre workers.
+Todas las pruebas PostgreSQL deben ejecutarse, no omitirse, en una validación de integración. El último comando elimina la variable en esa ventana. Si quieres ejecutar todas las pruebas con integración habilitada, utiliza `python -m pytest pruebas -q` antes de eliminarla. La prueba de versionado usa dos sesiones y conexiones independientes, confirma cambios y comprueba `StaleDataError` ante una versión obsoleta; elimina su fila al terminar. Requiere el esquema migrado previamente en la base temporal. El resto de pruebas de persistencia revierte sus transacciones. Al finalizar, elimina únicamente la base temporal identificada; no detengas contenedores existentes ni borres bases compartidas. La evidencia de ejecuciones se registra en el PR, no en este procedimiento.
 
 Para detener solamente la base de pruebas, desde la raíz:
 
@@ -244,7 +246,7 @@ python -m alembic check
 
 `current` debe mostrar `0002_autenticacion_persistencia (head)`. `check` debe informar que no se detectaron nuevas operaciones de actualización: compara modelos registrados y estructura de la base, sin generar revisiones.
 
-Las revisiones no insertan usuarios ni tickets. La autenticación y las rutas de estos módulos siguen pendientes. Los campos físicos iniciales se documentan en [Persistencia relacional inicial](../docs/arquitectura/persistencia-inicial.md); los modelos AUTH-05 se encuentran en `app/persistencia/modelos/` y la revisión nueva en `migraciones/versiones/0002_autenticacion_persistencia.py`.
+Las revisiones no insertan usuarios ni tickets. La autenticación y las rutas de estos módulos siguen pendientes. Los campos y relaciones se documentan en [Persistencia relacional inicial](../docs/arquitectura/persistencia-inicial.md); los [modelos de persistencia](app/persistencia/modelos/) comparten la misma base declarativa y la [revisión de autenticación](migraciones/versiones/0002_autenticacion_persistencia.py) depende de la revisión inicial.
 
 Las credenciales se obtienen del `.env` y no se almacenan en `alembic.ini`. `APP_ENV=testing` no sustituye la selección explícita `-x base=testing`. FastAPI no aplica migraciones ni crea tablas automáticamente al iniciar.
 

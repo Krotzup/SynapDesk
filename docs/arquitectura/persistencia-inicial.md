@@ -2,7 +2,7 @@
 
 ## Estado y alcance
 
-Diseño inicial implementado para revisión mediante PR. La revisión `0001_usuarios_tickets` crea las tablas `usuarios` y `tickets` en PostgreSQL. No implementa rutas de usuarios o tickets, autenticación, predicciones ni persistencia vectorial.
+La revisión `0001_usuarios_tickets` crea las tablas `usuarios` y `tickets` en PostgreSQL. La revisión posterior `0002_autenticacion_persistencia` agrega las cinco tablas de autenticación descritas abajo. Esta capa no implementa rutas de usuarios o tickets, servicios de autenticación, predicciones ni persistencia vectorial.
 
 Los campos internos se nombran en español y `snake_case`. Las futuras respuestas de API conservarán los nombres `camelCase` del contrato; los modelos ORM no se serializarán directamente como respuestas.
 
@@ -37,6 +37,20 @@ El ORM normaliza el correo antes de persistir. La base exige esa normalización 
 | `creado_en` | `createdAt` | Sí | Fecha con zona horaria; defecto `now()` |
 | `actualizado_en` | `updatedAt` | Sí | Fecha con zona horaria; el ORM la actualiza al modificar |
 | `resuelto_en` | `resolvedAt` | No | Fecha opcional con zona horaria |
+
+## Persistencia de autenticación
+
+La [revisión 0002](../../backend/migraciones/versiones/0002_autenticacion_persistencia.py) agrega tablas sin alterar las de la revisión inicial:
+
+| Tabla | Responsabilidad y relaciones principales |
+| --- | --- |
+| `sesiones` | Credencial opaca por digest único, creación, última actividad, expiración absoluta y revocación; FK `usuario_id` a `usuarios` con `RESTRICT`. |
+| `contextos_csrf` | Contexto anónimo con digest de secreto o autenticado con `sesion_id`, nunca ambas vinculaciones; FK a `sesiones` con `RESTRICT` y contexto autenticado único por sesión; vigencia y revocación propias. |
+| `tokens_csrf` | Varios tokens por contexto, cada uno con digest único, emisión, expiración e invalidación; FK `contexto_id` con `RESTRICT`. |
+| `limites_autenticacion` | Clave HMAC seudonimizada, ventana, contadores, reservas y bloqueo; unicidad por tipo/clave/inicio de ventana y versión optimista para detectar actualizaciones obsoletas. No fija cuotas. |
+| `eventos_autenticacion` | Fecha, tipo, resultado y contexto mínimo; referencias opcionales a usuario/sesión con `SET NULL`. El evento sobrevive al borrado de la entidad, pero pierde esa referencia. No fija retención. |
+
+Los [modelos](../../backend/app/persistencia/modelos/) almacenan UUID internos, fechas con zona horaria y digests de 32 bytes. SHA-256 se reserva para secretos aleatorios de sesión/CSRF; cuenta normalizada e IP verificada requieren HMAC-SHA-256 con clave secreta exclusiva del servidor. Estos últimos datos son seudonimizados, no anónimos. La derivación y gestión de claves corresponden a una capa posterior, no a estos modelos. Los `CHECK` validan fechas de cada fila; acotar la expiración de un token por su contexto/sesión requiere validación futura entre entidades. Para políticas y decisiones aprobadas, consultar el [contrato de autenticación](../contratos/autenticacion-v1.md).
 
 ## Decisiones técnicas iniciales
 
