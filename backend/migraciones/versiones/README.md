@@ -2,4 +2,4 @@
 
 Aquí se guardarán las revisiones Python generadas y revisadas mediante Alembic.
 
-La revisión inicial es `0001_usuarios_tickets.py`. Este documento explica el directorio; Alembic lo ignora al buscar revisiones Python.
+Las revisiones actuales son `0001_usuarios_tickets.py` y `0002_autenticacion_persistencia.py`. Este documento explica el directorio; Alembic lo ignora al buscar revisiones Python.

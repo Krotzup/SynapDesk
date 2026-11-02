@@ -4,9 +4,9 @@ Alembic utiliza la configuración de PostgreSQL del backend. No guardes credenci
 
 ## Estado actual
 
-Existe una revisión inicial: `0001_usuarios_tickets`, que crea `usuarios` y `tickets`, sus relaciones, restricciones e índices.
+Existe una revisión inicial: `0001_usuarios_tickets`, que crea `usuarios` y `tickets`, sus relaciones, restricciones e índices. La revisión `0002_autenticacion_persistencia` agrega sesiones opacas, contextos y tokens CSRF, estado persistente de límites y eventos de auditoría.
 
-`upgrade head` crea las tablas y registra la revisión en `alembic_version`. No inserta registros de usuarios o tickets ni crea columnas vectoriales.
+`upgrade head` crea las tablas y registra la revisión en `alembic_version`. No inserta registros de usuarios o tickets ni crea columnas vectoriales. La revisión AUTH-05 no almacena credenciales portadoras, tokens ni contraseñas en texto plano y no fija cuotas ni retención.
 
 ## Comandos
 
@@ -18,7 +18,7 @@ python -m alembic heads
 python -m alembic history
 ```
 
-Los comandos `heads` y `history` no requieren PostgreSQL. `heads` debe mostrar `0001_usuarios_tickets (head)`.
+Los comandos `heads` y `history` no requieren PostgreSQL. `heads` debe mostrar `0002_autenticacion_persistencia (head)`.
 
 Para verificar primero contra `db_test`:
 

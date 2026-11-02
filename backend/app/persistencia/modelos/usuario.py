@@ -1,10 +1,15 @@
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import Boolean, CheckConstraint, String, Text, Uuid, text
-from sqlalchemy.orm import Mapped, mapped_column, validates
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from app.persistencia.base import Base
 from app.persistencia.modelos.comunes import FechasRegistro
+
+if TYPE_CHECKING:
+    from app.persistencia.modelos.seguridad import EventoAutenticacion
+    from app.persistencia.modelos.sesion import Sesion
 
 
 class Usuario(FechasRegistro, Base):
@@ -33,3 +38,8 @@ class Usuario(FechasRegistro, Base):
     @validates("correo")
     def normalizar_correo(self, nombre_atributo: str, valor: str) -> str:
         return valor.strip().lower()
+
+    sesiones: Mapped[list["Sesion"]] = relationship(back_populates="usuario")
+    eventos_autenticacion: Mapped[list["EventoAutenticacion"]] = relationship(
+        back_populates="usuario"
+    )

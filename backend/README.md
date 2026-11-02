@@ -12,11 +12,14 @@ API de SynapDesk basada en FastAPI y Pydantic, con prefijo `/api/v1`.
 - Conexión a PostgreSQL con SQLAlchemy y Psycopg 3.
 - Endpoint `GET /api/v1/ready` para comprobar acceso a PostgreSQL.
 - Entorno Alembic preparado para versionar cambios de estructura.
-- Modelos de usuarios y tickets y revisión `0001_usuarios_tickets`.
+- Modelos de usuarios y tickets y revisiones `0001_usuarios_tickets` y `0002_autenticacion_persistencia`.
+- Persistencia V1 de sesiones opacas, contextos/tokens CSRF, límites de autenticación y eventos de auditoría; no agrega endpoints.
 - Pruebas unitarias de salud, CORS, configuración y disponibilidad.
 - Pruebas de integración optativas de conexión, persistencia y migraciones contra `db_test`.
 
-Las tablas de usuarios y tickets se crean al aplicar las migraciones. Sus endpoints, autenticación e integración ML siguen pendientes. El endpoint `/health` no comprueba la base de datos ni el modelo ML. `/ready` verifica acceso a PostgreSQL mediante `SELECT 1`; no verifica tablas, migraciones, pgvector ni ML.
+Las tablas de usuarios, tickets y persistencia de autenticación se crean al aplicar las migraciones. Sus endpoints, autenticación efectiva e integración ML siguen pendientes. Los secretos de sesión, contextos y CSRF no se almacenan en texto plano: las tablas guardan únicamente digests de 32 bytes. La migración no fija cuotas de rate limiting, retención de auditoría ni la política de emisión/rotación de tokens.
+
+La sesión conserva creación, última actividad, expiración absoluta y revocación; el modelo permite aplicar posteriormente los límites aprobados de ocho horas y treinta minutos. Los contextos anónimos y autenticados son identidades separadas, y un contexto admite varios tokens CSRF vigentes. Los registros de límites usan claves seudonimizadas, ventana, contadores, reservas y bloqueo; el ORM incorpora versionado optimista para evitar pérdidas silenciosas en actualizaciones concurrentes. La auditoría conserva solo referencias y contexto mínimo seguro, sin contraseñas, cookies, tokens, secretos ni cabeceras completas.
 
 ## Requisitos
 
@@ -167,14 +170,6 @@ Las pruebas locales importan la fábrica desde `app.aplicacion`, utilizan config
 
 Las regresiones de [test_configuracion.py](pruebas/test_configuracion.py) utilizan archivos ficticios en directorios temporales. Comprueban importaciones frente a configuración inválida, carga y validación habituales al invocar la fábrica sin parámetros y el punto de entrada `app.main:app` sin creación de motor al importarse. También se comprueban CORS, salud, disponibilidad, errores públicos sin datos internos y liberación del motor al finalizar el ciclo de vida, incluso ante excepciones.
 
-Validación local de la reconciliación, el 30 de octubre de 2026 en Windows con Python 3.12.10: **21 pruebas aprobadas y 12 omitidas**, tanto con el entorno habitual como con variables ambientales inválidas; `python -m pip check` sin dependencias rotas. No se instalaron dependencias ni se accedió a PostgreSQL real. La revisión Alembic y el DDL de ambos modelos se contrastaron en memoria; esta comprobación no sustituye las pruebas de integración.
-
-Las doce pruebas de integración se omiten salvo que `EJECUTAR_PRUEBAS_BD=1`. Utilizan exclusivamente las variables `POSTGRES_TEST_*`. Verifican PostgreSQL 17, pgvector 0.8.6, disponibilidad, persistencia, restricciones y correspondencia entre modelos y migración.
-
-Las pruebas de persistencia insertan datos ficticios y ejecutan las migraciones dentro de transacciones que se revierten al terminar. La prueba de migración revierte y reaplica la revisión dentro de esa transacción, sin realizar una reversión permanente de las tablas. Uvicorn no necesita estar iniciado para ejecutar pruebas.
-
-### Integración con PostgreSQL real
-
 Validación local de la consolidación contra `main` en `098fed3`, el 30 de octubre de 2026 en Windows con Python 3.12.10: **21 pruebas aprobadas y 12 omitidas**, tanto con el entorno habitual como con variables ambientales inválidas; `python -m pip check` sin dependencias rotas. Se preservaron los cambios del frontend del PR #17 y el contrato de autenticación ya incorporado en `main`. No se instalaron dependencias ni se accedió a PostgreSQL real. `alembic heads` y `history` identificaron una única revisión inicial; el DDL de ambos modelos se contrastó en memoria, incluidos restricciones, valores iniciales e índices.
 
 Validación posterior contra PostgreSQL real, el 30 de octubre de 2026: **33 pruebas aprobadas, 0 fallidas, 0 omitidas y 0 errores**, incluidas las **12 pruebas de integración**. Se utilizó PostgreSQL 17.11 con pgvector 0.8.6 en un contenedor exclusivo de Docker Desktop, con datos en `tmpfs`, red propia, puerto enlazado únicamente a `127.0.0.1` y credenciales temporales. La configuración se proporcionó al proceso y se deshabilitó la lectura del `.env` real durante esta ejecución. Las **21 pruebas unitarias** también aprobaron con variables ambientales inválidas; `python -m pip check` no encontró dependencias rotas.
@@ -206,7 +201,9 @@ python -m pytest pruebas/integracion -q
 set EJECUTAR_PRUEBAS_BD=
 ```
 
-Se esperan **12 pruebas de integración aprobadas**. El último comando elimina la variable en esa ventana. Si quieres ejecutar todas las pruebas con integración habilitada, utiliza `python -m pytest pruebas -q` antes de eliminarla.
+Se esperan **20 pruebas de integración aprobadas**. El último comando elimina la variable en esa ventana. Si quieres ejecutar todas las pruebas con integración habilitada, utiliza `python -m pytest pruebas -q` antes de eliminarla.
+
+Validación AUTH-05 del 2 de noviembre de 2026: **41 pruebas aprobadas, 0 fallidas y 0 omitidas**, incluidas las 20 de integración, contra PostgreSQL 17.11 y pgvector 0.8.6 en el puerto de pruebas 5433. Se utilizó exclusivamente la base temporal `auth05_validation_20261102_01`, creada para esta ejecución y eliminada al terminar, sin conexiones activas. Se aplicaron `0001_usuarios_tickets` y `0002_autenticacion_persistencia`, se verificaron downgrade real hasta `base` y upgrade posterior hasta `head`, y `alembic check` no detectó diferencias con los modelos. La base original de pruebas conservó sus tablas vacías y la extensión vector; no se accedió a la instancia de desarrollo del puerto 5432. Limitaciones: aviso de permisos de escritura de la caché de pytest; CLI Docker no accesible desde la sesión, por lo que la validación utilizó conexión PostgreSQL directa. Estas pruebas no certifican políticas HTTP, emisión de credenciales ni concurrencia entre workers.
 
 Para detener solamente la base de pruebas, desde la raíz:
 
@@ -228,7 +225,7 @@ python -m alembic heads
 python -m alembic history
 ```
 
-La revisión actual es `0001_usuarios_tickets`; `heads` debe mostrarla como `(head)`.
+La revisión actual es `0002_autenticacion_persistencia`; `heads` debe mostrarla como `(head)`, con `0001_usuarios_tickets` como revisión anterior.
 
 Para aplicar primero la revisión en `db_test`, con Docker funcionando:
 
@@ -237,7 +234,7 @@ python -m alembic -x base=testing upgrade head
 python -m alembic -x base=testing current
 ```
 
-Este paso crea `usuarios` y `tickets`, y registra la revisión en `alembic_version`. Después de comprobar las pruebas de integración, aplica la misma revisión en desarrollo:
+Este paso crea las tablas iniciales y las cinco tablas de persistencia de autenticación, y registra la revisión en `alembic_version`. Después de comprobar las pruebas de integración, aplica la misma revisión en desarrollo:
 
 ```cmd
 python -m alembic upgrade head
@@ -245,9 +242,9 @@ python -m alembic current
 python -m alembic check
 ```
 
-`current` debe mostrar `0001_usuarios_tickets (head)`. `check` debe informar que no se detectaron nuevas operaciones de actualización: compara modelos registrados y estructura de la base, sin generar revisiones.
+`current` debe mostrar `0002_autenticacion_persistencia (head)`. `check` debe informar que no se detectaron nuevas operaciones de actualización: compara modelos registrados y estructura de la base, sin generar revisiones.
 
-La revisión no inserta usuarios ni tickets. La autenticación y las rutas de estos módulos siguen pendientes. Los campos físicos se documentan en [Persistencia relacional inicial](../docs/arquitectura/persistencia-inicial.md).
+Las revisiones no insertan usuarios ni tickets. La autenticación y las rutas de estos módulos siguen pendientes. Los campos físicos iniciales se documentan en [Persistencia relacional inicial](../docs/arquitectura/persistencia-inicial.md); los modelos AUTH-05 se encuentran en `app/persistencia/modelos/` y la revisión nueva en `migraciones/versiones/0002_autenticacion_persistencia.py`.
 
 Las credenciales se obtienen del `.env` y no se almacenan en `alembic.ini`. `APP_ENV=testing` no sustituye la selección explícita `-x base=testing`. FastAPI no aplica migraciones ni crea tablas automáticamente al iniciar.
 
@@ -264,7 +261,7 @@ Consulta el [procedimiento de migraciones](migraciones/README.md) antes de incor
 | `app/persistencia/conexion.py` | URL, motor PostgreSQL y dependencia de acceso |
 | `app/persistencia/base.py` | Base declarativa y nombres de restricciones |
 | `app/persistencia/entornos.py` | Selección de base principal o testing |
-| `app/persistencia/modelos/` | Modelos ORM de usuarios y tickets |
+| `app/persistencia/modelos/` | Modelos ORM de usuarios, tickets y persistencia de autenticación |
 | `alembic.ini` | Configuración de Alembic sin credenciales |
 | `migraciones/` | Entorno y revisiones de estructura |
 | `pruebas/` | Pruebas automatizadas |

@@ -26,4 +26,3 @@ Documentos iniciales:
 - [Estructura del frontend](arquitectura/estructura-frontend.md)
 - [Diseño visual del frontend](arquitectura/diseno-frontend.md)
 - [Persistencia relacional inicial](arquitectura/persistencia-inicial.md)
-- [Persistencia relacional inicial](arquitectura/persistencia-inicial.md)
