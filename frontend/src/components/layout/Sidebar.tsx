@@ -2,13 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-const statusItems = [
-  { label: "Todos", count: 24, color: "#38BDF8" },
-  { label: "Abiertos", count: 12, color: "#38BDF8" },
-  { label: "En Proceso", count: 7, color: "#F59E0B" },
-  { label: "Resueltos", count: 5, color: "#10B981" },
-];
+import { ReactNode } from "react";
 
 function IconHome() {
   return (
@@ -31,6 +25,19 @@ function IconTickets() {
         strokeLinejoin="round"
         strokeWidth={1.8}
         d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+      />
+    </svg>
+  );
+}
+
+function IconSearch() {
+  return (
+    <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.8}
+        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
       />
     </svg>
   );
@@ -84,12 +91,18 @@ function IconSettings() {
 const navItems = [
   { href: "/inicio", label: "Inicio", Icon: IconHome },
   { href: "/tickets", label: "Tickets", Icon: IconTickets },
+  { href: "/busqueda", label: "Búsqueda semántica", Icon: IconSearch },
   { href: "/documentos", label: "Base de Conocimientos", Icon: IconBooks },
   { href: "/metricas", label: "Reportes", Icon: IconChart },
   { href: "/admin", label: "Configuración", Icon: IconSettings },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  // Conteos por estado; se reciben ya renderizados desde el servidor.
+  statusSummary: ReactNode;
+}
+
+export function Sidebar({ statusSummary }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -101,7 +114,7 @@ export function Sidebar() {
             <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
           </svg>
         </div>
-        <span className="text-[19px] font-extrabold tracking-tight text-white">Synapdesk</span>
+        <span className="text-[19px] font-extrabold tracking-tight text-white">SynapDesk</span>
       </div>
 
       <nav className="flex flex-col gap-1 px-3">
@@ -131,23 +144,7 @@ export function Sidebar() {
 
       <div className="px-6">
         <p className="mb-4 text-[10px] font-bold uppercase tracking-wider text-[#64748B]">ESTADO</p>
-        <div className="flex flex-col gap-3">
-          {statusItems.map((item) => (
-            <div key={item.label} className="flex items-center justify-between text-[13px]">
-              <div className="flex items-center gap-3">
-                <span
-                  className="h-2 w-2 rounded-full shrink-0"
-                  style={{ backgroundColor: item.color }}
-                  aria-hidden="true"
-                />
-                <span className="text-[#94A3B8]">{item.label}</span>
-              </div>
-              <span className="min-w-[24px] text-center text-[11px] font-bold text-[#94A3B8] bg-[#1E293B] rounded-full px-2 py-0.5">
-                {item.count}
-              </span>
-            </div>
-          ))}
-        </div>
+        {statusSummary}
       </div>
     </aside>
   );

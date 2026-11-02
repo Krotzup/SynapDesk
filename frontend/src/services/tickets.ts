@@ -1,14 +1,16 @@
 import { api } from "@/lib/api";
+import { USE_MOCKS } from "@/lib/config";
 import { buildQuery } from "@/lib/params";
-import { PaginatedResponse, PaginationParams, Ticket, TicketPriority, TicketStatus } from "@/types";
+import { ticketsMock } from "@/mocks/tickets";
+import { PaginatedResponse, Ticket, TicketListParams, TicketPriority, TicketStatus } from "@/types";
 
-interface CreateTicketRequest {
+export interface CreateTicketRequest {
   title: string;
   description: string;
 }
 
 // Usa assignedToId (UUID) en lugar del objeto User completo
-interface UpdateTicketRequest {
+export interface UpdateTicketRequest {
   title?: string;
   description?: string;
   status?: TicketStatus;
@@ -18,8 +20,8 @@ interface UpdateTicketRequest {
   assignedToId?: string | null;
 }
 
-export const ticketsService = {
-  getAll: (params?: PaginationParams): Promise<PaginatedResponse<Ticket>> =>
+const ticketsApi = {
+  getAll: (params?: TicketListParams): Promise<PaginatedResponse<Ticket>> =>
     api.get(`/tickets${buildQuery(params)}`),
 
   getById: (id: string): Promise<Ticket> => api.get(`/tickets/${id}`),
@@ -32,3 +34,7 @@ export const ticketsService = {
   // Cierre o eliminación lógica
   delete: (id: string): Promise<void> => api.delete(`/tickets/${id}`),
 };
+
+export type TicketsService = typeof ticketsApi;
+
+export const ticketsService: TicketsService = USE_MOCKS ? ticketsMock : ticketsApi;

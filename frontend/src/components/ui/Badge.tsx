@@ -9,7 +9,7 @@ const priorityStyles: Record<TicketPriority, string> = {
   critical: "bg-[#FEE2E2] text-[#991B1B]",
 };
 
-const priorityLabels: Record<TicketPriority, string> = {
+export const priorityLabels: Record<TicketPriority, string> = {
   low: "Baja",
   medium: "Media",
   high: "Alta",
@@ -40,7 +40,7 @@ const statusStyles: Record<TicketStatus, string> = {
   closed: "bg-[#F1F5F9] text-[#475569]",
 };
 
-const statusLabels: Record<TicketStatus, string> = {
+export const statusLabels: Record<TicketStatus, string> = {
   open: "Abierto",
   in_progress: "En Proceso",
   resolved: "Resuelto",

@@ -1,0 +1,13 @@
+indice_original,subject,body,answer,type,queue,priority,business_type,tag_1,tag_2,tag_3,language,origen
+1,No puedo iniciar sesion,El portal de correo rechaza mi clave desde la manana,Se revisa cuenta,incident,it_support,medium,soporte,acceso,correo,login,es,sintetico
+2,Restablecer contrasena,Necesito cambiar mi clave del correo corporativo,Se envia enlace,request,it_support,low,soporte,acceso,correo,password,es,sintetico
+3,VPN no conecta,La vpn muestra error de autenticacion y no permite trabajar,Se revisa vpn,incident,technical_support,medium,soporte,vpn,red,acceso,es,sintetico
+4,Solicitud de notebook,Nuevo integrante necesita notebook y acceso inicial,Se deriva solicitud,request,hardware,low,soporte,equipo,onboarding,notebook,es,sintetico
+5,Aplicacion lenta,El sistema de ventas responde lento en varias pantallas,Se analiza rendimiento,problem,application_support,medium,soporte,aplicacion,lentitud,ventas,es,sintetico
+6,Error recurrente en reportes,Los reportes fallan cada cierre de mes con el mismo mensaje,Se abre problema,problem,application_support,high,soporte,reportes,error,recurrente,es,sintetico
+7,Cambio de permisos,Requiero habilitar permisos de lectura para carpeta compartida,Se planifica cambio,change,it_support,low,soporte,permisos,carpeta,cambio,es,sintetico
+8,Actualizar regla de firewall,Se solicita abrir puerto interno para nueva integracion,Se evalua cambio,change,network,medium,soporte,firewall,red,cambio,es,sintetico
+9,URGENTE servicio caido,El sistema principal esta caido y afecta a toda la oficina,Se atiende incidente,incident,service_outages_and_maintenance,critical,soporte,caida,servicio,urgente,es,sintetico
+10,Emergencia con internet,No hay conectividad en la sucursal y todos los usuarios estan detenidos,Se escala emergencia,incident,network,critical,soporte,red,internet,emergencia,es,sintetico
+11,Alta prioridad impresora,La impresora de recepcion esta detenida durante atencion a clientes,Se revisa impresora,incident,hardware,high,soporte,impresora,hardware,prioridad,es,sintetico
+12,Problema conocido de facturacion,Facturacion presenta errores intermitentes ya registrados antes,Se vincula a problema,problem,application_support,high,soporte,facturacion,error,problema,es,sintetico

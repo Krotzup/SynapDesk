@@ -175,6 +175,20 @@ Las pruebas de persistencia insertan datos ficticios y ejecutan las migraciones 
 
 ### Integración con PostgreSQL real
 
+Validación local de la consolidación contra `main` en `098fed3`, el 30 de octubre de 2026 en Windows con Python 3.12.10: **21 pruebas aprobadas y 12 omitidas**, tanto con el entorno habitual como con variables ambientales inválidas; `python -m pip check` sin dependencias rotas. Se preservaron los cambios del frontend del PR #17 y el contrato de autenticación ya incorporado en `main`. No se instalaron dependencias ni se accedió a PostgreSQL real. `alembic heads` y `history` identificaron una única revisión inicial; el DDL de ambos modelos se contrastó en memoria, incluidos restricciones, valores iniciales e índices.
+
+Validación posterior contra PostgreSQL real, el 30 de octubre de 2026: **33 pruebas aprobadas, 0 fallidas, 0 omitidas y 0 errores**, incluidas las **12 pruebas de integración**. Se utilizó PostgreSQL 17.11 con pgvector 0.8.6 en un contenedor exclusivo de Docker Desktop, con datos en `tmpfs`, red propia, puerto enlazado únicamente a `127.0.0.1` y credenciales temporales. La configuración se proporcionó al proceso y se deshabilitó la lectura del `.env` real durante esta ejecución. Las **21 pruebas unitarias** también aprobaron con variables ambientales inválidas; `python -m pip check` no encontró dependencias rotas.
+
+Sobre la base temporal inicialmente vacía se aplicó `0001_usuarios_tickets`, se verificó `alembic_version` y `alembic check` no detectó diferencias con los modelos. Un segundo `upgrade head` conservó el esquema. Las pruebas comprobaron persistencia, restricciones y reversión/reaplicación de la migración; una comprobación adicional verificó commit y rollback entre sesiones independientes. Tras las pruebas, las tablas de usuarios y tickets quedaron vacías y no quedaron conexiones cliente abiertas. Con PostgreSQL disponible, `/health` y `/ready` respondieron `200`; al detener exclusivamente el contenedor temporal, `/health` mantuvo `200` y `/ready` devolvió `503` con el error público previsto, sin credenciales, SQL ni trazas. Esta validación no utilizó la base de desarrollo ni verificó un despliegue de producción.
+
+Las doce pruebas de integración se omiten salvo que `EJECUTAR_PRUEBAS_BD=1`. Utilizan exclusivamente las variables `POSTGRES_TEST_*`. Verifican PostgreSQL 17, pgvector 0.8.6, disponibilidad, persistencia, restricciones y correspondencia entre modelos y migración.
+
+Las pruebas de persistencia insertan datos ficticios y ejecutan las migraciones dentro de transacciones que se revierten al terminar. La prueba de migración revierte y reaplica la revisión dentro de esa transacción, sin realizar una reversión permanente de las tablas. Uvicorn no necesita estar iniciado para ejecutar pruebas.
+
+### Integración con PostgreSQL real
+
+Antes de habilitar estas pruebas, verifica que host, puerto y base correspondan a una instancia exclusiva para pruebas con datos descartables. El nombre de la base por sí solo no demuestra ese aislamiento. Si no puedes comprobarlo, conserva las pruebas de integración omitidas.
+
 En el `.env` de la raíz conserva las variables de testing existentes y agrega `POSTGRES_TEST_HOST=127.0.0.1` si falta. Se requieren `POSTGRES_TEST_DB`, `POSTGRES_TEST_USER` y `POSTGRES_TEST_PASSWORD`; el puerto por defecto es `5433`.
 
 Desde la raíz, en CMD:
