@@ -14,10 +14,15 @@ def test_migracion_se_revierte_se_aplica_y_coincide_con_modelos(
     command.upgrade(configuracion, "head")
     assert inspect(conexion_bd_test).has_table("usuarios")
     assert inspect(conexion_bd_test).has_table("tickets")
+    assert inspect(conexion_bd_test).has_table("sesiones")
+    assert inspect(conexion_bd_test).has_table("contextos_csrf")
+    assert inspect(conexion_bd_test).has_table("tokens_csrf")
+    assert inspect(conexion_bd_test).has_table("limites_autenticacion")
+    assert inspect(conexion_bd_test).has_table("eventos_autenticacion")
     revision = conexion_bd_test.execute(
         text("SELECT version_num FROM alembic_version")
     ).scalar_one()
-    assert revision == "0001_usuarios_tickets"
+    assert revision == "0002_autenticacion_persistencia"
     command.check(configuracion)
 
     vector = conexion_bd_test.execute(
