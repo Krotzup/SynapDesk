@@ -1,4 +1,6 @@
-import { ApiError } from "@/types";
+import { ApiError, CsrfToken } from "@/types";
+import { getAuthGeneration } from "./auth-sync";
+import { clearCsrfToken, getCsrfToken } from "./csrf";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const API_PREFIX = "/api/v1";
@@ -11,16 +13,26 @@ interface RequestOptions<TBody = unknown> {
   headers?: Record<string, string>;
 }
 
-async function request<TResponse, TBody = unknown>(
+const MUTATING_METHODS: ReadonlySet<HttpMethod> = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+class HttpError {
+  constructor(readonly body: ApiError) {}
+}
+
+async function send<TResponse, TBody>(
   endpoint: string,
-  options: RequestOptions<TBody> = {}
+  options: RequestOptions<TBody>,
+  csrfToken?: string
 ): Promise<TResponse> {
   const { method = "GET", body, headers = {} } = options;
 
   const config: RequestInit = {
     method,
+    // Con el proxy de mismo origen, el navegador enviará la cookie de sesión.
+    credentials: "same-origin",
     headers: {
       "Content-Type": "application/json",
+      ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {}),
       ...headers,
     },
   };
@@ -40,7 +52,7 @@ async function request<TResponse, TBody = unknown>(
         requestId: "",
       },
     }));
-    throw errorBody;
+    throw new HttpError(errorBody);
   }
 
   // 204 No Content
@@ -49,6 +61,40 @@ async function request<TResponse, TBody = unknown>(
   }
 
   return response.json() as Promise<TResponse>;
+}
+
+const fetchCsrfToken = () => send<CsrfToken, never>("/auth/csrf", { method: "GET" });
+
+function isCsrfInvalid(error: unknown): boolean {
+  return error instanceof HttpError && error.body.error.code === "CSRF_INVALID";
+}
+
+async function request<TResponse, TBody = unknown>(
+  endpoint: string,
+  options: RequestOptions<TBody> = {}
+): Promise<TResponse> {
+  // Las mutaciones del navegador llevan X-CSRF-Token. En el servidor (SSR) solo hay lecturas.
+  const needsCsrf = typeof window !== "undefined" && MUTATING_METHODS.has(options.method ?? "GET");
+
+  try {
+    if (!needsCsrf) return await send<TResponse, TBody>(endpoint, options);
+
+    const generation = getAuthGeneration();
+    try {
+      return await send<TResponse, TBody>(endpoint, options, await getCsrfToken(fetchCsrfToken));
+    } catch (error) {
+      // Único reintento permitido por el contrato: solo ante 403 CSRF_INVALID y si la sesión
+      // no cambió (ni login ni logout, tampoco en otra pestaña). Otros errores no se reintentan.
+      if (!isCsrfInvalid(error) || getAuthGeneration() !== generation) throw error;
+      clearCsrfToken();
+      const freshToken = await getCsrfToken(fetchCsrfToken);
+      if (getAuthGeneration() !== generation) throw error;
+      return await send<TResponse, TBody>(endpoint, options, freshToken);
+    }
+  } catch (error) {
+    // Hacia afuera se mantiene el formato del contrato: { error: { code, message, ... } }.
+    throw error instanceof HttpError ? error.body : error;
+  }
 }
 
 export const api = {

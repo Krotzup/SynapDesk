@@ -12,6 +12,25 @@ export interface User {
   updatedAt: string;
 }
 
+// ─── Autenticación V1 (docs/contratos/autenticacion-v1.md) ───────────────────
+
+// Identidad devuelta por login y /me. Distinta de User: no incluye nombre ni fechas.
+export interface AuthUser {
+  id: string;
+  email: string;
+  role: Role;
+}
+
+export interface AuthResponse {
+  user: AuthUser;
+}
+
+// Respuesta de GET /auth/csrf. expiresAt es el vencimiento del token, no de la sesión.
+export interface CsrfToken {
+  csrfToken: string;
+  expiresAt: string;
+}
+
 // ─── Tickets ─────────────────────────────────────────────────────────────────
 
 export type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
