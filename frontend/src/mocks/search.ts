@@ -1,10 +1,7 @@
 import type { SearchService } from "@/services/search";
 import { SearchResult } from "@/types";
 import { normalizeText } from "./tickets";
-import { rejectWithApiError, simulateLatency } from "./utils";
-
-// Consulta reservada para ver el estado de error sin apagar nada.
-export const MOCK_ERROR_QUERY = "error-simulado";
+import { MOCK_ERROR_QUERY, rejectWithApiError, simulateLatency } from "./utils";
 
 type Chunk = Omit<SearchResult, "score">;
 

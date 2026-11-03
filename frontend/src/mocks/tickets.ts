@@ -1,7 +1,7 @@
 import type { TicketsService } from "@/services/tickets";
 import { Ticket } from "@/types";
 import { mockCurrentUser, mockUsers } from "./users";
-import { paginate, rejectWithApiError, simulateLatency } from "./utils";
+import { MOCK_ERROR_QUERY, paginate, rejectWithApiError, simulateLatency } from "./utils";
 
 const [carlos, ana, roberto, laura] = mockUsers;
 
@@ -239,6 +239,13 @@ export const ticketsMock: TicketsService = {
   // Filtros opcionales y combinables.
   getAll: (params) => {
     const search = params?.search ? normalizeText(params.search.trim()) : "";
+    // Permite ver la página de error general con datos de ejemplo.
+    if (search === MOCK_ERROR_QUERY) {
+      return rejectWithApiError(
+        "SERVICE_UNAVAILABLE",
+        "El servicio no está disponible en este momento. Intenta nuevamente."
+      );
+    }
     const filtered = tickets.filter(
       (ticket) =>
         (!params?.status || ticket.status === params.status) &&

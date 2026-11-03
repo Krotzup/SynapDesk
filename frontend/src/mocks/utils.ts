@@ -3,6 +3,10 @@ import { ApiError, PaginatedResponse, PaginationParams } from "@/types";
 // Demora simulada para que los estados de carga sean visibles durante el desarrollo.
 const LATENCY_MS = 300;
 
+// Texto reservado para ver los estados de error sin apagar nada: como consulta en la
+// búsqueda semántica o como búsqueda en el listado de tickets.
+export const MOCK_ERROR_QUERY = "error-simulado";
+
 /** Devuelve una copia de los datos tras la demora simulada, como lo haría la API. */
 export function simulateLatency<T>(data: T): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(structuredClone(data)), LATENCY_MS));
