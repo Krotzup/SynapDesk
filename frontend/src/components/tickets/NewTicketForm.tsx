@@ -6,7 +6,8 @@ import { FormEvent, useState } from "react";
 import { PriorityBadge, StatusBadge } from "@/components/ui/Badge";
 import { Button, buttonClassName } from "@/components/ui/Button";
 import { USE_MOCKS } from "@/lib/config";
-import { getFieldErrors, isApiError } from "@/lib/errors";
+import { SESSION_CHANGED } from "@/lib/api";
+import { getFieldErrors, isApiError, isAuthenticationRequired } from "@/lib/errors";
 import { shortId } from "@/lib/format";
 import { TICKET_DESCRIPTION_MAX, TICKET_TITLE_MAX, validateNewTicket } from "@/lib/ticket-rules";
 import { ticketsService } from "@/services/tickets";
@@ -40,6 +41,12 @@ function generalErrorMessage(error: unknown): string {
       return "No tienes permiso para crear tickets.";
     case "VALIDATION_ERROR":
       return "Revisa los datos del ticket.";
+    // CSRF_INVALID llega aquí solo si también falló el único reintento de api.ts.
+    case "CSRF_INVALID":
+    case "ORIGIN_INVALID":
+      return "No se pudo validar la solicitud. Recarga la página e intenta de nuevo.";
+    case SESSION_CHANGED:
+      return "La sesión cambió en otra pestaña. Revisa tu sesión e intenta de nuevo.";
     default:
       // SERVICE_UNAVAILABLE, otros 5xx y fallos de red.
       return "No se pudo crear el ticket. Intenta nuevamente.";
@@ -95,7 +102,7 @@ export function NewTicketForm() {
       setFieldErrors(serverErrors);
       // Si el 422 ya marca los campos, no hace falta repetirlo arriba.
       setGeneralError(Object.keys(serverErrors).length > 0 ? null : generalErrorMessage(error));
-      setNeedsLogin(isApiError(error) && error.error.code === "AUTHENTICATION_REQUIRED");
+      setNeedsLogin(isAuthenticationRequired(error));
       setSubmitting(false);
     }
   }
