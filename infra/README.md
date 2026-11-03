@@ -19,6 +19,20 @@ cp .env.example .env
 
 La contraseña de `POSTGRES_PASSWORD` debe modificarse en `.env`. Este archivo es local y no se incorpora a Git.
 
+### Backend básico y herramientas de persistencia
+
+Completar las variables PostgreSQL del entorno elegido con credenciales locales privadas. Para pruebas, configurar `POSTGRES_TEST_*` en `localhost:5433`, con una base exclusiva distinta de desarrollo, y usar Alembic con `-x base=testing`; consultar el [procedimiento del backend](../backend/README.md). No ejecutar pruebas sobre desarrollo en `5432`.
+
+La plantilla puede cargarse sin configurar autenticación: el par HMAC y las seis cuotas están comentados. El backend básico, `/api/v1/health` y las herramientas de persistencia no construyen estos servicios. `/api/v1/ready` comprueba la conexión a PostgreSQL y requiere que la base configurada esté disponible; copiar el ejemplo no crea bases ni credenciales.
+
+### Configuración adicional antes de utilizar autenticación
+
+Completar y descomentar **juntos** `AUTH_HMAC_CLAVE` y `AUTH_HMAC_ID_CLAVE`. Generar localmente una clave privada CSPRNG de al menos 32 bytes en base64 canónico mediante el comando incluido en [.env.example](../.env.example); mantener su salida fuera de registros, Git y variables `NEXT_PUBLIC_*`. No utilizar los marcadores ni claves ficticias de pruebas como credenciales.
+
+Completar y descomentar las seis variables `AUTH_LIMITE_*` de cuenta e IP: intentos, ventana y bloqueo, todos enteros positivos. No hay cuotas implícitas ni limitación permisiva cuando faltan valores: la construcción del limitador falla. Los umbrales y duraciones requieren calibración; los intentos exitosos también consumen capacidad según la política provisional.
+
+El servicio HMAC rechaza una clave ausente y la configuración rechaza un par HMAC incompleto, marcadores activos o valores inválidos. Se conservan los ejemplos Argon2id y CSRF provisionales. Las listas utilizan JSON: `AUTH_ORIGENES_PERMITIDOS=["http://localhost:3000"]` permite únicamente ese Origin local; `AUTH_PROXIES_AUTORIZADOS=[]` mantiene cerrada la confianza en IP. La integración HTTP y las decisiones pendientes corresponden a AUTH-07; véase la [guía de seguridad](../backend/app/seguridad/README.md).
+
 ## Iniciar PostgreSQL
 
 ```bash

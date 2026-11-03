@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 class LimiteAutenticacion(Base):
     """Estado por ventana; clave_digest debe recibir HMAC-SHA-256 de la identidad.
 
-    La derivación futura usará cuenta normalizada/IP verificada y una clave
+    El servicio de identificadores usa cuenta normalizada/IP verificada y clave
     secreta exclusiva del servidor. SHA-256 simple no anonimiza estos datos.
     Este modelo solo almacena los 32 bytes; no implementa su derivación.
     """
