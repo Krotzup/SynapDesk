@@ -1,4 +1,5 @@
 import type { TicketsService } from "@/services/tickets";
+import { validateNewTicket } from "@/lib/ticket-rules";
 import { Ticket } from "@/types";
 import { mockCurrentUser, mockUsers } from "./users";
 import { MOCK_ERROR_QUERY, paginate, rejectWithApiError, simulateLatency } from "./utils";
@@ -262,12 +263,25 @@ export const ticketsMock: TicketsService = {
     return ticket ? simulateLatency(ticket) : notFound();
   },
 
+  // Valida como lo hará el backend: recorta espacios y responde 422 con details por campo.
   create: (data) => {
+    const title = data.title.trim();
+    const description = data.description.trim();
+    if (normalizeText(title) === MOCK_ERROR_QUERY) {
+      return rejectWithApiError(
+        "SERVICE_UNAVAILABLE",
+        "El servicio no está disponible en este momento. Intenta nuevamente."
+      );
+    }
+    const errors = validateNewTicket({ title, description });
+    if (errors.length > 0) {
+      return rejectWithApiError("VALIDATION_ERROR", "Los datos del ticket no son válidos.", errors);
+    }
     const now = new Date().toISOString();
     const ticket: Ticket = {
       id: crypto.randomUUID(),
-      title: data.title,
-      description: data.description,
+      title,
+      description,
       status: "open",
       priority: "medium",
       category: null,

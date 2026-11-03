@@ -2,7 +2,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { TicketFilters } from "@/components/tickets/TicketFilters";
 import { TicketPagination } from "@/components/tickets/TicketPagination";
-import { Button } from "@/components/ui/Button";
+import { buttonClassName } from "@/components/ui/Button";
 import { StatusBadge, PriorityBadge } from "@/components/ui/Badge";
 import { formatDateTime, shortId } from "@/lib/format";
 import { buildQuery } from "@/lib/params";
@@ -68,7 +68,9 @@ export default async function TicketsPage({ searchParams }: TicketsPageProps) {
               Visualiza, filtra y gestiona las solicitudes de soporte.
             </p>
           </div>
-          <Button variant="primary">+ Nuevo ticket</Button>
+          <Link href="/tickets/nuevo" className={buttonClassName("primary")}>
+            + Nuevo ticket
+          </Link>
         </div>
 
         {/* Métricas rápidas */}

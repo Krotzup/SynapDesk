@@ -150,3 +150,9 @@ export interface ApiErrorBody {
 export interface ApiError {
   error: ApiErrorBody;
 }
+
+// Elemento de details en un 422 VALIDATION_ERROR (propuesta de Felipe del 03-11-2026).
+export interface ValidationErrorDetail {
+  field: string;
+  message: string;
+}
