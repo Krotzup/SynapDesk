@@ -1,8 +1,11 @@
 import subprocess
 import sys
+import base64
+from io import StringIO
 from pathlib import Path
 
 import pytest
+from dotenv import dotenv_values
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
@@ -10,6 +13,88 @@ from app.aplicacion import crear_aplicacion
 from app.configuracion import Configuracion
 
 RAIZ_BACKEND = Path(__file__).resolve().parents[1]
+
+# Valores ficticios del fixture AUTH-06C; no cuotas de despliegue aprobadas.
+LIMITES_FICTICIOS = {
+    "AUTH_LIMITE_CUENTA_INTENTOS": 2,
+    "AUTH_LIMITE_CUENTA_VENTANA_SEGUNDOS": 60,
+    "AUTH_LIMITE_CUENTA_BLOQUEO_SEGUNDOS": 20,
+    "AUTH_LIMITE_IP_INTENTOS": 3,
+    "AUTH_LIMITE_IP_VENTANA_SEGUNDOS": 60,
+    "AUTH_LIMITE_IP_BLOQUEO_SEGUNDOS": 20,
+}
+
+
+def ejemplo_temporal(tmp_path, *, sin_configurar=None):
+    contenido = (RAIZ_BACKEND.parent / ".env.example").read_text(encoding="utf-8")
+    valores = dotenv_values(stream=StringIO(contenido))
+    reemplazos = {**LIMITES_FICTICIOS,
+                  "AUTH_HMAC_CLAVE": base64.b64encode(bytes(range(32))).decode("ascii")}
+    for nombre, valor in reemplazos.items():
+        if nombre != sin_configurar:
+            contenido = contenido.replace(f"{nombre}={valores[nombre]}", f"{nombre}={valor}", 1)
+    archivo = tmp_path / ".env.auth06.ficticio"
+    archivo.write_text(contenido, encoding="utf-8")
+    return archivo
+
+
+def test_ejemplo_incluye_exactamente_las_variables_auth_reales():
+    valores = dotenv_values(RAIZ_BACKEND.parent / ".env.example")
+    variables = {nombre for nombre in valores if nombre.startswith("AUTH_")}
+    reales = {nombre.upper() for nombre in Configuracion.model_fields if nombre.startswith("auth_")}
+    assert variables == reales
+    assert valores["AUTH_ORIGENES_PERMITIDOS"] == '["http://localhost:3000"]'
+    assert valores["AUTH_PROXIES_AUTORIZADOS"] == '[]'
+
+
+def test_ejemplo_sin_configurar_rechaza_todos_los_marcadores(tmp_path, caplog):
+    archivo = tmp_path / ".env.ejemplo_sin_configurar"
+    archivo.write_text((RAIZ_BACKEND.parent / ".env.example").read_text(encoding="utf-8"), encoding="utf-8")
+    with pytest.raises(ValidationError) as error:
+        Configuracion(_env_file=archivo)
+    campos = {item["loc"][0] for item in error.value.errors(include_input=False, include_context=False)}
+    assert campos == {nombre.lower() for nombre in LIMITES_FICTICIOS} | {"auth_hmac_clave"}
+    assert not caplog.records
+
+
+def test_ejemplo_derivado_carga_y_construye_servicios_sin_abrir_bd(tmp_path, caplog):
+    from sqlalchemy.orm import Session
+    from app.seguridad.contrasenas import ServicioContrasenas
+    from app.seguridad.csrf import ServicioCsrf
+    from app.seguridad.identificadores import ServicioIdentificadores
+    from app.seguridad.limites import ServicioLimites
+    from app.seguridad.origenes import ServicioOrigen
+    from app.seguridad.proxies import ServicioIpConfiable
+    from app.seguridad.transacciones import ErrorSeguridad
+
+    configuracion = Configuracion(_env_file=ejemplo_temporal(tmp_path))
+    ServicioContrasenas(configuracion)
+    identificadores = ServicioIdentificadores(configuracion)
+    assert identificadores.id_clave == "local-v1"
+    assert len(identificadores.cuenta("ficticia@example.invalid")) == 32
+    ServicioOrigen(configuracion).validar(["http://localhost:3000"])
+    with pytest.raises(ErrorSeguridad):
+        ServicioIpConfiable(configuracion, identificadores).identificar(
+            par_transporte="127.0.0.1", valores_ip_cliente=["198.51.100.7"])
+    with Session() as db:
+        csrf = ServicioCsrf(db, configuracion)
+        limites = ServicioLimites(db, configuracion, identificadores)
+        assert csrf.max_tokens == 8 and csrf.token_bytes == 32
+        assert (limites.politicas["cuenta"].intentos, limites.politicas["ip"].intentos) == (2, 3)
+        assert limites.politicas["cuenta"].ventana.total_seconds() == 60
+        assert limites.politicas["ip"].bloqueo.total_seconds() == 20
+        assert not db.in_transaction()
+    clave_ficticia = configuracion.auth_hmac_clave.get_secret_value()
+    assert clave_ficticia not in repr(configuracion)
+    assert clave_ficticia not in configuracion.model_dump_json()
+    assert not caplog.records
+
+
+@pytest.mark.parametrize("variable", ["AUTH_HMAC_CLAVE", *LIMITES_FICTICIOS])
+def test_marcador_del_ejemplo_no_se_acepta_como_valor_operativo(tmp_path, variable):
+    with pytest.raises(ValidationError) as error:
+        Configuracion(_env_file=ejemplo_temporal(tmp_path, sin_configurar=variable))
+    assert [item["loc"] for item in error.value.errors(include_input=False, include_context=False)] == [(variable.lower(),)]
 
 
 @pytest.mark.parametrize(

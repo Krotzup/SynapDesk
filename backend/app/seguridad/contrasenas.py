@@ -1,5 +1,5 @@
 from argon2 import PasswordHasher, Type, extract_parameters
-from argon2.exceptions import HashingError, InvalidHashError, VerificationError
+from argon2.exceptions import HashingError, InvalidHashError, VerificationError, VerifyMismatchError
 
 from app.configuracion import Configuracion
 
@@ -58,12 +58,20 @@ class ServicioContrasenas:
             raise ErrorContrasena("No se pudo proteger la contraseña.") from None
 
     def verificar(self, hash_guardado: str, contrasena: str) -> bool:
-        if not self._entrada_valida(contrasena) or not self._hash_valido(hash_guardado):
+        # El hash proviene del almacenamiento confiable: un registro inválido
+        # es un fallo interno, no evidencia de una contraseña incorrecta.
+        if not self._hash_valido(hash_guardado):
+            raise ErrorContrasena("El hash de contraseña almacenado es inválido o incompatible.")
+        if not self._entrada_valida(contrasena):
             return False
         try:
             return self._hasher.verify(hash_guardado, contrasena)
-        except (VerificationError, InvalidHashError):
+        except VerifyMismatchError:
             return False
+        except InvalidHashError:
+            raise ErrorContrasena("El hash de contraseña almacenado es inválido o incompatible.") from None
+        except VerificationError:
+            raise ErrorContrasena("No se pudo verificar la contraseña.") from None
 
     def necesita_rehash(self, hash_guardado: str) -> bool:
         """Consultar solo tras verificar; un hash inválido no se puede renovar."""

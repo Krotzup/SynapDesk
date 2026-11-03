@@ -3,8 +3,8 @@ import hashlib
 import hmac
 
 import pytest
-from argon2 import Type, extract_parameters
-from argon2.exceptions import HashingError
+from argon2 import Type, extract_parameters, low_level
+from argon2.exceptions import HashingError, InvalidHashError, VerificationError, VerifyMismatchError
 from pydantic import SecretStr, ValidationError
 
 from app.configuracion import Configuracion
@@ -68,9 +68,10 @@ def test_contrasena_no_se_normaliza_ni_recorta(contrasenas):
 
 @pytest.mark.parametrize("entrada", [None, 123, b"clave", "", "\ud800"])
 def test_contrasena_invalida_no_filtra_entrada(contrasenas, entrada, caplog):
+    hash_valido = contrasenas.generar_hash("contraseña ficticia para validar la entrada")
     with pytest.raises(ErrorContrasena, match="No se pudo proteger la contraseña") as error:
         contrasenas.generar_hash(entrada)
-    assert not contrasenas.verificar("hash inválido", entrada)
+    assert contrasenas.verificar(hash_valido, entrada) is False
     assert str(error.value) == "No se pudo proteger la contraseña."
     assert not caplog.records
 
@@ -83,7 +84,11 @@ def test_contrasena_invalida_no_filtra_entrada(contrasenas, entrada, caplog):
     "$argon2i$v=19$m=1024,t=1,p=1$YWJjZA$YWJjZA",
 ])
 def test_hash_invalido_o_corrupto_no_autentica(contrasenas, hash_invalido, caplog):
-    assert not contrasenas.verificar(hash_invalido, "clave ficticia")
+    with pytest.raises(ErrorContrasena) as error:
+        contrasenas.verificar(hash_invalido, "clave ficticia")
+    assert str(error.value) == "El hash de contraseña almacenado es inválido o incompatible."
+    if isinstance(hash_invalido, str) and hash_invalido:
+        assert hash_invalido not in str(error.value)
     assert not caplog.records
 
 
@@ -126,6 +131,68 @@ def test_fallo_de_biblioteca_no_expone_mensaje(contrasenas, monkeypatch, caplog)
         contrasenas.generar_hash("secreto")
     assert str(error.value) == "No se pudo proteger la contraseña."
     assert error.value.__suppress_context__
+    assert not caplog.records
+
+
+def test_verify_mismatch_devuelve_false_sin_filtrar_detalles(contrasenas, monkeypatch, caplog):
+    hash_guardado = contrasenas.generar_hash("contraseña ficticia")
+
+    def fallar(*args, **kwargs):
+        raise VerifyMismatchError("detalle privado de la biblioteca")
+
+    monkeypatch.setattr(type(contrasenas._hasher), "verify", fallar)
+    assert contrasenas.verificar(hash_guardado, "otra contraseña ficticia") is False
+    assert not caplog.records
+
+
+@pytest.mark.parametrize("error_biblioteca,mensaje", [
+    (VerificationError, "No se pudo verificar la contraseña."),
+    (InvalidHashError, "El hash de contraseña almacenado es inválido o incompatible."),
+])
+def test_fallo_interno_de_verificacion_se_propaga_saneado(
+    contrasenas, monkeypatch, caplog, error_biblioteca, mensaje,
+):
+    secreto = "contraseña ficticia que no debe aparecer"
+    hash_guardado = contrasenas.generar_hash(secreto)
+
+    def fallar(*args, **kwargs):
+        raise error_biblioteca(f"detalle privado Argon2: {secreto} {hash_guardado}")
+
+    monkeypatch.setattr(type(contrasenas._hasher), "verify", fallar)
+    with pytest.raises(ErrorContrasena) as error:
+        contrasenas.verificar(hash_guardado, secreto)
+    assert str(error.value) == mensaje
+    assert error.value.__suppress_context__
+    assert secreto not in repr(error.value)
+    assert hash_guardado not in repr(error.value)
+    assert "detalle privado" not in str(error.value)
+    assert not caplog.records
+
+
+def test_error_memoria_argon2_no_se_confunde_con_credenciales(contrasenas, monkeypatch, caplog):
+    secreto = "ficticia para fallo de asignación"
+    hash_guardado = contrasenas.generar_hash(secreto)
+    biblioteca = low_level.lib
+
+    class FalloAsignacion:
+        def __getattr__(self, nombre):
+            return getattr(biblioteca, nombre)
+
+        def argon2_verify(self, *args):
+            return biblioteca.ARGON2_MEMORY_ALLOCATION_ERROR
+
+    monkeypatch.setattr(low_level, "lib", FalloAsignacion())
+    # La biblioteca real interpreta el código; no se agota memoria del sistema.
+    with pytest.raises(VerificationError) as interno:
+        contrasenas._hasher.verify(hash_guardado, secreto)
+    assert not isinstance(interno.value, VerifyMismatchError)
+    with pytest.raises(ErrorContrasena) as error:
+        contrasenas.verificar(hash_guardado, secreto)
+    assert str(error.value) == "No se pudo verificar la contraseña."
+    assert str(interno.value) not in str(error.value)
+    assert error.value.__suppress_context__
+    assert secreto not in repr(error.value)
+    assert hash_guardado not in repr(error.value)
     assert not caplog.records
 
 

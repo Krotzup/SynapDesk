@@ -27,7 +27,7 @@ Los [servicios internos de seguridad](app/seguridad/README.md) reutilizan las ta
 
 ## Fundamentos de seguridad
 
-[ServicioContrasenas](app/seguridad/contrasenas.py) utiliza `argon2-cffi==25.1.0` y Argon2id con sal aleatoria individual de 16 bytes y hash de 32 bytes. Genera hashes codificados, verifica y detecta necesidad de rehash; no consulta usuarios, cambia contraseñas ni inicia sesión. La contraseña no se recorta ni normaliza. Hashes incorrectos, corruptos o de otro algoritmo no autentican; `necesita_rehash` debe consultarse solo tras una verificación correcta. Solo se aceptan hashes del almacenamiento confiable, nunca hashes enviados por un cliente: sus parámetros controlan trabajo criptográfico. Los errores propios están saneados y el servicio no escribe logs.
+[ServicioContrasenas](app/seguridad/contrasenas.py) utiliza `argon2-cffi==25.1.0` y Argon2id con sal aleatoria individual de 16 bytes y hash de 32 bytes. Genera hashes codificados, verifica y detecta necesidad de rehash; no consulta usuarios, cambia contraseñas ni inicia sesión. La contraseña no se recorta ni normaliza. Una verificación correcta devuelve true; `VerifyMismatchError` devuelve false. Un hash almacenado malformado/incompatible o `InvalidHashError` produce [ErrorContrasena](app/seguridad/contrasenas.py), al igual que un `VerificationError` interno (por ejemplo, fallo de asignación de memoria), con mensajes saneados distintos y sin detalles de Argon2. Estos errores no son credenciales incorrectas ni deben convertirse en ellas por el llamador; no se implementa su traducción HTTP aquí. `necesita_rehash` conserva su comportamiento y debe consultarse solo tras una verificación correcta. Solo se aceptan hashes del almacenamiento confiable, nunca hashes enviados por un cliente: sus parámetros controlan trabajo criptográfico. Los errores propios están saneados y el servicio no escribe logs.
 
 Se reutiliza [Configuracion](app/configuracion.py), su carga de variables y su validación inicial:
 
@@ -102,6 +102,8 @@ if not exist .env copy .env.example .env
 ```
 
 Conserva la configuración local existente y agrega las variables que falten:
+
+El [ejemplo raíz](../.env.example) incluye las 18 variables AUTH-06 existentes. Antes de cargar una copia, reemplaza el marcador HMAC por una clave privada CSPRNG de al menos 32 bytes en base64 canónico y configura explícitamente las seis cuotas/ventanas/bloqueos como enteros positivos. Los marcadores son intencionalmente inválidos y no sirven como credenciales ni parámetros operativos. Las listas usan JSON, incluido `AUTH_ORIGENES_PERMITIDOS=["http://localhost:3000"]`; `AUTH_PROXIES_AUTORIZADOS=[]` mantiene cerrada la confianza de IP. Los valores Argon2/CSRF conservan su estado provisional y las duraciones de sesión existentes son constantes, sin variables nuevas. No reemplazar el `.env` real con la plantilla ni copiar claves ficticias de pruebas. Las [pruebas de configuración](pruebas/test_configuracion.py) cargan una copia temporal con clave ficticia y cifras explícitas del fixture, sin acceder a PostgreSQL ni modificar archivos locales.
 
 ```env
 APP_ENV=development
