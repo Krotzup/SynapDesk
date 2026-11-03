@@ -4,35 +4,127 @@ Espacio para experimentación, entrenamiento, evaluación y entrega de modelos v
 
 ## Prototipo de embeddings y recuperación semántica
 
-`semantic_retrieval/` contiene un primer flujo ejecutable, aislado de la API: texto UTF-8 controlado → fragmentos → embeddings → PostgreSQL con pgvector → búsqueda de fragmentos. No procesa PDF ni tickets, no autentica usuarios y no genera recomendaciones. Usa una tabla experimental para no fijar todavía el esquema de documentos del producto.
+`semantic_retrieval/` implementa el flujo local de textos UTF-8 controlados →
+fragmentos → embeddings → PostgreSQL + pgvector → búsqueda. Es un prototipo
+experimental; la integración HTTP, autenticación, extracción de PDF y RAG siguen
+pendientes. Su tabla experimental no fija el esquema documental del producto.
 
-El candidato inicial es [paraphrase-multilingual-MiniLM-L12-v2](https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2), fijado a la revisión declarada en `semantic_retrieval/config.py`. Produce 384 dimensiones. Se eligió para probar contenido en español, no como selección definitiva. Se usará el mismo modelo y revisión al indexar y consultar; los resultados de otras versiones no se mezclan. Los textos se dividen en ventanas de 96 tokens con 16 de solapamiento, por debajo del máximo de 128 tokens publicado para este modelo.
+El candidato es `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`,
+revisión `e8f8c211226b894fcb81acc59f3b34ba3efd5f42`, con 384 dimensiones.
+Indexación y consulta usan exactamente el mismo `modelId`. Se fragmenta en
+ventanas de 96 tokens con 16 de solapamiento. Antes de generar vectores se
+comprueba el límite real del modelo: 128 tokens, incluidos los especiales.
+Las consultas que lo superen se rechazan explícitamente, sin truncarlas.
+También se conserva el límite de 1000 caracteres por consulta y 1 MB por archivo.
 
-El prototipo acepta archivos de hasta 1 MB y consultas de hasta 1000 caracteres. La búsqueda utiliza distancia coseno exacta de pgvector y convierte cada distancia a similitud con `score = 1 - distancia_coseno`. El rango matemático es [-1, 1]; un valor alto indica mayor semejanza, pero **no es una probabilidad ni una medida calibrada de confianza**. No se fija todavía un umbral de relevancia. Los resultados incluyen los identificadores de documento y fragmento para conservar la fuente.
+`score = 1 - distancia_coseno` es similitud en [-1, 1], no probabilidad ni
+confianza calibrada. La búsqueda exacta filtra por modelo y devuelve
+`documentId`, `documentChunkId`, `title`, `excerpt` y `score`. Sin documentos
+para ese modelo devuelve `{"items": []}`. Sin umbral de relevancia, obtener
+resultados no garantiza que respondan a la consulta.
 
-### Ejecutar en desarrollo local
+### Entorno y comandos
 
-Desde la raíz del repositorio, con Python, Docker Desktop y la base `db` de `compose.yaml` iniciada:
+Usar Python 3.12 en un entorno virtual y las versiones fijadas, junto con las
+restricciones del clasificador cuando se prueben juntos. La revisión del modelo se fija
+independientemente de las versiones de las bibliotecas. Las dependencias
+transitivas pueden variar; registrar el entorno de la ejecución.
 
 ```powershell
-py -m venv .venv
+py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r ml/requirements-semantic.txt
-docker compose up -d db
-$env:SYNAPDESK_SEMANTIC_DATABASE_URL = "postgresql://synapdesk_app:<clave-local>@localhost:5432/synapdesk"
-.\.venv\Scripts\python.exe -m ml.semantic_retrieval.cli init-db
-.\.venv\Scripts\python.exe -m ml.semantic_retrieval.cli index --document-id 11111111-1111-4111-8111-111111111111 --title "Conectividad" --file ml/examples/connectividad.txt
-.\.venv\Scripts\python.exe -m ml.semantic_retrieval.cli index --document-id 22222222-2222-4222-8222-222222222222 --title "Impresora" --file ml/examples/impresora.txt
-.\.venv\Scripts\python.exe -m ml.semantic_retrieval.cli search --query "No puedo acceder a la red de la oficina" --limit 5
+.\.venv\Scripts\python.exe -m pip check
 ```
 
-Sustituir `<clave-local>` por la contraseña configurada en `.env`; si contiene caracteres especiales, codificarlos para una URL. La variable solo se usa en el proceso local y no debe incorporarse a Git. La primera ejecución descargará el modelo. El comando `index` reemplaza atómicamente los fragmentos de ese documento y esa versión del modelo. `init-db` es repetible y no borra datos. La respuesta de `search` tiene forma `{"items":[...]}`, compatible en estructura con el contrato provisional de búsqueda, pero todavía no hay endpoint HTTP.
+Al validar junto al clasificador en una copia de `main`, instalar en una sola
+operación `-r ml/requirements.txt -r ml/requirements-semantic.txt` para respetar
+sus versiones fijadas. Esa combinación se verifica por separado; no requiere
+fusionar las ramas para realizar una simulación local.
 
-### Verificación y siguientes decisiones
+En Windows, Docker Desktop con backend WSL 2 permite usar la imagen del proyecto.
+Si falta WSL, seguir la [instalación oficial de Microsoft](https://learn.microsoft.com/windows/wsl/install)
+y después la [instalación de Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/).
+Completar cualquier reinicio requerido antes de ejecutar los contenedores.
 
-Ejecutar las pruebas que no requieren descargas ni base de datos:
+Usar exclusivamente `db_test` para la verificación. Configurar localmente las
+variables de pruebas de `.env.example`, sin subir credenciales, e iniciar:
 
 ```powershell
-py -m unittest discover -s ml/tests -v
+docker compose --profile testing up -d db_test
+docker compose --profile testing ps db_test
+$env:SYNAPDESK_SEMANTIC_DATABASE_URL = "postgresql://synapdesk_test:<clave-de-pruebas>@localhost:5433/synapdesk_test"
+.\.venv\Scripts\python.exe -X utf8 -m ml.semantic_retrieval.cli init-db
+.\.venv\Scripts\python.exe -X utf8 -m ml.semantic_retrieval.cli index --document-id 11111111-1111-4111-8111-111111111111 --title "Conectividad" --file ml/examples/conectividad.txt
+.\.venv\Scripts\python.exe -X utf8 -m ml.semantic_retrieval.cli index --document-id 22222222-2222-4222-8222-222222222222 --title "Impresora" --file ml/examples/impresora.txt
+.\.venv\Scripts\python.exe -X utf8 -m ml.semantic_retrieval.cli search --query "No puedo acceder a la red de la oficina" --limit 5
+.\.venv\Scripts\python.exe -X utf8 -m ml.semantic_retrieval.cli search --query "La impresora no imprime" --limit 5
 ```
 
-Antes de usar este candidato en el producto, preparar consultas reales anonimizadas con fragmentos relevantes etiquetados y comparar modelos mediante Recall@5, MRR@5, latencia, tamaño y costo operacional. Revisar errores, contenido sensible y casos sin resultados útiles. Elegir luego dimensión, umbral, política de indexación, tipo de índice vectorial y esquema definitivo; al integrar el backend, exponer `POST /api/v1/search` con autenticación y el contrato vigente. Los tickets históricos, extracción documental y RAG quedan para incrementos posteriores.
+Sustituir la contraseña de ejemplo por la de la base de pruebas y codificarla
+para URL si contiene caracteres especiales. El CLI no carga `.env`
+automáticamente. No pegar la conexión real ni sus credenciales en la evidencia.
+La primera carga puede descargar el modelo; las siguientes reutilizan la caché.
+`init-db` es repetible. Reindexar reemplaza atómicamente los fragmentos de ese
+documento y modelo, con UUID estables para cada posición.
+
+Archivos inexistentes, ilegibles, vacíos, UTF-8 inválido, tamaño excesivo y
+consultas inválidas producen un error de argumentos controlado (salida 2).
+Para comprobar el caso solicitado, repetir `index` con un archivo inexistente:
+el error debe describir la lectura fallida, sin traza y antes de cargar el modelo.
+
+### Criterios verificables y pruebas
+
+Los siguientes criterios técnicos concretan la verificación del prototipo;
+la aceptación del PR corresponde al equipo:
+
+1. Inicializar PostgreSQL con pgvector e indexar ambos ejemplos con el modelo
+   real fijado. Registrar versiones y salidas efectivamente obtenidas.
+2. Recuperar conectividad primero para la consulta de red e impresora primero
+   para la de impresión, con los cinco campos y orden descendente por similitud.
+   Dos ejemplos no permiten estimar calidad general ni fijar umbrales.
+3. Verificar vectores finitos, no nulos, normalizados y de 384 dimensiones;
+   textos preparados dentro del límite del modelo, incluidos tokens especiales.
+4. Reindexar sin duplicados y con identificadores estables. Comprobar rollback
+   de una inserción fallida y aislamiento entre modelos.
+5. Rechazar entradas inválidas, devolver lista vacía sin documentos del modelo
+   y superar las pruebas automatizadas junto con las del clasificador.
+
+Las pruebas rápidas no necesitan PostgreSQL ni descargar un modelo:
+
+```powershell
+.\.venv\Scripts\python.exe -X utf8 -m unittest discover -s tests -t . -v
+```
+
+Para activar las pruebas del tokenizador con subpalabras y los vectores reales,
+primero disponer del modelo/revisión en caché y ejecutar:
+
+```powershell
+$env:SYNAPDESK_RUN_SEMANTIC_MODEL_TESTS = "1"
+.\.venv\Scripts\python.exe -X utf8 -m unittest tests.ml.test_semantic_chunking tests.ml.test_semantic_integration.RealSemanticModelTests -v
+```
+
+La prueba de base de datos real requiere su variable específica, para evitar
+usar por accidente la conexión del producto. Crea un esquema de nombre único y
+revierte su transacción completa al salir; no reemplaza documentos del producto.
+Verifica el flujo real, reindexación, rollback y aislamiento, e imprime un JSON
+`semantic_evidence` con resultados y versiones, sin la conexión ni contraseñas:
+
+```powershell
+$env:SYNAPDESK_SEMANTIC_TEST_DATABASE_URL = $env:SYNAPDESK_SEMANTIC_DATABASE_URL
+.\.venv\Scripts\python.exe -X utf8 -m unittest tests.ml.test_semantic_integration.RealSemanticDatabaseTests -v
+```
+
+Sin sus variables de activación, las pruebas reales se informan como omitidas;
+no constituyen evidencia de integración ejecutada. Guardar la salida real de
+los comandos del CLI y de esta prueba en la descripción o comentarios del PR.
+
+### Decisiones futuras
+
+Evaluar consultas anonimizadas con relevancia etiquetada mediante Recall@5,
+MRR@5, latencia, tamaño y costo antes de elegir el modelo definitivo, el umbral
+para «información insuficiente», un índice vectorial o la política de indexación.
+Un fragmento puede comenzar a mitad de frase por el solapamiento; acordar su
+presentación con frontend (por ejemplo, una elipsis) al conectar resultados
+reales. Estas propuestas no autorizan cambiar el frontend ni la API pública.
+
+Contrato experimental: [embeddings-recuperacion.md](../docs/contratos/embeddings-recuperacion.md).

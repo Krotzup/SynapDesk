@@ -34,8 +34,8 @@ El ejemplo ilustra la forma de respuesta; sus identificadores, texto y puntaje n
 
 - Documento o consulta vacíos: `ValueError` o error de argumentos del CLI.
 - `limit` fuera de 1–20: error de argumentos del CLI.
-- Archivo UTF-8 inexistente o inválido: error de lectura. El archivo no puede superar 1 MB.
-- Consulta de más de 1000 caracteres: error de argumentos del CLI.
+- Archivo inexistente, ilegible, vacío o UTF-8 inválido: error controlado de argumentos del CLI (salida 2), sin traza. El archivo no puede superar 1 MB.
+- Consulta de más de 1000 caracteres o que supera el límite real del modelo (128 tokens, incluidos los especiales): error de argumentos del CLI. No se trunca silenciosamente. La misma validación de tokens se aplica a los fragmentos antes de generar embeddings.
 - Base de datos ausente, esquema no preparado o dependencia no instalada: error de ejecución; el CLI no implementa aún el formato de errores HTTP.
 - Reindexar un mismo documento y modelo reemplaza los fragmentos dentro de una transacción.
 - Solo se indexan textos preparados, autorizados y sin información sensible; todavía no existe carga de archivos ni control de acceso del producto.

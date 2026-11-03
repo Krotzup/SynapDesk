@@ -174,7 +174,7 @@ Respuesta inicial:
 }
 ```
 
-El significado y rango del campo `score` deberán documentarse cuando se seleccione la estrategia de recuperación.
+En el [prototipo experimental de recuperación](embeddings-recuperacion.md), `score = 1 - distancia_coseno` expresa similitud en [-1, 1], no probabilidad ni confianza calibrada. Este significado corresponde al candidato provisional; la estrategia definitiva del producto y su umbral de relevancia siguen pendientes de evaluación. La ruta HTTP todavía no está implementada por este prototipo.
 
 ## Recomendaciones
 

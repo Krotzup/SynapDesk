@@ -7,9 +7,26 @@ from pathlib import Path
 from uuid import UUID
 
 from .chunking import chunk_text
-from .config import MODEL_ID
+from .config import MAX_DOCUMENT_BYTES, MAX_QUERY_CHARACTERS, MODEL_ID
 from .embeddings import LocalEmbedder
 from .repository import init_schema, replace_document, search
+
+
+def read_document(path: Path) -> str:
+    try:
+        with path.open("rb") as source:
+            raw = source.read(MAX_DOCUMENT_BYTES + 1)
+    except OSError:
+        raise ValueError("No se pudo leer el archivo; verifica que exista y tengas permisos.") from None
+    if len(raw) > MAX_DOCUMENT_BYTES:
+        raise ValueError("El archivo supera el límite experimental de 1 MB.")
+    try:
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        raise ValueError("El archivo debe estar codificado en UTF-8.") from None
+    if not text.strip():
+        raise ValueError("El documento debe contener texto.")
+    return text
 
 
 def main() -> None:
@@ -29,20 +46,21 @@ def main() -> None:
     if not database_url:
         parser.error("Falta SYNAPDESK_SEMANTIC_DATABASE_URL.")
 
-    if args.command == "index":
-        if not args.title.strip():
-            parser.error("El título no puede estar vacío.")
-        if args.file.stat().st_size > 1_000_000:
-            parser.error("El archivo supera el límite experimental de 1 MB.")
-        text = args.file.read_text(encoding="utf-8")
-        embedder = LocalEmbedder()
-        chunks = chunk_text(text, embedder.tokenizer)
-        vectors = embedder.encode(chunks)
-    elif args.command == "search":
-        if not args.query.strip() or len(args.query) > 1000 or not 1 <= args.limit <= 20:
-            parser.error("La consulta debe tener 1–1000 caracteres y el límite debe estar entre 1 y 20.")
-        embedder = LocalEmbedder()
-        vector = embedder.encode([args.query])[0]
+    try:
+        if args.command == "index":
+            if not args.title.strip():
+                raise ValueError("El título no puede estar vacío.")
+            text = read_document(args.file)
+            embedder = LocalEmbedder()
+            chunks = chunk_text(text, embedder.tokenizer)
+            vectors = embedder.encode(chunks)
+        elif args.command == "search":
+            if not args.query.strip() or len(args.query) > MAX_QUERY_CHARACTERS or not 1 <= args.limit <= 20:
+                raise ValueError("La consulta debe tener 1–1000 caracteres y el límite debe estar entre 1 y 20.")
+            embedder = LocalEmbedder()
+            vector = embedder.encode([args.query])[0]
+    except ValueError as error:
+        parser.error(str(error))
 
     import psycopg
     from pgvector.psycopg import register_vector
