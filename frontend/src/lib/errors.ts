@@ -14,6 +14,11 @@ export function isApiError(value: unknown): value is ApiError {
   );
 }
 
+/** 401 de /me u otra ruta protegida: no hay sesión válida (no confundir con un fallo temporal). */
+export function isAuthenticationRequired(value: unknown): boolean {
+  return isApiError(value) && value.error.code === "AUTHENTICATION_REQUIRED";
+}
+
 function isValidationDetail(value: unknown): value is ValidationErrorDetail {
   if (typeof value !== "object" || value === null) return false;
   const { field, message } = value as Record<string, unknown>;
