@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { SESSION_CHANGED } from "@/lib/api";
 import { notifyAuthChange } from "@/lib/auth-sync";
 import { isApiError } from "@/lib/errors";
 import { authService } from "@/services/auth";
@@ -23,6 +24,8 @@ function loginErrorMessage(error: unknown): string {
     case "CSRF_INVALID":
     case "ORIGIN_INVALID":
       return "No se pudo validar la solicitud. Recarga la página e intenta de nuevo.";
+    case SESSION_CHANGED:
+      return "La sesión cambió en otra pestaña. Intenta de nuevo.";
     default:
       // SERVICE_UNAVAILABLE, otros 5xx y fallos de red.
       return "El servicio no está disponible en este momento. Intenta nuevamente.";

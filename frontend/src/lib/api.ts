@@ -16,8 +16,24 @@ interface RequestOptions<TBody = unknown> {
 const MUTATING_METHODS: ReadonlySet<HttpMethod> = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 class HttpError {
-  constructor(readonly body: ApiError) {}
+  constructor(
+    readonly status: number,
+    readonly body: ApiError
+  ) {}
 }
+
+// Código solo del frontend (no viene del backend): la sesión cambió (login o logout, también en
+// otra pestaña) mientras se preparaba la mutación, así que no se envía con un contexto distinto.
+export const SESSION_CHANGED = "SESSION_CHANGED";
+
+const sessionChangedError = (): ApiError => ({
+  error: {
+    code: SESSION_CHANGED,
+    message: "La sesión cambió mientras se preparaba la solicitud.",
+    details: null,
+    requestId: "",
+  },
+});
 
 async function send<TResponse, TBody>(
   endpoint: string,
@@ -52,7 +68,7 @@ async function send<TResponse, TBody>(
         requestId: "",
       },
     }));
-    throw new HttpError(errorBody);
+    throw new HttpError(response.status, errorBody);
   }
 
   // 204 No Content
@@ -65,8 +81,12 @@ async function send<TResponse, TBody>(
 
 const fetchCsrfToken = () => send<CsrfToken, never>("/auth/csrf", { method: "GET" });
 
+// Solo un 403 con código CSRF_INVALID permite el reintento: el mismo código con otro estado,
+// u otro código con 403, no se reintentan.
 function isCsrfInvalid(error: unknown): boolean {
-  return error instanceof HttpError && error.body.error.code === "CSRF_INVALID";
+  return (
+    error instanceof HttpError && error.status === 403 && error.body.error.code === "CSRF_INVALID"
+  );
 }
 
 async function request<TResponse, TBody = unknown>(
@@ -79,16 +99,20 @@ async function request<TResponse, TBody = unknown>(
   try {
     if (!needsCsrf) return await send<TResponse, TBody>(endpoint, options);
 
+    // La sesión no debe cambiar (ni login ni logout, tampoco en otra pestaña) entre que se pide
+    // el token y se envía la mutación; si cambia, la mutación no se envía.
     const generation = getAuthGeneration();
+    const token = await getCsrfToken(fetchCsrfToken);
+    if (getAuthGeneration() !== generation) throw sessionChangedError();
     try {
-      return await send<TResponse, TBody>(endpoint, options, await getCsrfToken(fetchCsrfToken));
+      return await send<TResponse, TBody>(endpoint, options, token);
     } catch (error) {
-      // Único reintento permitido por el contrato: solo ante 403 CSRF_INVALID y si la sesión
-      // no cambió (ni login ni logout, tampoco en otra pestaña). Otros errores no se reintentan.
+      // Único reintento permitido por el contrato: solo ante HTTP 403 + CSRF_INVALID y si la
+      // sesión no cambió. Si el reintento también falla, se devuelve ese error sin reintentar más.
       if (!isCsrfInvalid(error) || getAuthGeneration() !== generation) throw error;
       clearCsrfToken();
       const freshToken = await getCsrfToken(fetchCsrfToken);
-      if (getAuthGeneration() !== generation) throw error;
+      if (getAuthGeneration() !== generation) throw sessionChangedError();
       return await send<TResponse, TBody>(endpoint, options, freshToken);
     }
   } catch (error) {
