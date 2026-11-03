@@ -5,6 +5,12 @@
   "engines": {
     "node": ">=20.9.0"
   },
+  "imports": {
+    "#transport": {
+      "react-server": "./src/lib/transport/server.ts",
+      "default": "./src/lib/transport/client.ts"
+    }
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",

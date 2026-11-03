@@ -32,21 +32,27 @@ Ejemplo de fecha:
 
 ## URL base
 
-Configuración provisional documentada para desarrollo local:
+El navegador no llama directamente a FastAPI: consume rutas relativas `/api/v1/*` bajo el origen del frontend y el proxy de mismo origen de Next.js (Route Handler `frontend/src/app/api/v1/[...path]/route.ts`) las reenvía al backend, conservando el prefijo `/api/v1`. Las páginas del servidor (SSR) leen datos directamente del mismo destino. El [contrato de transporte de autenticación](autenticacion-v1.md#3-arquitectura-y-despliegue) define proxy de mismo origen, adaptador SSR seguro por petición, cookies necesarias, respuestas privadas sin caché compartida y secretos exclusivamente en servidor.
+
+Configuración local (`frontend/.env.local`, variables solo de servidor):
 
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:8000
+BACKEND_INTERNAL_URL=http://127.0.0.1:8000
+AUTH_COOKIE_PROFILE=local
 ```
 
-En esa configuración local provisional, las solicitudes del frontend se dirigen directamente a:
+Ejemplo local: navegador en `http://localhost:3000`, solicitud pública `http://localhost:3000/api/v1/...` y destino FastAPI `http://127.0.0.1:8000/api/v1/...`. FastAPI escucha solo en `127.0.0.1`. La regla de no mezclar `localhost` y `127.0.0.1` se aplica al origen del navegador, que es donde viven las cookies; el destino interno no recibe cookies propias del navegador. El origen permitido por el backend (`AUTH_ORIGENES_PERMITIDOS`) es el del navegador, `http://localhost:3000`, no el destino interno.
 
-```text
-http://localhost:8000/api/v1
-```
+El puerto `3000` corresponde al frontend Next.js y no debe utilizarse como destino del proxy. `BACKEND_INTERNAL_URL` no se expone mediante `NEXT_PUBLIC_*` ni se acepta desde parámetros, cabeceras o cuerpos del cliente. `NEXT_PUBLIC_API_URL` ya no se utiliza en el frontend.
 
-El puerto `3000` corresponde al frontend Next.js y no debe utilizarse como URL directa del backend. Para autenticación V1, el navegador consumirá rutas relativas `/api/v1/*` bajo el origen público del frontend; el proxy reenviará las solicitudes al backend en Render como destino interno. El navegador no consumirá directamente la URL de Render. El [contrato de transporte de autenticación](autenticacion-v1.md#3-arquitectura-y-despliegue) formaliza proxy de mismo origen, adaptador SSR seguro por petición, cookies necesarias, respuestas privadas sin caché compartida y secretos exclusivamente en servidor. Set-Cookie debe llegar al navegador sin exponer la credencial en JSON. La configuración concreta y el perfil HTTP local siguen sujetos a revisión; no cambian los valores de entorno ni el cliente actual por documentarlos.
+Comportamiento del proxy (detalle en `frontend/src/lib/backend-proxy.ts`):
 
-El destino del proxy se configurará en el servidor Next.js mediante BACKEND_INTERNAL_URL, requisito futuro todavía no implementado ni incorporado a los archivos de entorno. Ejemplo local: navegador en `http://localhost:3000`, destino FastAPI `http://localhost:8000` y solicitud pública `http://localhost:3000/api/v1/...`. Mantener un host consistente para cookies, sin mezclar localhost y 127.0.0.1. No aceptar destinos elegidos por el cliente ni exponer BACKEND_INTERNAL_URL mediante NEXT_PUBLIC_*. NEXT_PUBLIC_API_URL no se usará para autenticación del navegador mediante proxy; sus usos actuales fuera de ese flujo permanecen hasta que se migren expresamente.
+* Hacia FastAPI reenvía solo `Accept`, `Content-Type`, `Origin` (sin modificarlo ni inventarlo), `Sec-Fetch-Site`, `X-CSRF-Token` y las cookies de sesión y de contexto CSRF del perfil elegido con `AUTH_COOKIE_PROFILE` (`local`: `synapdesk_session_dev`, `synapdesk_csrf_context_dev`; `production`: `__Host-synapdesk_session`, `__Host-synapdesk_csrf_context`). Descarta `X-Forwarded-*`, `Forwarded`, `X-Real-IP`, `X-SynapDesk-Client-IP`, `Authorization` y el resto de las cookies. Una cookie permitida repetida se reenvía con todas sus apariciones para que el backend rechace la ambigüedad.
+* Hacia el navegador conserva estado y cuerpo, `Content-Type`, `Retry-After` y cada `Set-Cookie` como cabecera separada, y agrega `Cache-Control: no-store` a todas las respuestas, incluidos los errores.
+* No sigue redirecciones. Si el backend no responde, tarda más de 30 segundos, responde con una redirección o falta `BACKEND_INTERNAL_URL`, responde 503 `SERVICE_UNAVAILABLE` con el formato de error del contrato.
+* Todavía no envía la IP del cliente: la cabecera interna `X-SynapDesk-Client-IP` queda condicionada a la frontera de confianza que se implementará en AUTH-07.
+
+Los nombres de cookies, el tiempo de espera y el perfil por variable son propuestos y siguen sujetos a revisión con el backend.
 
 ## Autenticación
 
