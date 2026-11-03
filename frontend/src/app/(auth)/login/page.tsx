@@ -1,4 +1,6 @@
-import { Button } from "@/components/ui/Button";
+import { LoginForm } from "@/components/auth/LoginForm";
+import { USE_MOCKS } from "@/lib/config";
+import { MOCK_PASSWORD, mockAuthAccounts } from "@/mocks/auth";
 
 export default function LoginPage() {
   return (
@@ -9,46 +11,20 @@ export default function LoginPage() {
           <span className="text-[#2563EB] text-3xl font-bold">⚡</span>
           <span className="text-2xl font-semibold tracking-tight text-[#0F172A]">SynapDesk</span>
         </div>
-        <p className="text-sm text-[#475569]">Iniciá sesión para continuar</p>
+        <p className="text-sm text-[#475569]">Inicia sesión para continuar</p>
       </div>
+
+      {USE_MOCKS && (
+        <p className="text-xs text-[#92400E] bg-[#FEF3C7] border border-[#FDE68A] rounded-xl px-4 py-2.5">
+          <strong>Datos de ejemplo:</strong> el inicio de sesión es simulado y no protege la
+          aplicación. Usa {mockAuthAccounts[0].email} o {mockAuthAccounts[1].email} con la
+          contraseña {MOCK_PASSWORD}.
+        </p>
+      )}
 
       {/* Tarjeta */}
       <div className="rounded-xl border border-[#E2E8F0] bg-white p-8 shadow-sm">
-        <form className="space-y-5">
-          <div className="space-y-1.5">
-            <label htmlFor="email" className="block text-sm font-medium text-[#0F172A]">
-              Correo electrónico
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              placeholder="agente@synapdesk.com"
-              className="w-full rounded-lg border border-[#E2E8F0] bg-white px-3 py-2.5 text-sm text-[#0F172A] placeholder-[#94A3B8] outline-none transition-colors focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label htmlFor="password" className="block text-sm font-medium text-[#0F172A]">
-              Contraseña
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              placeholder="••••••••"
-              className="w-full rounded-lg border border-[#E2E8F0] bg-white px-3 py-2.5 text-sm text-[#0F172A] placeholder-[#94A3B8] outline-none transition-colors focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20"
-            />
-          </div>
-
-          <Button type="submit" fullWidth>
-            Iniciar sesión
-          </Button>
-        </form>
+        <LoginForm />
       </div>
     </div>
   );

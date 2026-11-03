@@ -2,7 +2,23 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { Role } from "@/types";
+
+const roleLabels: Record<Role, string> = {
+  admin: "Administrador",
+  agent: "Agente",
+};
+
+// AuthUser no incluye el nombre: las iniciales salen del correo ("laura.silva@…" → "LS").
+function initialsFromEmail(email: string): string {
+  const parts = email
+    .split("@")[0]
+    .split(/[._-]+/)
+    .filter(Boolean);
+  const letters = parts.length > 1 ? parts[0][0] + parts[1][0] : (parts[0] ?? "").slice(0, 2);
+  return letters.toUpperCase();
+}
 
 const mockNotifications = [
   {
@@ -26,12 +42,22 @@ export function Header() {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState(mockNotifications);
 
-  const unreadCount = notifications.filter((n) => n.unread).length;
-  const router = useRouter();
+  const { user, signOut } = useAuth();
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
 
-  const handleLogout = () => {
-    setIsUserMenuOpen(false);
-    router.push("/login");
+  const unreadCount = notifications.filter((n) => n.unread).length;
+
+  // La redirección al login la hace AuthProvider cuando se confirma el cierre.
+  const handleLogout = async () => {
+    setLogoutError(null);
+    setIsSigningOut(true);
+    try {
+      await signOut();
+    } catch {
+      setLogoutError("No se pudo cerrar la sesión. Intenta de nuevo.");
+      setIsSigningOut(false);
+    }
   };
 
   const markAllAsRead = () => {
@@ -149,9 +175,9 @@ export function Header() {
             className="flex items-center gap-2.5 cursor-pointer rounded-full px-2.5 py-1.5 hover:bg-[#F1F5F9] transition-colors select-none outline-none"
           >
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#6366F1] text-xs font-bold text-white">
-              VG
+              {initialsFromEmail(user.email)}
             </div>
-            <span className="text-sm font-semibold text-[#0F172A]">Valentina González</span>
+            <span className="text-sm font-semibold text-[#0F172A]">{user.email}</span>
             <svg
               className={`h-4 w-4 text-[#94A3B8] transition-transform duration-200 ${isUserMenuOpen ? "rotate-180" : ""}`}
               fill="none"
@@ -173,8 +199,8 @@ export function Header() {
               <div className="fixed inset-0 z-10" onClick={() => setIsUserMenuOpen(false)} />
               <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white p-2 shadow-xl border border-[#E2E8F0] z-20 text-xs font-medium text-[#0F172A]">
                 <div className="px-3 py-2 border-b border-[#F1F5F9]">
-                  <p className="font-bold text-sm">Valentina González</p>
-                  <p className="text-[#94A3B8] text-[11px] mt-0.5">v.gonzalez@synapdesk.com</p>
+                  <p className="font-bold text-sm break-all">{user.email}</p>
+                  <p className="text-[#94A3B8] text-[11px] mt-0.5">{roleLabels[user.role]}</p>
                 </div>
                 <div className="py-1">
                   <Link
@@ -188,10 +214,16 @@ export function Header() {
                 <div className="border-t border-[#F1F5F9] pt-1">
                   <button
                     onClick={handleLogout}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-[#FEF2F2] text-[#EF4444] font-semibold transition-colors text-left"
+                    disabled={isSigningOut}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-[#FEF2F2] text-[#EF4444] font-semibold transition-colors text-left disabled:opacity-50"
                   >
-                    🚪 Cerrar sesión
+                    🚪 {isSigningOut ? "Cerrando sesión…" : "Cerrar sesión"}
                   </button>
+                  {logoutError && (
+                    <p role="alert" className="px-3 py-1.5 text-[11px] text-[#B91C1C]">
+                      {logoutError}
+                    </p>
+                  )}
                 </div>
               </div>
             </>
