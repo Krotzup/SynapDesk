@@ -15,6 +15,25 @@ const variantStyles: Record<ButtonVariant, string> = {
   accept: "bg-[#16A3A1] text-white hover:bg-[#0F8E8C] border border-transparent",
 };
 
+/** Clases del botón, para dar el mismo aspecto a un enlace (por ejemplo, un Link de Next). */
+export function buttonClassName(
+  variant: ButtonVariant = "primary",
+  fullWidth = false,
+  className = ""
+) {
+  return [
+    "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5",
+    "text-sm font-medium transition-colors duration-150",
+    "focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-1",
+    "disabled:opacity-50 disabled:cursor-not-allowed",
+    variantStyles[variant],
+    fullWidth ? "w-full" : "",
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
 export function Button({
   variant = "primary",
   fullWidth = false,
@@ -25,17 +44,7 @@ export function Button({
 }: ButtonProps) {
   return (
     <button
-      className={[
-        "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5",
-        "text-sm font-medium transition-colors duration-150",
-        "focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-1",
-        "disabled:opacity-50 disabled:cursor-not-allowed",
-        variantStyles[variant],
-        fullWidth ? "w-full" : "",
-        className,
-      ]
-        .filter(Boolean)
-        .join(" ")}
+      className={buttonClassName(variant, fullWidth, className)}
       disabled={disabled}
       {...props}
     >

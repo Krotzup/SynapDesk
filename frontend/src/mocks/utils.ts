@@ -13,9 +13,13 @@ export function simulateLatency<T>(data: T): Promise<T> {
 }
 
 /** Rechaza con el formato de error del contrato frontend-backend. */
-export function rejectWithApiError(code: string, message: string): Promise<never> {
+export function rejectWithApiError(
+  code: string,
+  message: string,
+  details: unknown = null
+): Promise<never> {
   const error: ApiError = {
-    error: { code, message, details: null, requestId: crypto.randomUUID() },
+    error: { code, message, details, requestId: crypto.randomUUID() },
   };
   return new Promise((_, reject) => setTimeout(() => reject(error), LATENCY_MS));
 }
