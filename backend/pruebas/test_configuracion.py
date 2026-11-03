@@ -27,6 +27,8 @@ LIMITES_FICTICIOS = {
 
 def ejemplo_temporal(tmp_path, *, sin_configurar=None):
     contenido = (RAIZ_BACKEND.parent / ".env.example").read_text(encoding="utf-8")
+    # Activar explícitamente la configuración adicional de autenticación.
+    contenido = contenido.replace("# AUTH_", "AUTH_")
     valores = dotenv_values(stream=StringIO(contenido))
     reemplazos = {**LIMITES_FICTICIOS,
                   "AUTH_HMAC_CLAVE": base64.b64encode(bytes(range(32))).decode("ascii")}
@@ -39,7 +41,8 @@ def ejemplo_temporal(tmp_path, *, sin_configurar=None):
 
 
 def test_ejemplo_incluye_exactamente_las_variables_auth_reales():
-    valores = dotenv_values(RAIZ_BACKEND.parent / ".env.example")
+    contenido = (RAIZ_BACKEND.parent / ".env.example").read_text(encoding="utf-8")
+    valores = dotenv_values(stream=StringIO(contenido.replace("# AUTH_", "AUTH_")))
     variables = {nombre for nombre in valores if nombre.startswith("AUTH_")}
     reales = {nombre.upper() for nombre in Configuracion.model_fields if nombre.startswith("auth_")}
     assert variables == reales
@@ -47,14 +50,42 @@ def test_ejemplo_incluye_exactamente_las_variables_auth_reales():
     assert valores["AUTH_PROXIES_AUTORIZADOS"] == '[]'
 
 
-def test_ejemplo_sin_configurar_rechaza_todos_los_marcadores(tmp_path, caplog):
+def test_ejemplo_directo_permite_configuracion_basica_sin_autenticacion(tmp_path, caplog):
     archivo = tmp_path / ".env.ejemplo_sin_configurar"
     archivo.write_text((RAIZ_BACKEND.parent / ".env.example").read_text(encoding="utf-8"), encoding="utf-8")
-    with pytest.raises(ValidationError) as error:
-        Configuracion(_env_file=archivo)
-    campos = {item["loc"][0] for item in error.value.errors(include_input=False, include_context=False)}
-    assert campos == {nombre.lower() for nombre in LIMITES_FICTICIOS} | {"auth_hmac_clave"}
+    configuracion = Configuracion(_env_file=archivo)
+    assert configuracion.auth_hmac_clave is None
+    assert configuracion.auth_hmac_id_clave is None
+    assert all(getattr(configuracion, nombre.lower()) is None for nombre in LIMITES_FICTICIOS)
     assert not caplog.records
+
+
+def test_ejemplo_sin_clave_rechaza_servicio_hmac(tmp_path):
+    from app.seguridad.identificadores import ServicioIdentificadores
+
+    archivo = tmp_path / ".env"
+    archivo.write_text((RAIZ_BACKEND.parent / ".env.example").read_text(encoding="utf-8"), encoding="utf-8")
+    with pytest.raises(ValueError, match="Falta configurar la clave HMAC"):
+        ServicioIdentificadores(Configuracion(_env_file=archivo))
+
+
+@pytest.mark.parametrize("ausentes", [tuple(LIMITES_FICTICIOS), *[(nombre,) for nombre in LIMITES_FICTICIOS]])
+def test_ejemplo_sin_cuotas_no_construye_limitador(tmp_path, ausentes):
+    from sqlalchemy.orm import Session
+    from app.seguridad.identificadores import ServicioIdentificadores
+    from app.seguridad.limites import ServicioLimites
+    from app.seguridad.origenes import ErrorConfiguracionSeguridad
+
+    archivo = ejemplo_temporal(tmp_path)
+    contenido = archivo.read_text(encoding="utf-8")
+    for nombre in ausentes:
+        contenido = contenido.replace(f"{nombre}={LIMITES_FICTICIOS[nombre]}", f"# {nombre}={LIMITES_FICTICIOS[nombre]}")
+    archivo.write_text(contenido, encoding="utf-8")
+    configuracion = Configuracion(_env_file=archivo)
+    with Session() as db:
+        with pytest.raises(ErrorConfiguracionSeguridad, match="Falta configurar las cuotas"):
+            ServicioLimites(db, configuracion, ServicioIdentificadores(configuracion))
+        assert not db.in_transaction()
 
 
 def test_ejemplo_derivado_carga_y_construye_servicios_sin_abrir_bd(tmp_path, caplog):
