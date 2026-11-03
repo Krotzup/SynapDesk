@@ -25,7 +25,7 @@ Los estados de aprobación, implementación y validación son independientes:
 
 Synchronizer Token, los contextos servidor anónimo y autenticado ligado a sesión, X-CSRF-Token, origen estricto, protección de mutaciones e invalidación/rotación de contextos están aprobados. También lo están el transporte Next.js de mismo origen y el logout idempotente de sección 7. Los valores numéricos, nombres concretos de cookies y permisos detallados conservan sus estados provisionales o de propuesta.
 
-Existen fábrica FastAPI, modelos de usuarios y tickets, revisión `0001_usuarios_tickets`, `/health` y `/ready`. No existen rutas de autenticación, tablas de sesiones ni protección efectiva del dashboard. El login es visual; el logout del encabezado solo redirige. Los grupos de rutas de Next.js no autentican por sí mismos.
+Existen fábrica FastAPI, modelos de usuarios y tickets, revisiones `0001_usuarios_tickets` y `0002_autenticacion_persistencia`, `/health` y `/ready`. La segunda revisión incorpora sesiones, contextos/tokens CSRF, límites y auditoría; no implementa sus servicios operativos. Los fundamentos de contraseñas, normalización y HMAC se describen en el [backend](../../backend/README.md#fundamentos-de-seguridad). No existen rutas de autenticación ni protección efectiva del dashboard. El login es visual; el logout del encabezado solo redirige. Los grupos de rutas de Next.js no autentican por sí mismos.
 
 V1 incluye obtención de contexto CSRF, login, consulta de identidad y logout individual. No incluye registro público, MFA, OAuth ni recuperación de contraseña por correo. El alta inicial se realizará mediante comando administrativo, sin contraseñas predeterminadas. No se especifican aquí el nombre ni las opciones de ese comando.
 
@@ -182,11 +182,11 @@ Se propone contar como actividad las solicitudes autenticadas autorizadas, inclu
 
 Una cookie presente con sesión vencida o revocada no autentica: me responde 401. Se propone que el bootstrap CSRF trate ese caso como anónimo, sin emitir ni borrar la cookie de sesión, para permitir un nuevo login y evitar borrados tardíos desde lecturas. El nuevo login la sobrescribe al tener éxito. Logout sin sesión válida tiene la semántica aprobada de sección 7; no sigue pendiente.
 
-### Persistencia conceptual — PROPOSED, sin DDL ni modelos nuevos
+### Persistencia: esquema implementado y operación PROPOSED
 
-Los nombres siguientes son propuestas internas en snake_case; no son campos nuevos de la API ni tablas existentes. Identificadores internos UUID, fechas UTC y claves foráneas deberán concretarse en una futura revisión posterior a `0001_usuarios_tickets`, sin modificar esa migración.
+La revisión `0002_autenticacion_persistencia`, posterior a `0001_usuarios_tickets` sin modificarla, ya implementa las cinco tablas siguientes, con UUID internos, fechas UTC y claves foráneas. El esquema vigente se describe en [persistencia relacional](../arquitectura/persistencia-inicial.md#persistencia-de-autenticación). Esta tabla conserva el diseño conceptual y las propuestas de operación; no añade campos a la API ni acredita servicios funcionales de sesión, CSRF, límites o auditoría.
 
-| Tabla propuesta | Responsabilidad y datos conceptuales mínimos | Relaciones, restricciones e índices esperados |
+| Tabla existente | Responsabilidad y datos conceptuales mínimos | Relaciones, restricciones e índices del diseño |
 | --- | --- | --- |
 | sesiones | Identificador interno, usuario, digest del secreto, creación, última actividad, expiración absoluta, revocación y motivo. | FK a usuarios; digest único y no vacío; fechas coherentes; índices por usuario y para vencimiento/limpieza. La actividad no puede superar el máximo absoluto. |
 | contextos_csrf | Identificador, clase anónima/autenticada, digest del secreto anónimo cuando corresponda, sesión cuando corresponda, creación, expiración y revocación. | Exactamente una vinculación: secreto anónimo o sesión; FK y unicidad del contexto autenticado por sesión; digest anónimo único; índices por expiración y sesión. |
@@ -194,7 +194,7 @@ Los nombres siguientes son propuestas internas en snake_case; no son campos nuev
 | limites_autenticacion | Tipo de clave, clave seudonimizada, ventana, intentos o reservas y bloqueo temporal. | Clave/ventana única; contadores no negativos; índices de expiración; actualización atómica con creación concurrente controlada. |
 | eventos_autenticacion | Identificador, instante, evento, resultado, requestId y referencias opcionales a usuario/sesión, más metadatos mínimos autorizados. | Índices por tiempo y correlación; sin borrado en cascada que destruya auditoría por limpiar una sesión; acceso restringido. |
 
-La limpieza de sesiones, contextos, tokens y límites vencidos será un proceso administrativo acotado, independiente de la validación de vigencia. Su frecuencia y retención quedan pendientes; no se exige que un registro desaparezca para rechazarlo. No borrar eventos por analogía con datos temporales. El esquema exacto, acciones de FK y estrategia operativa se revisarán con la futura migración.
+La limpieza de sesiones, contextos, tokens y límites vencidos será un proceso administrativo acotado, independiente de la validación de vigencia. Su frecuencia y retención quedan pendientes; no se exige que un registro desaparezca para rechazarlo. No borrar eventos por analogía con datos temporales. Las acciones de FK y el esquema implementado están descritos en la arquitectura de persistencia; la estrategia operativa sigue pendiente. Las restricciones entre filas y los límites de emisión no se consideran implementados por existir las tablas.
 
 Si PostgreSQL falla, las operaciones que necesitan sesión, CSRF o límites persistentes no concederán acceso; responderán 503, sin degradarse a sesiones en memoria ni presentar una caída como credenciales incorrectas. Health conservará su responsabilidad básica. Véanse las políticas de auditoría y errores para los fallos de infraestructura.
 
@@ -550,7 +550,7 @@ Estos criterios describen verificaciones funcionales futuras; su definición no 
 | Éxitos HTTP | Confirmar propuesta 200 para csrf, login y me; 204 de logout ya aprobado con la precedencia de sección 7. |
 | CSRF y origen | APPROVED: Synchronizer Token, contextos, X-CSRF-Token, renovación preventiva coordinada, único reintento condicionado a CSRF_INVALID previo a efectos y continuidad del contexto, y rechazo de Origin ausente/null/ambiguo/no permitido en mutaciones. PROVISIONAL_CONFIGURATION / PENDING_MEASUREMENT: 32 bytes, 10 minutos/token, 15/contexto anónimo y ocho tokens/contexto. Revisar digest/representación, campos JSON, perfiles y respuesta de saturación sin expulsar tokens vigentes. |
 | Cookies | Aprobar nombres, perfiles producción/local, Max-Age hasta expiración absoluta y borrado descritos en sección 6. Elegir origen local único y lista exacta de cookies autorizadas. |
-| Sesiones | Aprobar credencial aleatoria/digest, tablas conceptuales, actualización por petición, orden de bloqueos y transacciones, recuperación sin borrar cookie en lecturas y tratamiento de respuesta perdida. Precisar limpieza y coordinación entre pestañas antes de implementar. |
+| Sesiones | Aprobar credencial aleatoria/digest y servicios sobre el esquema existente, actualización por petición, orden de bloqueos y transacciones, recuperación sin borrar cookie en lecturas y tratamiento de respuesta perdida. Precisar limpieza y coordinación entre pestañas antes de implementar los servicios. |
 | Logout | APPROVED: idempotente, 204 sin sesión válida que revocar; origen obligatorio y CSRF para revocar sesión válida, sin 204 ficticio ante fallo PostgreSQL. Detalles operativos de borrado/concurrencia conservan propuestas, sin reabrir la decisión 204/401. |
 | Login | Aprobar normalización coherente con persistencia, validar equivalencia para correo internacional, límites de entrada/política de alta, mitigación de enumeración y diseño transaccional. |
 | Argon2id | PROVISIONAL_CONFIGURATION / PENDING_MEASUREMENT: 64 MiB, tres iteraciones, paralelismo uno; medir y aprobar presupuesto de concurrencia, biblioteca y política de rehash. |
@@ -561,6 +561,6 @@ Estos criterios describen verificaciones funcionales futuras; su definición no 
 | Proxy y despliegue | APPROVED: mismo origen, fetch cliente para mutaciones V1 sin Server Actions/Server Functions, cookies necesarias, adaptador SSR seguro por petición, no-store y secretos en servidor. BACKEND_INTERNAL_URL es requisito futuro IMPLEMENTATION_PENDING. Revisar configuración operativa, orígenes concretos, autenticidad del intermediario/IP y acceso directo a Render. |
 | Alta administrativa | Definir procedimiento del comando y entrega segura de credenciales. |
 
-La persistencia conceptual conserva propuestas de esquema y operación pendientes de revisión; no modifica el estado de los mecanismos ya aprobados. La configuración interoperable y los requisitos operativos deberán concretarse antes de implementar, manteniendo la correspondencia entre contratos y documentación de arquitectura.
+La persistencia dispone de modelos y migración; las propuestas de operación pendientes no modifican el estado de los mecanismos ya aprobados. La configuración interoperable y los requisitos operativos deberán concretarse antes de implementar sus servicios, manteniendo la correspondencia entre contratos y documentación de arquitectura.
 
 La aprobación documental no equivale a implementación, migración aplicada o despliegue validado.
