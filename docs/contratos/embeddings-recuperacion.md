@@ -36,8 +36,13 @@ El ejemplo ilustra la forma de respuesta; sus identificadores, texto y puntaje n
 - `limit` fuera de 1–20: error de argumentos del CLI.
 - Archivo inexistente, ilegible, vacío o UTF-8 inválido: error controlado de argumentos del CLI (salida 2), sin traza. El archivo no puede superar 1 MB.
 - Consulta de más de 1000 caracteres o que supera el límite real del modelo (128 tokens, incluidos los especiales): error de argumentos del CLI. No se trunca silenciosamente. La misma validación de tokens se aplica a los fragmentos antes de generar embeddings.
-- Base de datos ausente, esquema no preparado o dependencia no instalada: error de ejecución; el CLI no implementa aún el formato de errores HTTP.
+- PostgreSQL inaccesible, base inexistente o conexión rechazada: error controlado de argumentos del CLI (salida 2), sin traza, URL ni detalles de credenciales. Se configura un timeout de conexión de cinco segundos.
+- Esquema no preparado o dependencia no instalada: error de ejecución; el CLI no implementa aún el formato de errores HTTP.
 - Reindexar un mismo documento y modelo reemplaza los fragmentos dentro de una transacción.
 - Solo se indexan textos preparados, autorizados y sin información sensible; todavía no existe carga de archivos ni control de acceso del producto.
+
+La verificación usa una base propia del prototipo (`synapdesk_semantic_test`)
+dentro de `db_test`, separada de `synapdesk_test`, que pertenece a las pruebas
+del backend. La tabla experimental no participa en las migraciones de Alembic.
 
 La futura ruta `POST /api/v1/search` conservará el contrato provisional en [frontend-backend.md](frontend-backend.md), pero requerirá revisión de autenticación, manejo uniforme de errores y criterio de relevancia antes de integrarse al backend.

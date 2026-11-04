@@ -1,7 +1,9 @@
 import { api } from "@/lib/api";
+import { USE_MOCKS } from "@/lib/config";
+import { recommendationsMock } from "@/mocks/recommendations";
 import { HumanReview, Recommendation } from "@/types";
 
-export const recommendationsService = {
+const recommendationsApi = {
   // Genera una nueva recomendación para el ticket
   generate: (ticketId: string): Promise<Recommendation> =>
     api.post(`/tickets/${ticketId}/recommendations`, {}),
@@ -18,3 +20,9 @@ export const recommendationsService = {
   review: (id: string, data: HumanReview): Promise<void> =>
     api.post(`/recommendations/${id}/reviews`, data),
 };
+
+export type RecommendationsService = typeof recommendationsApi;
+
+export const recommendationsService: RecommendationsService = USE_MOCKS
+  ? recommendationsMock
+  : recommendationsApi;

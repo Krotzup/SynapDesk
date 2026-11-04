@@ -62,13 +62,25 @@ frontend/
 │   │   ├── ui/                               ← Componentes genéricos sin lógica de negocio
 │   │   │                                        Button, Input, Modal, Badge, Spinner,
 │   │   │                                        Card, Table, Pagination, Alert, etc.
-│   │   └── layout/                           ← Componentes estructurales de la app
-│   │                                            Header, Sidebar, Footer, NavItem
+│   │   ├── layout/                           ← Componentes estructurales de la app
+│   │   │                                        Header, Sidebar, Footer, NavItem
+│   │   └── tickets/                          ← Componentes del listado de tickets
+│   │                                            TicketFilters (cliente), TicketPagination
 │   │
 │   ├── lib/                                  ← Utilidades y configuración técnica
-│   │   └── api.ts                            ← Cliente HTTP hacia el backend
-│   │                                            Centraliza base URL, headers, manejo de
-│   │                                            errores y métodos GET/POST/PUT/PATCH/DELETE
+│   │   ├── api.ts                            ← Cliente HTTP hacia el backend
+│   │   │                                        Centraliza base URL, headers, manejo de
+│   │   │                                        errores y métodos GET/POST/PUT/PATCH/DELETE
+│   │   ├── config.ts                         ← USE_MOCKS a partir de NEXT_PUBLIC_USE_MOCKS
+│   │   ├── errors.ts                         ← isApiError: reconoce el formato de error
+│   │   ├── format.ts                         ← Fechas, score de similitud e ID corto
+│   │   ├── params.ts                         ← buildQuery: query string de paginación y filtros
+│   │   └── ticket-filters.ts                 ← Lee y valida los filtros del listado desde la URL
+│   │
+│   ├── mocks/                                ← Datos de ejemplo con los tipos del contrato
+│   │                                            Implementan la misma interfaz que cada
+│   │                                            service; se activan con USE_MOCKS.
+│   │                                            Simulan demora y errores (TICKET_NOT_FOUND)
 │   │
 │   ├── hooks/                                ← Custom hooks de React
 │   │                                            useTickets, useAuth, usePagination,
@@ -109,6 +121,7 @@ Están documentadas en `.env.example` en la raíz del repositorio.
 | Variable | Descripción | Ejemplo |
 |---|---|---|
 | `NEXT_PUBLIC_API_URL` | URL base del backend FastAPI | `http://localhost:8000` |
+| `NEXT_PUBLIC_USE_MOCKS` | `true` para que los services devuelvan datos de ejemplo de `src/mocks`; cualquier otro valor llama al backend | `true` |
 
 El prefijo `NEXT_PUBLIC_` es obligatorio para que Next.js exponga la variable al navegador.
 Las variables sin ese prefijo solo están disponibles en el servidor.

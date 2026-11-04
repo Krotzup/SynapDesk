@@ -1,50 +1,31 @@
+import { LoginForm } from "@/components/auth/LoginForm";
+import { USE_MOCKS } from "@/lib/config";
+import { MOCK_PASSWORD, mockAuthAccounts } from "@/mocks/auth";
+
 export default function LoginPage() {
   return (
-    <div className="w-full max-w-sm space-y-6">
-      <div className="space-y-2 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">SynapDesk</h1>
-        <p className="text-sm text-gray-500">Iniciá sesión para continuar</p>
+    <div className="w-full max-w-sm space-y-8">
+      {/* Logo y título */}
+      <div className="text-center space-y-2">
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <span className="text-[#2563EB] text-3xl font-bold">⚡</span>
+          <span className="text-2xl font-semibold tracking-tight text-[#0F172A]">SynapDesk</span>
+        </div>
+        <p className="text-sm text-[#475569]">Inicia sesión para continuar</p>
       </div>
 
-      {/* Formulario — se implementa cuando el backend defina autenticación */}
-      <form className="space-y-4">
-        <div className="space-y-1">
-          <label htmlFor="email" className="text-sm font-medium">
-            Correo electrónico
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            required
-            placeholder="agente@synapdesk.com"
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900"
-          />
-        </div>
+      {USE_MOCKS && (
+        <p className="text-xs text-[#92400E] bg-[#FEF3C7] border border-[#FDE68A] rounded-xl px-4 py-2.5">
+          <strong>Datos de ejemplo:</strong> el inicio de sesión es simulado y no protege la
+          aplicación. Usa {mockAuthAccounts[0].email} o {mockAuthAccounts[1].email} con la
+          contraseña {MOCK_PASSWORD}.
+        </p>
+      )}
 
-        <div className="space-y-1">
-          <label htmlFor="password" className="text-sm font-medium">
-            Contraseña
-          </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            placeholder="••••••••"
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900"
-          />
-        </div>
-
-        <button
-          type="submit"
-          className="w-full rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700"
-        >
-          Iniciar sesión
-        </button>
-      </form>
+      {/* Tarjeta */}
+      <div className="rounded-xl border border-[#E2E8F0] bg-white p-8 shadow-sm">
+        <LoginForm />
+      </div>
     </div>
   );
 }

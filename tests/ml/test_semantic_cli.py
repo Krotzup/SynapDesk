@@ -4,7 +4,8 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, Mock, patch
 
 from ml.semantic_retrieval import cli
 
@@ -56,3 +57,33 @@ class SemanticCLITests(unittest.TestCase):
         with patch.object(cli, "LocalEmbedder") as model:
             model.return_value.encode.side_effect = ValueError("El texto supera el límite de 128 tokens")
             self.invoke_invalid(["search", "--query", "red"], "128 tokens")
+
+    def test_connection_failure_is_controlled_without_leaking_details(self):
+        private_details = "postgresql://private_user:private_password@private_host/private_database"
+        operational_error = type("OperationalError", (Exception,), {})
+        connect = Mock(side_effect=operational_error(private_details))
+        modules = {"psycopg": SimpleNamespace(connect=connect, OperationalError=operational_error),
+                   "pgvector": SimpleNamespace(), "pgvector.psycopg": SimpleNamespace(register_vector=Mock())}
+        stderr = io.StringIO()
+        with patch.dict(os.environ, {"SYNAPDESK_SEMANTIC_DATABASE_URL": private_details}), \
+             patch("sys.argv", ["semantic", "init-db"]), \
+             patch.dict("sys.modules", modules), \
+             contextlib.redirect_stderr(stderr):
+            with self.assertRaises(SystemExit) as result:
+                cli.main()
+        self.assertEqual(result.exception.code, 2)
+        self.assertIn("No se pudo acceder a la base de datos", stderr.getvalue())
+        for value in ("Traceback", private_details, "private_password", "private_host"):
+            self.assertNotIn(value, stderr.getvalue())
+        connect.assert_called_once_with(private_details, connect_timeout=5)
+
+    def test_statement_failure_is_not_reported_as_connection_failure(self):
+        operational_error = type("OperationalError", (Exception,), {})
+        statement_error = type("ProgrammingError", (Exception,), {})
+        modules = {"psycopg": SimpleNamespace(connect=MagicMock(), OperationalError=operational_error),
+                   "pgvector": SimpleNamespace(), "pgvector.psycopg": SimpleNamespace(register_vector=Mock())}
+        with patch.dict(os.environ, {"SYNAPDESK_SEMANTIC_DATABASE_URL": "postgresql://unused.invalid/test"}), \
+             patch("sys.argv", ["semantic", "init-db"]), patch.dict("sys.modules", modules), \
+             patch.object(cli, "init_schema", side_effect=statement_error("invalid SQL")):
+            with self.assertRaises(statement_error):
+                cli.main()

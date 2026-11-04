@@ -12,6 +12,25 @@ export interface User {
   updatedAt: string;
 }
 
+// ─── Autenticación V1 (docs/contratos/autenticacion-v1.md) ───────────────────
+
+// Identidad devuelta por login y /me. Distinta de User: no incluye nombre ni fechas.
+export interface AuthUser {
+  id: string;
+  email: string;
+  role: Role;
+}
+
+export interface AuthResponse {
+  user: AuthUser;
+}
+
+// Respuesta de GET /auth/csrf. expiresAt es el vencimiento del token, no de la sesión.
+export interface CsrfToken {
+  csrfToken: string;
+  expiresAt: string;
+}
+
 // ─── Tickets ─────────────────────────────────────────────────────────────────
 
 export type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
@@ -118,10 +137,19 @@ export interface PaginationParams {
   order?: "asc" | "desc";
 }
 
+// Filtros opcionales y combinables de GET /tickets (propuesta del backend para el MVP)
+export interface TicketListParams extends PaginationParams {
+  status?: TicketStatus;
+  priority?: TicketPriority;
+  area?: string;
+}
+
 // ─── Métricas ─────────────────────────────────────────────────────────────────
 
 export interface Metrics {
   totalTickets: number;
+  openTickets: number;
+  inProgressTickets: number;
   resolvedTickets: number;
   avgResolutionTimeHours: number;
   recommendationsAccepted: number;
@@ -140,4 +168,10 @@ export interface ApiErrorBody {
 
 export interface ApiError {
   error: ApiErrorBody;
+}
+
+// Elemento de details en un 422 VALIDATION_ERROR (propuesta de Felipe del 03-11-2026).
+export interface ValidationErrorDetail {
+  field: string;
+  message: string;
 }

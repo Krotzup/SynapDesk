@@ -65,26 +65,29 @@ def main() -> None:
     import psycopg
     from pgvector.psycopg import register_vector
 
-    with psycopg.connect(database_url) as connection:
-        if args.command == "init-db":
-            init_schema(connection)
-            print("Tabla experimental preparada.")
-        else:
-            register_vector(connection)
-            if args.command == "index":
-                replace_document(
-                    connection,
-                    document_id=args.document_id,
-                    title=args.title,
-                    chunks=chunks,
-                    embeddings=vectors,
-                    model_id=MODEL_ID,
-                )
-                print(f"Documento indexado: {len(chunks)} fragmentos.")
+    try:
+        with psycopg.connect(database_url, connect_timeout=5) as connection:
+            if args.command == "init-db":
+                init_schema(connection)
+                print("Tabla experimental preparada.")
             else:
-                print(json.dumps({"items": search(
-                    connection, embedding=vector, model_id=MODEL_ID, limit=args.limit
-                )}, ensure_ascii=False, indent=2))
+                register_vector(connection)
+                if args.command == "index":
+                    replace_document(
+                        connection,
+                        document_id=args.document_id,
+                        title=args.title,
+                        chunks=chunks,
+                        embeddings=vectors,
+                        model_id=MODEL_ID,
+                    )
+                    print(f"Documento indexado: {len(chunks)} fragmentos.")
+                else:
+                    print(json.dumps({"items": search(
+                        connection, embedding=vector, model_id=MODEL_ID, limit=args.limit
+                    )}, ensure_ascii=False, indent=2))
+    except psycopg.OperationalError:
+        parser.error("No se pudo acceder a la base de datos; verifica el servicio y la configuración de conexión.")
 
 
 if __name__ == "__main__":

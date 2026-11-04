@@ -1,4 +1,5 @@
 sentence-transformers==5.1.2
 transformers==4.57.1
+torch==2.14.0
 psycopg[binary]==3.2.12
 pgvector==0.4.1
