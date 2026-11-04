@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 from uuid import UUID
 
-from ml.semantic_retrieval.repository import replace_document, search
+from ml.semantic_retrieval.repository import corpus_fingerprint, replace_document, search
 
 
 class QueryConnection:
@@ -19,6 +19,9 @@ class QueryConnection:
 
     def fetchall(self) -> list[tuple[object, ...]]:
         return self.rows
+
+    def __iter__(self):
+        return iter(self.rows)
 
 
 class SearchTests(unittest.TestCase):
@@ -45,6 +48,27 @@ class SearchTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             search(connection, embedding=[1], model_id="model@revision", limit=21)
         self.assertEqual(connection.statement, "")
+
+    def test_minimum_score_is_parameterized_and_keeps_order_and_limit(self):
+        connection = QueryConnection([])
+        self.assertEqual(search(connection, embedding=[1], model_id="m", limit=5, min_score=0.5), [])
+        self.assertIn("AND 1 - (embedding <=> %s) >= %s", connection.statement)
+        self.assertIn("ORDER BY embedding <=> %s, document_id, position LIMIT %s", connection.statement)
+        self.assertEqual(connection.parameters, ([1], "m", [1], 0.5, [1], 5))
+        for value in (True, "0.5", float("nan"), float("inf"), -1.1, 1.1):
+            connection = QueryConnection([])
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                search(connection, embedding=[1], model_id="m", limit=5, min_score=value)
+            self.assertEqual(connection.statement, "")
+
+    def test_corpus_fingerprint_detects_content_and_vector_changes(self):
+        rows = [("chunk", "document", 0, "Title", "Content", "[1,0]")]
+        original = corpus_fingerprint(QueryConnection(rows), model_id="m")
+        self.assertEqual(original, corpus_fingerprint(QueryConnection(rows), model_id="m"))
+        for changed in ([], [("chunk", "document", 0, "Title", "Changed", "[1,0]")],
+                        [("chunk", "document", 0, "Title", "Content", "[0,1]")]):
+            self.assertNotEqual(original, corpus_fingerprint(QueryConnection(changed), model_id="m"))
+        self.assertNotEqual(original, corpus_fingerprint(QueryConnection(rows), model_id="other"))
 
 
 class TransactionConnection:

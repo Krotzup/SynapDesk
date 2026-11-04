@@ -15,7 +15,7 @@ from ml.semantic_retrieval.chunking import chunk_text
 from ml.semantic_retrieval.cli import read_document
 from ml.semantic_retrieval.config import MODEL_ID
 from ml.semantic_retrieval.embeddings import LocalEmbedder
-from ml.semantic_retrieval.repository import init_schema, replace_document, search
+from ml.semantic_retrieval.repository import corpus_fingerprint, init_schema, replace_document, search
 
 
 @unittest.skipUnless(os.getenv("SYNAPDESK_RUN_SEMANTIC_MODEL_TESTS") == "1", "Requiere modelo real; activación explícita.")
@@ -68,10 +68,12 @@ class RealSemanticDatabaseTests(unittest.TestCase):
                     ).fetchall()
 
                 before = stored()
+                fingerprint = corpus_fingerprint(connection, model_id=MODEL_ID)
                 identifier, title, chunks = prepared[0]
                 replace_document(connection, document_id=identifier, title=title, chunks=chunks,
                                  embeddings=vectors[0], model_id=MODEL_ID)
                 self.assertEqual(stored(), before)
+                self.assertEqual(corpus_fingerprint(connection, model_id=MODEL_ID), fingerprint)
                 with self.assertRaises(psycopg.Error):
                     replace_document(connection, document_id=identifier, title=title,
                                      chunks=["Válido", "Dimensión incorrecta"],
@@ -79,9 +81,11 @@ class RealSemanticDatabaseTests(unittest.TestCase):
                 self.assertEqual(stored(), before)
                 replace_document(connection, document_id=identifier, title=title, chunks=chunks,
                                  embeddings=vectors[0], model_id="otro@revision")
+                self.assertEqual(corpus_fingerprint(connection, model_id=MODEL_ID), fingerprint)
                 for query, expected in (("No puedo acceder a la red de la oficina", documents[0][0]),
                                         ("La impresora no imprime", documents[1][0])):
-                    items = search(connection, embedding=embedder.encode([query])[0], model_id=MODEL_ID, limit=5)
+                    query_vector = embedder.encode([query])[0]
+                    items = search(connection, embedding=query_vector, model_id=MODEL_ID, limit=5)
                     self.assertEqual(len(items), len(before))
                     self.assertEqual(items[0]["documentId"], str(expected))
                     self.assertEqual([item["score"] for item in items], sorted((item["score"] for item in items), reverse=True))
@@ -90,6 +94,13 @@ class RealSemanticDatabaseTests(unittest.TestCase):
                         UUID(item["documentChunkId"])
                         self.assertTrue(math.isfinite(item["score"]))
                         self.assertTrue(-1.00001 <= item["score"] <= 1.00001)
+                    minimum = items[0]["score"]
+                    filtered = search(connection, embedding=query_vector, model_id=MODEL_ID, limit=5, min_score=minimum)
+                    self.assertTrue(filtered)
+                    self.assertEqual(filtered[0]["documentId"], str(expected))
+                    self.assertTrue(all(item["score"] >= minimum for item in filtered))
+                    self.assertEqual(search(connection, embedding=query_vector, model_id=MODEL_ID, limit=5,
+                                            min_score=math.nextafter(minimum, 1.0)), [])
                     outputs.append({"query": query, "items": items})
                 evidence = {
                     "executed_at": datetime.now(timezone.utc).isoformat(), "modelId": MODEL_ID,
@@ -97,6 +108,7 @@ class RealSemanticDatabaseTests(unittest.TestCase):
                     "pgvector_version": connection.execute("SELECT extversion FROM pg_extension WHERE extname = 'vector'").fetchone()[0],
                     "runtime": {name: version(name) for name in ("sentence-transformers", "transformers", "torch", "psycopg", "pgvector")},
                     "reindex_stable": True, "failed_insert_rolled_back": True, "model_filter_verified": True,
+                    "threshold_filter_verified": True, "corpus_fingerprint_verified": True,
                     "outputs": outputs,
                 }
             finally:

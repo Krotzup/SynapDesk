@@ -187,7 +187,7 @@ Respuesta inicial:
 }
 ```
 
-En el [prototipo experimental de recuperación](embeddings-recuperacion.md), `score = 1 - distancia_coseno` expresa similitud en [-1, 1], no probabilidad ni confianza calibrada. Este significado corresponde al candidato provisional; la estrategia definitiva del producto y su umbral de relevancia siguen pendientes de evaluación. La ruta HTTP todavía no está implementada por este prototipo.
+En el [prototipo experimental de recuperación](embeddings-recuperacion.md), `score = 1 - distancia_coseno` expresa similitud en [-1, 1], no probabilidad ni confianza calibrada. El CLI admite perfiles experimentales de relevancia asociados al modelo y corpus, con abstención mediante `items: []`; esto no establece un umbral ni campos nuevos para la API pública. La estrategia definitiva del producto y su perfil de relevancia para producción siguen pendientes de evaluación. La ruta HTTP todavía no está implementada por este prototipo.
 
 ## Recomendaciones
 

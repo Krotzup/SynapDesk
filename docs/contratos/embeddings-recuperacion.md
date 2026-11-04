@@ -30,6 +30,33 @@ La indexación recibe `documentId` UUID, `title`, texto UTF-8 y su `modelId`. Pr
 
 El ejemplo ilustra la forma de respuesta; sus identificadores, texto y puntaje no son resultados de una ejecución. El valor de `score` se calcula como `1 - distancia_coseno`, con rango [-1, 1]. No representa probabilidad. Una consulta sin fragmentos indexados para ese modelo devuelve `{"items": []}`.
 
+## Relevancia y abstención experimental
+
+La búsqueda interna admite `min_score` opcional, finito entre -1 y 1. Con ese
+filtro devuelve únicamente fragmentos con `score >= min_score`, preservando los
+cinco campos, el orden y el límite. Sin umbral conserva su comportamiento previo.
+
+El CLI activa el filtro mediante `search --relevance-profile <archivo.json>`.
+Si no hay fragmentos que alcancen el corte, devuelve `{"items": []}` en stdout
+y «Información insuficiente» en stderr, con salida 0. Esto significa que no hay
+evidencia que supere el criterio de ese corpus; no demuestra que la pregunta sea
+imposible de responder en otras fuentes. No se agregan campos a la API pública.
+
+`calibrate-relevance --cases <consultas.json> --output <perfil-nuevo.json>` genera
+un perfil experimental asociado a `modelId` y a una huella de los fragmentos y
+vectores. Las consultas requieren `queryId`, `query` y `answerable` booleano, con
+ambas clases y sin duplicados. Se preservan todas las consultas con cobertura
+observadas y, bajo esa condición, se maximiza el rechazo de las que no la tienen.
+Los empates o solapamientos se registran sin fingir que se separaron.
+
+El perfil guarda el umbral, las huellas y los resultados de calibración. No se
+sobrescribe ni se aplica a un modelo o corpus diferente: esos casos producen
+error controlado (salida 2), sin buscar automáticamente sin filtro. La búsqueda
+con perfil usa una instantánea de solo lectura para verificar y consultar el
+mismo corpus. Las etiquetas, la evaluación independiente y la aprobación del
+perfil para producción requieren revisión humana. No existe un umbral global
+aprobado ni una garantía de que todo fragmento aceptado responda correctamente.
+
 ## Validaciones, errores y límites
 
 - Documento o consulta vacíos: `ValueError` o error de argumentos del CLI.

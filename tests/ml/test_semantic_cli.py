@@ -1,5 +1,6 @@
 import contextlib
 import io
+import json
 import os
 import tempfile
 import unittest
@@ -87,3 +88,40 @@ class SemanticCLITests(unittest.TestCase):
              patch.object(cli, "init_schema", side_effect=statement_error("invalid SQL")):
             with self.assertRaises(statement_error):
                 cli.main()
+
+    def test_missing_profile_is_rejected_before_loading_model(self):
+        with tempfile.TemporaryDirectory() as temporary, patch.object(cli, "LocalEmbedder") as model:
+            self.invoke_invalid(["search", "--query", "red", "--relevance-profile",
+                                 str(Path(temporary) / "missing.json")], "JSON UTF-8 válido")
+            model.assert_not_called()
+
+    def test_profile_can_abstain_without_changing_stdout_contract(self):
+        connection = MagicMock()
+        connect = MagicMock()
+        connect.return_value.__enter__.return_value = connection
+        modules = {"psycopg": SimpleNamespace(connect=connect, OperationalError=type("OperationalError", (Exception,), {})),
+                   "pgvector": SimpleNamespace(), "pgvector.psycopg": SimpleNamespace(register_vector=Mock())}
+        profile = {"minScore": 0.5, "corpusSha256": "a" * 64}
+        output, errors = io.StringIO(), io.StringIO()
+        with patch.dict(os.environ, {"SYNAPDESK_SEMANTIC_DATABASE_URL": "postgresql://unused.invalid/test"}), \
+             patch("sys.argv", ["semantic", "search", "--query", "red", "--relevance-profile", "profile.json"]), \
+             patch.dict("sys.modules", modules), patch.object(cli, "load_profile", return_value=profile), \
+             patch.object(cli, "corpus_fingerprint", return_value="a" * 64), \
+             patch.object(cli, "LocalEmbedder") as model, patch.object(cli, "search", return_value=[]) as search, \
+             contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors):
+            model.return_value.encode.return_value = [[1.0]]
+            cli.main()
+        self.assertEqual(json.loads(output.getvalue()), {"items": []})
+        self.assertIn("Información insuficiente", errors.getvalue())
+        self.assertEqual(search.call_args.kwargs["min_score"], 0.5)
+
+    def test_changed_corpus_rejects_profile_without_unfiltered_fallback(self):
+        connect = MagicMock()
+        modules = {"psycopg": SimpleNamespace(connect=connect, OperationalError=type("OperationalError", (Exception,), {})),
+                   "pgvector": SimpleNamespace(), "pgvector.psycopg": SimpleNamespace(register_vector=Mock())}
+        with patch.dict("sys.modules", modules), patch.object(cli, "LocalEmbedder") as model, \
+             patch.object(cli, "load_profile", return_value={"minScore": 0.5, "corpusSha256": "a" * 64}), \
+             patch.object(cli, "corpus_fingerprint", return_value="b" * 64), patch.object(cli, "search") as search:
+            model.return_value.encode.return_value = [[1.0]]
+            self.invoke_invalid(["search", "--query", "red", "--relevance-profile", "profile.json"], "corpus cambió")
+            search.assert_not_called()

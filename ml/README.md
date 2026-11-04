@@ -506,11 +506,60 @@ Sin sus variables de activación, las pruebas reales se informan como omitidas;
 no constituyen evidencia de integración ejecutada. Guardar la salida real de
 los comandos del CLI y de esta prueba en la descripción o comentarios del PR.
 
+### Información insuficiente y calibración experimental
+
+La búsqueda admite un perfil opcional de relevancia. Se prioriza conservar
+resultados potencialmente útiles: la calibración mantiene todas las consultas
+etiquetadas con cobertura que obtuvieron resultados y, bajo esa condición,
+rechaza tantas consultas sin cobertura como permiten sus scores. Si hay un
+intervalo entre muestras, se usa su punto medio. No se impone un número universal.
+Si hay solapamiento se informa: el perfil puede seguir aceptando consultas sin
+cobertura. El score no se convierte en una probabilidad de respuesta correcta.
+
+Preparar un JSON local con consultas representativas, diferentes entre sí y
+etiquetadas **antes de observar sus scores**. `answerable` significa que la
+colección contiene información para la consulta, no que el primer resultado sea
+correcto. Debe haber consultas con y sin cobertura. Ejemplo de formato, sin
+valor como evaluación de calidad:
+
+```json
+{"queries": [
+  {"queryId": "covered-1", "query": "La impresora no imprime", "answerable": true},
+  {"queryId": "uncovered-1", "query": "¿Cómo preparo pan de masa madre?", "answerable": false}
+]}
+```
+
+Con la conexión semántica propia configurada y documentos ya indexados, crear
+la carpeta de salida y ejecutar (ajustar las rutas a los archivos locales):
+
+```powershell
+New-Item -ItemType Directory -Force ml/artifacts | Out-Null
+.\.venv\Scripts\python.exe -X utf8 -m ml.semantic_retrieval.cli calibrate-relevance --cases ml/data/consultas_relevancia.json --output ml/artifacts/relevancia.json
+.\.venv\Scripts\python.exe -X utf8 -m ml.semantic_retrieval.cli search --query "La impresora no imprime" --relevance-profile ml/artifacts/relevancia.json
+```
+
+El perfil registra modelo/revisión, huella de los fragmentos y vectores, huella
+del archivo de consultas, fecha UTC, umbral y decisiones de calibración. No se
+sobrescriben perfiles existentes. La lectura del corpus y su búsqueda se hacen
+en una misma instantánea de solo lectura. Si cambia el modelo o el corpus, el
+perfil se rechaza explícitamente y debe recalibrarse; no hay fallback silencioso.
+
+Con perfil, solo se devuelven fragmentos con `score >= minScore`. Si ninguno
+alcanza el corte, stdout conserva `{"items": []}` y stderr muestra
+«Información insuficiente». Es una búsqueda válida (salida 0), no una avería.
+Sin perfil se conserva la búsqueda original sin umbral, útil para evaluar.
+No se cambia el frontend ni se implementa un endpoint HTTP.
+
+La calibración no es una evaluación independiente. Reservar consultas nuevas
+para medir cobertura conservada, rechazos correctos y falsos positivos; revisar
+también si los fragmentos aceptados responden realmente. Un perfil experimental
+no demuestra calidad de producción ni garantiza respuestas suficientes.
+
 ### Decisiones futuras
 
 Evaluar consultas anonimizadas con relevancia etiquetada mediante Recall@5,
-MRR@5, latencia, tamaño y costo antes de elegir el modelo definitivo, el umbral
-para «información insuficiente», un índice vectorial o la política de indexación.
+MRR@5, latencia, tamaño y costo antes de elegir el modelo definitivo, aprobar un
+perfil de relevancia para producción, un índice vectorial o la política de indexación.
 Un fragmento puede comenzar a mitad de frase por el solapamiento; acordar su
 presentación con frontend (por ejemplo, una elipsis) al conectar resultados
 reales. Estas propuestas no autorizan cambiar el frontend ni la API pública.
