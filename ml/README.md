@@ -369,8 +369,9 @@ ejecuta el entrenamiento ni carga el modelo automaticamente.
 
 `semantic_retrieval/` implementa el flujo local de textos UTF-8 controlados →
 fragmentos → embeddings → PostgreSQL + pgvector → búsqueda. Es un prototipo
-experimental; la integración HTTP, autenticación, extracción de PDF y RAG siguen
-pendientes. Su tabla experimental no fija el esquema documental del producto.
+experimental; dispone de una API HTTP protegida optativa y una interfaz conectada.
+El login HTTP, extracción de PDF y RAG siguen pendientes. Su tabla experimental
+no fija el esquema documental del producto.
 
 El candidato es `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`,
 revisión `e8f8c211226b894fcb81acc59f3b34ba3efd5f42`, con 384 dimensiones.
@@ -548,7 +549,8 @@ Con perfil, solo se devuelven fragmentos con `score >= minScore`. Si ninguno
 alcanza el corte, stdout conserva `{"items": []}` y stderr muestra
 «Información insuficiente». Es una búsqueda válida (salida 0), no una avería.
 Sin perfil se conserva la búsqueda original sin umbral, útil para evaluar.
-No se cambia el frontend ni se implementa un endpoint HTTP.
+La API y el frontend implementan esa señal según el contrato de recuperación V1;
+el CLI conserva stdout compatible. No se presenta el score como confianza.
 
 La calibración no es una evaluación independiente. Reservar consultas nuevas
 para medir cobertura conservada, rechazos correctos y falsos positivos; revisar
@@ -560,8 +562,51 @@ no demuestra calidad de producción ni garantiza respuestas suficientes.
 Evaluar consultas anonimizadas con relevancia etiquetada mediante Recall@5,
 MRR@5, latencia, tamaño y costo antes de elegir el modelo definitivo, aprobar un
 perfil de relevancia para producción, un índice vectorial o la política de indexación.
-Un fragmento puede comenzar a mitad de frase por el solapamiento; acordar su
-presentación con frontend (por ejemplo, una elipsis) al conectar resultados
-reales. Estas propuestas no autorizan cambiar el frontend ni la API pública.
+Un fragmento puede comenzar a mitad de frase por el solapamiento. El frontend
+lo presenta como extracto y enlaza su fuente e idioma cuando están disponibles.
 
 Contrato experimental: [embeddings-recuperacion.md](../docs/contratos/embeddings-recuperacion.md).
+
+### Perfiles V2, evaluación y fuentes reproducibles
+
+`init-db` prepara también la identidad/revisión por modelo y sus triggers. No
+borra documentos previos ni pertenece a las migraciones Alembic del backend.
+Cualquier escritura del corpus invalida su perfil V2, incluido reindexar con
+UUID estables; recalibrar en un archivo nuevo. La API exige V2 para verificar
+una fila de versión por consulta, sin escanear los vectores. El CLI mantiene
+compatibilidad con perfiles V1 para experimentación.
+
+Los casos admiten `expectedDocumentId` UUID opcional. Se informa top-1,
+documento esperado entre los primeros cinco fragmentos y MRR@5, separados de
+aceptación/rechazo por similitud. Para reproducir sin fuentes externas, indexar
+los dos ejemplos y ejecutar:
+
+```powershell
+python -m ml.semantic_retrieval.cli calibrate-relevance --cases ml/examples/relevancia/calibracion.json --output ml/artifacts/perfil_v2.json
+python -m ml.semantic_retrieval.cli evaluate-relevance --cases ml/examples/relevancia/evaluacion.json --relevance-profile ml/artifacts/perfil_v2.json --output ml/artifacts/evaluacion_v2.json
+```
+
+La evaluación rechaza consultas normalizadas o identificadores reutilizados
+desde calibración y no modifica el umbral. Estos casos son sintéticos y están
+marcados como pendientes de validación humana.
+
+El [registro de 15 procedimientos oficiales](sources/README.md) permite
+reconstruir exactamente los textos archivados y sus avisos. El preparador genera
+también `retrieval/`: título y cuerpo oficiales, separados de la atribución
+editorial. No se mezclan en los embeddings pies de procedencia, URLs o licencias
+añadidos por el proyecto. Originales, snapshots y huellas se preservan.
+
+```powershell
+python -m pip install -r ml/requirements-corpus.txt
+python -m ml.tools.build_procedure_corpus --output ml/data/procedimientos_v1
+python -m ml.tools.index_procedure_corpus --corpus ml/data/procedimientos_v1
+```
+
+El indexador comprueba UUID, rutas internas, huellas y destino independiente;
+carga el modelo una sola vez e indexa todo el corpus en una transacción. Al
+cambiar la preparación del texto se genera otro perfil, nunca se reutiliza
+automáticamente el corte histórico. Las condiciones de distribución de textos
+oficiales y traducciones siguen pendientes de revisión; no se incluyen en Git.
+
+La API optativa, configuración y dependencias de autenticación se describen en
+[backend/README.md](../backend/README.md#búsqueda-semántica-protegida-optativa).

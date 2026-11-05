@@ -1,4 +1,5 @@
 import type { SearchService } from "@/services/search";
+import type { SearchResponse } from "@/lib/search-contract";
 import { SearchResult } from "@/types";
 import { normalizeText } from "./tickets";
 import { MOCK_ERROR_QUERY, rejectWithApiError, simulateLatency } from "./utils";
@@ -152,6 +153,9 @@ export const searchMock: SearchService = {
       .sort((a, b) => b.score - a.score)
       .slice(0, limit);
 
-    return simulateLatency({ items });
+    return simulateLatency<SearchResponse>({
+      status: items.length ? "results" : "insufficient_information",
+      items,
+    });
   },
 };

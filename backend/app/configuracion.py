@@ -21,6 +21,13 @@ class Configuracion(BaseSettings):
         "disable", "allow", "prefer", "require", "verify-ca", "verify-full"
     ] = "prefer"
 
+    # La recuperación es optativa y utiliza una base separada. Sin defaults de
+    # cookies o perfil que aprueben decisiones de despliegue pendientes.
+    search_enabled: bool = False
+    search_relevance_profile: Path | None = None
+    search_session_cookie_name: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{1,80}$")
+    synapdesk_semantic_database_url: SecretStr | None = Field(default=None, repr=False)
+
     # PROVISIONAL_CONFIGURATION / PENDING_MEASUREMENT; memoria en KiB.
     auth_argon2_memoria_kib: int = Field(default=65536, ge=8, le=2**32 - 1)
     auth_argon2_iteraciones: int = Field(default=3, ge=1, le=2**32 - 1)
@@ -53,6 +60,11 @@ class Configuracion(BaseSettings):
         extra="ignore",
         hide_input_in_errors=True,
     )
+
+    @field_validator("search_relevance_profile")
+    @classmethod
+    def resolver_perfil_recuperacion(cls, value: Path | None) -> Path | None:
+        return RAIZ_PROYECTO / value if value is not None and not value.is_absolute() else value
 
     @field_validator("auth_hmac_clave")
     @classmethod

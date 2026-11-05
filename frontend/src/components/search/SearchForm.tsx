@@ -49,7 +49,7 @@ export function SearchForm({ query, limit }: SearchFormProps) {
         type="search"
         maxLength={MAX_QUERY_LENGTH}
         defaultValue={query}
-        placeholder="Describe el problema, por ejemplo: no puedo conectarme a la VPN desde casa"
+        placeholder="Describe un problema concreto, por ejemplo: no puedo conectarme a la red"
         className={`${fieldClass} flex-1 placeholder-[#94A3B8]`}
       />
 

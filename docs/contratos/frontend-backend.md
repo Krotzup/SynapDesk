@@ -175,6 +175,7 @@ Respuesta inicial:
 
 ```json
 {
+  "status": "results",
   "items": [
     {
       "documentId": "5e923ab0-5cee-4c50-b0dc-35fa54ca54aa",
@@ -187,7 +188,7 @@ Respuesta inicial:
 }
 ```
 
-En el [prototipo experimental de recuperación](embeddings-recuperacion.md), `score = 1 - distancia_coseno` expresa similitud en [-1, 1], no probabilidad ni confianza calibrada. El CLI admite perfiles experimentales de relevancia asociados al modelo y corpus, con abstención mediante `items: []`; esto no establece un umbral ni campos nuevos para la API pública. La estrategia definitiva del producto y su perfil de relevancia para producción siguen pendientes de evaluación. La ruta HTTP todavía no está implementada por este prototipo.
+La [recuperación semántica V1](recuperacion-semantica-v1.md) implementa esta ruta de forma optativa y protegida. `status` distingue `results`, `no_documents` e `insufficient_information`; los dos últimos conservan `items: []`. Cada fragmento puede incluir `sourceUrl` HTTPS e `language` si existen metadatos válidos. `score = 1 - distancia_coseno` expresa similitud en [-1, 1], no probabilidad ni confianza calibrada. Se requiere un perfil experimental V2 ligado al modelo y revisión del corpus, sin umbral global aprobado para producción. Se conservan 1000 caracteres; superar los 128 tokens reales produce 422 `QUERY_TOKEN_LIMIT_EXCEEDED`, sin truncamiento. La implementación no sustituye las rutas y dependencias HTTP de autenticación V1.
 
 ## Recomendaciones
 
