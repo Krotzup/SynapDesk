@@ -8,7 +8,7 @@ export const TICKET_STATUSES: readonly TicketStatus[] = [
   "resolved",
   "closed",
 ];
-export const TICKET_PRIORITIES: readonly TicketPriority[] = ["low", "medium", "high", "critical"];
+export const TICKET_PRIORITIES: readonly TicketPriority[] = ["low", "medium", "high"];
 
 type SearchParams = Record<string, string | string[] | undefined>;
 

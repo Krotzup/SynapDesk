@@ -16,6 +16,15 @@ El CSV actual se guarda localmente en:
 ml/data/raw/tickets_esp.csv
 ```
 
+Para trabajar con la versión corregida y compartible se admite el par
+`tickets_esp_entrenamiento_v2.csv` / `tickets_esp_entrenamiento_v2.manifest.json`.
+Se genera con el comando versionado de
+[exportación reproducible](CORRECCIONES_PRIORIDAD.md#csv-derivado-para-entrenamiento).
+El manifiesto se verifica automáticamente al leer el CSV y conserva la fuente,
+correcciones y validación humana en las métricas y el modelo. No reaplicar al
+derivado las correcciones del original. La V1 y la propuesta V2 se mantienen
+como antecedentes; la V2 vigente registra las 143 decisiones confirmadas.
+
 La carpeta `data/` no se versiona en Git. Lo mismo aplica para los artefactos
 generados en `ml/artifacts/`. Para comprobar el pipeline sin usar datos reales
 se incluye un dataset sintetico en:
@@ -56,6 +65,12 @@ El script genera:
 - `ticket_classifier.joblib`: artefacto de modelo listo para cargar desde Python/FastAPI.
 - `metrics.json`: metricas por objetivo, incluyendo Macro F1 y Weighted F1.
 - `sample_prediction.json`: ejemplo de salida.
+- `artifact_manifest.json`: SHA-256 del modelo, versión, entorno, catálogos y
+  procedencia del dataset para verificar la entrega antes de cargar Joblib.
+
+El hash verifica identidad e integridad, no la confiabilidad de su origen.
+Compartir únicamente artefactos autorizados y conservar el manifiesto junto al
+modelo; no aceptar Joblib de usuarios finales.
 
 El script elimina duplicados exactos por texto y etiquetas. La separación
 train/test agrupa por texto para que el mismo texto no aparezca en ambos
@@ -66,16 +81,11 @@ Los conteos y métricas reproducidos del CSV original están en
 usar `compare_priority_corrections.py` según
 [CORRECCIONES_PRIORIDAD.md](CORRECCIONES_PRIORIDAD.md).
 
-Las reglas de negocio estan desactivadas por defecto mientras se aprueban los
-criterios funcionales de prioridad. Si se ejecuta con `--enable-business-rules`,
-la regla actual marca como `critical` los tickets cuyo asunto o cuerpo contiene
-señales fuertes como `urgente`,
-`urgencia`, `emergencia`, `crítico`, `inmediatamente`, `alta prioridad` o
-`caída total`. La salida informa si la decision provino del modelo, de la regla
-o de ambos, y conserva `model_label` y `model_confidence` separados de la
-prioridad final. En decisiones por regla, `confidence` queda en `null` y
-`confidence_source` indica que no aplica confianza estadistica para la etiqueta
-final.
+El catálogo vigente es `low`, `medium`, `high`. Se retiraron `critical` y
+la regla de urgencia. Las señales léxicas se usan solo para auditar candidatos
+a revisión; no cambian predicciones. `--enable-business-rules` se rechaza y
+`--disable-business-rules` se conserva por compatibilidad. Los datasets con
+prioridades fuera del catálogo se rechazan antes del filtrado de clases raras.
 
 ## Verificacion con dataset sintetico
 

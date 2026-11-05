@@ -4,9 +4,9 @@
 
 **Provisional — propuesta de integración pendiente de aprobación.**
 
-Este documento actualiza el borrador de la Etapa 0.5.4 a partir de los scripts, documentación, muestra sintética y pruebas versionadas del [PR #13](https://github.com/Krotzup/SynapDesk/pull/13), contrastados en el commit `5c9942457569555554b08174ee6a960794b4c354` el 29 de octubre de 2026. Sustituye la referencia al estado anterior `9cd0900`.
+El clasificador del [PR #13](https://github.com/Krotzup/SynapDesk/pull/13) se incorporó a `main` mediante `0d37072`; el [contrato documental #14](https://github.com/Krotzup/SynapDesk/pull/14), mediante `55fb431`. La revisión inicial del 29 de octubre de 2026 describía `5c99424`. Esta actualización del 5 de noviembre distingue el código integrado de las opciones experimentales de la rama de mejoras del clasificador.
 
-Al realizar esta revisión, el PR #13 y el [PR documental #14](https://github.com/Krotzup/SynapDesk/pull/14) figuran abiertos. La implementación descrita se considera una referencia técnica, no una funcionalidad incorporada a `main` ni una decisión aprobada por todo el equipo. No se ejecutaron pruebas, inferencias ni entrenamientos durante este contraste.
+La integración FastAPI del clasificador sigue sin implementarse. Las variantes, evaluaciones y herramientas de exportación descritas en la documentación ML son experimentales hasta su revisión e integración; su presencia no aprueba taxonomías, reglas de negocio, umbrales ni un modelo de producción.
 
 Las secciones diferencian el comportamiento observado en el PR de las condiciones propuestas para integrarlo. Este documento será la referencia única del contrato; debe evitarse mantener dos versiones diferentes en el PR de implementación ML y en el PR documental.
 
@@ -19,13 +19,12 @@ Las secciones diferencian el comportamiento observado en el PR de las condicione
 
 ### Evidencia técnica utilizada
 
-Las siguientes referencias están fijadas al commit observado y se consultaron en modo lectura, sin cambiar a la rama ML:
+Las referencias relativas permiten contrastar la implementación correspondiente a la revisión de este documento. Para reproducir una entrega se debe fijar su commit, artefacto, hashes y entorno, sin asumir que una rama de trabajo está aprobada:
 
-- [Inferencia: campos, activación de reglas y carga del artefacto](https://github.com/Krotzup/SynapDesk/blob/5c9942457569555554b08174ee6a960794b4c354/ml/predict_ticket.py).
-- [Reglas: prioridad y conservación del resultado original](https://github.com/Krotzup/SynapDesk/blob/5c9942457569555554b08174ee6a960794b4c354/ml/ticket_rules.py).
-- [Entrenamiento: filtrado, separación y formato de muestra](https://github.com/Krotzup/SynapDesk/blob/5c9942457569555554b08174ee6a960794b4c354/ml/train_ticket_classifier.py).
-- [Pruebas de reglas](https://github.com/Krotzup/SynapDesk/blob/5c9942457569555554b08174ee6a960794b4c354/tests/ml/test_ticket_rules.py) y [pruebas de preparación y separación](https://github.com/Krotzup/SynapDesk/blob/5c9942457569555554b08174ee6a960794b4c354/tests/ml/test_train_ticket_classifier.py), inspeccionadas sin ejecutarlas.
-- [README del clasificador](https://github.com/Krotzup/SynapDesk/blob/5c9942457569555554b08174ee6a960794b4c354/ml/README.md) y [CSV sintético](https://github.com/Krotzup/SynapDesk/blob/5c9942457569555554b08174ee6a960794b4c354/ml/samples/tickets_esp_sintetico.csv).
+- [Inferencia y preprocesamiento compartido](../../ml/predict_ticket.py), [normalización](../../ml/text_preprocessing.py) y [salida uniforme](../../ml/prediction_output.py).
+- [Reglas de prioridad](../../ml/ticket_rules.py) y [entrenamiento](../../ml/train_ticket_classifier.py).
+- [Pruebas ML](../../tests/ml/), [README](../../ml/README.md) y [muestra sintética](../../ml/samples/tickets_esp_sintetico.csv).
+- [Evaluación experimental](../../ml/CLASSIFIER_EVALUATION.md) y [exportación/procedencia del dataset](../../ml/CORRECCIONES_PRIORIDAD.md).
 
 ## Propósito y alcance
 
@@ -59,7 +58,7 @@ Las predicciones asistirán al agente y no modificarán automáticamente los val
 
 Configuración adicional observada: `max_features=120000`, `ngram_range=(1, 2)`, `min_df=2`, `sublinear_tf=True`, `strip_accents="unicode"`, `alpha=1e-5`, `max_iter=1000` y `tol=1e-3`.
 
-El entrenamiento usa una proporción de prueba de `0.2` y semilla predeterminada `42`. Realiza la separación por objetivo y prioriza `GroupShuffleSplit` con grupos definidos por el texto preparado. Si esa ruta no puede utilizarse, conserva una alternativa con `train_test_split`, estratificada cuando es posible y sin estratificación si esta falla. La inspección no convierte esa alternativa en una garantía de separación por grupos.
+El entrenamiento usa una proporción de prueba de `0.2` y semilla predeterminada `42`, aplicada también al clasificador. Usa `GroupShuffleSplit` por texto preparado; ante grupos insuficientes o entrenamiento con menos de dos clases falla sin alternativa que separe filas del mismo grupo. La evaluación experimental añade `GroupKFold` y ajustes internos, separados del entrenamiento habitual. Los caracteres pueden habilitarse por objetivo, sin cambiar el baseline predeterminado.
 
 Estos parámetros describen el experimento, no umbrales definitivos de calidad ni un compromiso de conservar el algoritmo en todas las versiones.
 
@@ -113,7 +112,7 @@ Asunto: <subject>
 Descripcion: <body>
 ```
 
-El entrenamiento normaliza espacios y secuencias literales `\n`; la inferencia solo aplica `strip()` a los campos. Antes de integrar se deberá compartir el mismo preprocesamiento entre entrenamiento e inferencia.
+Entrenamiento e inferencia reutilizan `build_text` y `normalize_text` de `ml/text_preprocessing.py`: normalizan espacios y secuencias literales `\n`. La inferencia rechaza tipos no textuales y campos simultáneamente vacíos tras normalizar antes de cargar Joblib. No se eliminan palabras de urgencia para alinear textos con etiquetas.
 
 La validación debe comprobar el contenido antes de agregar los prefijos. Un texto formado únicamente por `Asunto:` y `Descripcion:` no se considerará contenido válido. **`RESOLVED_IN_OBSERVED_IMPLEMENTATION`:** el entrenamiento normaliza `subject` y `body` y descarta las filas donde ambos están vacíos antes de construir el texto. La prueba versionada de preparación incluye una fila con ambos campos vacíos y comprueba el filtrado; se verificaron el código y la existencia de esa prueba, no su ejecución en esta tarea. El filtrado conserva filas con al menos uno de los dos campos no vacío; esto no sustituye la validación propuesta del backend, que exige ambos campos.
 
@@ -121,7 +120,7 @@ El backend conservará el título y descripción originales. No se traducirá ni
 
 ## Salida nativa del componente ML
 
-El comando de inferencia produce una estructura como la siguiente. Los valores numéricos son ilustrativos, no una ejecución verificada:
+El comando de inferencia produce una estructura como la siguiente. El ejemplo está abreviado; omite los metadatos uniformes descritos debajo. Los valores numéricos son ilustrativos, no una ejecución verificada:
 
 ```json
 {
@@ -145,7 +144,7 @@ El comando de inferencia produce una estructura como la siguiente. Los valores n
       "top3": [
         { "label": "medium", "confidence": 0.65 },
         { "label": "high", "confidence": 0.20 },
-        { "label": "critical", "confidence": 0.10 }
+        { "label": "low", "confidence": 0.10 }
       ],
       "decision": "model"
     },
@@ -172,19 +171,19 @@ El comando de inferencia produce una estructura como la siguiente. Los valores n
 - `top3` contendrá hasta tres clases diferentes del catálogo del objetivo, ordenadas por probabilidad estadística descendente. La regla de urgencia no lo modifica; su primera etiqueta puede diferir de la etiqueta final impuesta por la regla.
 - La suma de `top3` puede ser menor que `1` si existen más de tres clases.
 - Una futura versión sin probabilidades requerirá actualizar el contrato; no se inventarán valores de confianza.
-- El ejemplo generado por entrenamiento usa `top_3`, mientras que la inferencia usa `top3`. Para integración se propone unificar en `top3`; esta corrección todavía debe realizarse en ML.
+- La muestra del entrenamiento y la inferencia comparten `top3` y el formato definido por `prediction_output.py`.
 - `modelVersion` es actualmente una marca temporal UTC con formato `YYYYMMDDHHMMSS`, no una versión semántica. Debe conservarse como texto y asociarse al artefacto exacto.
 
 Los valores numéricos de `confidence` son estimaciones del modelo, no garantías ni porcentajes de acierto individual demostrados. El valor `null` en una decisión por regla no equivale a cero ni a certeza total. Los umbrales `0.75` y `0.50` propuestos en el PR no se adoptan como política aprobada.
 
-La salida nativa mezcla camelCase y snake_case. Sin reglas, la inferencia añade `decision: "model"`, pero no añade sistemáticamente `model_label`, `model_confidence`, `confidence_source` ni `decision_source`. Con reglas habilitadas para prioridad, la función de reglas sí añade esos metadatos, incluso cuando no encuentra un disparador. Su presencia no se generaliza a los otros objetivos. No se renombran campos internos para hacerlos pasar por la API pública.
+La salida nativa conserva camelCase en la envoltura y snake_case en los metadatos internos. Cada objetivo devuelve siempre diez claves: `label`, `confidence`, `top3`, `decision`, `decision_source`, `confidence_source`, `model_label`, `model_confidence`, `rule` y `trigger`, con `null` cuando no aplican. Esto no redefine el DTO público ni autoriza renombrar campos de la API; el adaptador pendiente deberá hacer la conversión acordada.
 
 ## Correspondencia con el dominio y frontend
 
 | Objetivo del dataset | Salida ML | Campo del dominio | Estado |
 | --- | --- | --- | --- |
 | `type` | `clasificacion_sugerida.label` | `predictedCategory` | No equivalente automáticamente; definición pendiente |
-| `priority` | `prioridad_estimada.label` | `predictedPriority` | Coincidencia técnica de valores `low`, `medium`, `high`, `critical`, sujeta al catálogo del artefacto y a la política funcional pendiente |
+| `priority` | `prioridad_estimada.label` | `predictedPriority` | Coincidencia técnica de valores `low`, `medium`, `high`, sujeta al catálogo del artefacto y a la política funcional pendiente |
 | `queue` | `area_responsable.label` | `predictedArea` | Debe aprobarse correspondencia de colas con áreas del proyecto |
 | Metadato del artefacto | `modelName` | `modelName` | Directo |
 | Metadato del artefacto | `modelVersion` | `modelVersion` | Directo |
@@ -197,11 +196,19 @@ El PR documenta tipos como `incident`, `request`, `problem` y `change`. No demue
 
 Antes de asignar `clasificacion_sugerida` a `predictedCategory`, el equipo deberá decidir si la categoría del MVP representará el tipo de ticket o si el dominio necesita un campo independiente. Mientras no exista ese acuerdo, no se copiará la etiqueta a `predictedCategory`; se conservará como resultado nativo interno y el campo público permanecerá `null` si se expone.
 
-### Prioridad y cobertura de `critical`
+### Catálogo vigente de prioridad
 
-El dominio, el frontend y el README del clasificador contemplan `low`, `medium`, `high` y `critical`. El CSV sintético versionado contiene las cuatro prioridades, incluida `critical` en las filas originales 9 y 10. El código normaliza las etiquetas del dataset y no restringe la prioridad a tres clases.
+Tras la confirmación de América Figueroa, el catálogo de esta rama se limita a
+`low`, `medium` y `high` en ML, frontend y persistencia. Se retiraron `critical`
+y la regla que la imponía por señales léxicas. El CSV original y V2 no contienen
+esa clase y no requieren cambios adicionales.
 
-Se mantendrá `critical` en el dominio. No se eliminará ni se inferirá convirtiendo automáticamente todo `high` en `critical`. La revisión publicada de Valentina reporta que el modelo también predice `critical`; esa ejecución y el catálogo del artefacto no se reprodujeron aquí (`NOT_VERIFIED` para la inferencia independiente). La presencia de la clase en documentación y muestra sí está contrastada. Su cobertura en cada artefacto depende del dataset y de las clases conservadas al entrenar; la asignación humana y las reglas adicionales siguen sujetas a criterios funcionales del equipo.
+La migración `0003_retirar_prioridad_critical`, posterior a la persistencia de
+autenticación ya integrada, convierte los tickets existentes de `critical` a
+`high` e instala la restricción de tres valores. Se conserva la migración
+inicial como antecedente. El downgrade restaura el catálogo anterior sin
+reconstruir etiquetas convertidas. La migración requiere aplicación explícita;
+no se ejecutó al preparar este cambio.
 
 ### Confianza única frente a confianza por objetivo
 
@@ -221,56 +228,22 @@ Todas las siguientes se clasifican como **`PROPOSAL_PENDING_TEAM_DECISION`**:
 
 Estas propuestas no se incorporan a ejemplos definitivos de API, no crean DTO ni estados aprobados y no modifican el contrato frontend–backend.
 
-## Reglas de negocio: comportamiento observado y política propuesta
+## Retirada de la regla de urgencia
 
-**IMPLEMENTATION_OBSERVED:** la regla urgent_priority busca expresiones como urgente, emergencia, crítico y caída total. Cuando encuentra un disparador, fuerza la etiqueta critical; no representa una nueva decisión aprobada para toda la arquitectura de SynapDesk.
+La prioridad procede del modelo. Se eliminaron las funciones que imponían
+`critical`; el detector léxico solo permanece para la auditoría del dataset.
+`--enable-business-rules` y la activación programática producen error.
+`--disable-business-rules` sigue disponible por compatibilidad.
 
-Comportamiento contrastado en el commit de referencia:
+La inferencia rechaza artefactos con prioridades fuera de `low`, `medium`,
+`high`. Los artefactos antiguos que habilitan reglas también se rechazan por
+defecto; pueden usarse con desactivación explícita únicamente si su catálogo
+es compatible. `businessRulesEnabled` siempre es `false`. Se conservan las diez
+claves internas por objetivo: `decision` y `decision_source` valen `model`,
+`rule` y `trigger` son `null`, y las probabilidades siguen siendo del modelo.
 
-- El entrenamiento deja business_rules_enabled desactivado por defecto; --enable-business-rules lo activa explícitamente.
-- En inferencia, --enable-business-rules fuerza su activación y --disable-business-rules fuerza su desactivación. Sin esas opciones, predict(..., business_rules=None) consulta config.business_rules_enabled del artefacto, con False como alternativa si falta el dato. Por ello no se debe garantizar la desactivación para un artefacto que ya fue entrenado con reglas habilitadas.
-- Se puede pasar business_rules=False explícitamente para asegurar la desactivación.
-- Con reglas habilitadas para prioridad se conserva siempre la etiqueta original en model_label y, si existe confianza original, en model_confidence.
-- Si no hay disparador, conserva label y confidence y añade decision y decision_source con valor model, más confidence_source: model.
-- Si hay disparador, fija label: critical, confidence: null y confidence_source: not_applicable; mantiene model_label, model_confidence y top3 sin alterar el ranking estadístico.
-- decision es business_rule si la etiqueta original era distinta de critical, o model_and_business_rule si ya era critical. En ambos casos decision_source es business_rule y se incluyen rule y trigger.
-
-Fragmento ilustrativo de prioridad cuando una regla cambia medium por critical; no es una ejecución verificada ni la respuesta completa de los tres objetivos. Los nombres son los internos reales del clasificador:
-
-~~~json
-{
-  "prioridad_estimada": {
-    "label": "critical",
-    "confidence": null,
-    "top3": [
-      { "label": "medium", "confidence": 0.65 },
-      { "label": "high", "confidence": 0.20 },
-      { "label": "critical", "confidence": 0.10 }
-    ],
-    "model_label": "medium",
-    "model_confidence": 0.65,
-    "confidence_source": "not_applicable",
-    "decision": "business_rule",
-    "decision_source": "business_rule",
-    "rule": "urgent_priority",
-    "trigger": "urgente"
-  }
-}
-~~~
-
-**PENDING_DECISION — política propuesta:** la regla no se adopta como política funcional aprobada. Para la primera integración se propone invocar explícitamente business_rules=False y utilizar el resultado estadístico sin reglas. La desactivación observada por defecto es compatible con esa propuesta, pero no demuestra aprobación del equipo.
-
-Antes de habilitar reglas se propone:
-
-1. Acordar los criterios funcionales de urgencia y prioridad critical, sin transformar todo high en critical.
-2. Probar negaciones y falsos positivos; una coincidencia textual no demuestra por sí sola urgencia.
-3. Mantener la conservación de etiqueta, confianza y ranking originales ya observada.
-4. Separar la sugerencia de una regla de la predicción estadística.
-5. Versionar y registrar la regla, su activación y su motivo, sin divulgar texto sensible.
-6. Mantener confidence: null en decisiones por regla; nunca interpretarlo como probabilidad de cero o como certeza de 1.0.
-7. Mantener métricas independientes para modelo y reglas.
-
-El rechazo de configuraciones con reglas activas antes del acuerdo del equipo sigue siendo una propuesta para el adaptador, no comportamiento implementado del clasificador ni decisión aprobada en esta revisión.
+Las referencias a reglas en revisiones y métricas históricas no describen la
+implementación vigente. No se aprueban nuevas reglas ni campos públicos.
 
 ## Artefacto, dependencias y entrega reproducible
 
@@ -283,7 +256,7 @@ El PR genera localmente:
 | `ml/artifacts/ticket_classifier_es/sample_prediction.json` | Ejemplo del entrenamiento, no equivalente exacto al formato de inferencia |
 | `ml/artifacts/ticket_classifier_es/prepared_tickets.csv` | Dataset preparado; no necesario para servir inferencia |
 
-El artefacto actual contiene `model_name`, `model_version`, `targets`, `models` y `config`. Las clases reales deberán verificarse en cada pipeline mediante el catálogo del clasificador, no solo mediante ejemplos del README.
+El artefacto contiene `model_name`, `model_version`, `targets`, `models`, `config`, `runtime` y `dataset`. La procedencia de un derivado incluye su propio hash, el del original y las correcciones ya aplicadas. Las clases reales deberán verificarse en cada pipeline, no solo mediante ejemplos del README. La validación de anotaciones no certifica calidad, licencia, calibración ni aprobación del modelo.
 
 América deberá entregar, además del código:
 
@@ -297,7 +270,7 @@ América deberá entregar, además del código:
 - muestra sintética o mecanismo autorizado para verificar el pipeline sin publicar datos sensibles;
 - limitaciones conocidas y pruebas automatizadas.
 
-El PR recomienda Python 3.12. `requirements.txt` declara `pandas>=2.2`, `scikit-learn>=1.5` y `joblib>=1.4`; estos mínimos no fijan un entorno reproducible. Antes de desplegar deberá registrarse el entorno exacto del artefacto y comprobar su compatibilidad al cargarlo.
+ML usa Python 3.12 como referencia. `requirements.txt` fija versiones exactas de pandas, scikit-learn, Joblib, NumPy, SciPy y threadpoolctl; artefactos y métricas registran el entorno efectivo. No es un bloqueo universal de dependencias transitivas ni una verificación automática de compatibilidad al cargar Joblib. Esa comprobación sigue siendo responsabilidad de la integración.
 
 El dataset completo y los artefactos generados están excluidos de Git; la muestra sintética indicada en las referencias sí está versionada. No se usarán `git add -f` ni notebooks como sustituto del mecanismo de distribución. Solo se cargarán artefactos de procedencia autorizada; no se aceptarán archivos `.joblib` cargados por usuarios finales.
 
@@ -322,18 +295,17 @@ Estas métricas no demuestran que exista una clasificación temática de categor
 
 **`RESOLVED_IN_OBSERVED_IMPLEMENTATION` para el caso cubierto:** la separación prioriza grupos por texto preparado mediante `GroupShuffleSplit`; la prueba versionada incluye un texto repetido con etiquetas distintas y comprueba que no aparezca en ambos subconjuntos. Esto corrige el camino principal que antes podía repartir textos equivalentes entre entrenamiento y evaluación. La evidencia de esta revisión es estática: código y prueba existentes, sin ejecución independiente.
 
-El código conserva una ruta alternativa con `train_test_split` si no puede usar la agrupación. No se certifica ausencia universal de fuga para esa ruta, para otros datasets ni para métricas históricas. Sigue pendiente comprobar las particiones efectivas y las etiquetas contradictorias de cada ejecución. El filtrado de textos vacíos y esta corrección no resuelven el preprocesamiento desigual entre entrenamiento e inferencia.
+La implementación vigente eliminó la alternativa `train_test_split` y comparte preprocesamiento. Los conteos y métricas actuales se documentan en `ml/README.md`; la tabla anterior se conserva únicamente como antecedente histórico del primer experimento. No debe utilizarse para evaluar las variantes actuales ni sustituir los reportes ligados al dataset y configuración efectivos.
 
 ### Problemas técnicos que permanecen pendientes
 
 | Tema | Evidencia y límite actual |
 | --- | --- |
-| Preprocesamiento | Entrenamiento usa `normalize_text`; inferencia construye el texto aplicando solo `strip()`. No está compartido. |
-| Ranking | La muestra de entrenamiento usa `top_3`; la inferencia usa `top3`. La regla preserva el ranking recibido, no unifica sus nombres. |
+| Preprocesamiento y ranking | Compartidos y uniformes en ML; pendientes de verificar en el adaptador FastAPI cuando exista. |
 | Carga del artefacto | `predict` ejecuta `joblib.load` en cada llamada. La carga única por proceso sigue propuesta. |
-| Dependencias | Se declaran versiones mínimas con `>=`; el entorno exacto del artefacto no queda fijado por esas líneas. |
-| Métricas | No se reprodujeron entrenamientos, inferencias ni resultados en esta tarea; los reportes no certifican el commit observado. |
-| Separación | La ruta agrupada y su prueba están presentes; falta verificar las particiones reales y el comportamiento de la alternativa sin grupos. |
+| Dependencias | Seis versiones fijadas y entorno registrado; falta la verificación operacional de compatibilidad del artefacto. |
+| Métricas | El experimento actual y sus límites figuran en ML; la validación independiente y los umbrales de aceptación siguen pendientes. |
+| Separación | Por grupos sin fallback por filas; revisar conteos, catálogos y ausencia de textos compartidos en cada entrega. |
 
 ## Persistencia y validación humana
 
@@ -399,7 +371,7 @@ No se aplicarán reintentos indiscriminados. Tiempos máximos, ejecución y canc
 
 - Validación de columnas requeridas y textos vacíos en el dataset: existen código y prueba versionados del filtrado, sin ejecución independiente en esta revisión.
 - Preprocesamiento equivalente entre entrenamiento e inferencia.
-- Mismo texto normalizado no compartido entre entrenamiento y evaluación: existe prueba de la ruta agrupada; verificar también particiones reales y ruta alternativa.
+- Mismo texto preparado no compartido entre entrenamiento y evaluación: existe prueba agrupada; verificar las particiones de cada ejecución sin introducir fallback por filas.
 - Carga del artefacto autorizado y rechazo de versiones incompatibles.
 - Inferencia válida con tres objetivos y catálogos verificables.
 - Reglas explícitamente deshabilitadas en el adaptador inicial.
@@ -419,16 +391,16 @@ La comprobación con `py_compile` valida sintaxis, no reemplaza estas pruebas ni
 | América / ML | Dataset, licencia, preprocesamiento, pipelines, artefacto, catálogos, métricas, dependencias, pruebas y ejemplos reproducibles |
 | Felipe / backend | Adaptador, validación, asociación con tickets, configuración, errores, persistencia, trazabilidad y pruebas de integración |
 | Valentina / frontend | Presentación de predicciones y sus limitaciones; cambios coordinados de tipos y estados de carga/error |
-| Equipo | Semántica tipo/categoría, mapeo cola/área, prioridad crítica, reglas de negocio, confianza pública y aprobación del contrato |
+| Equipo | Semántica tipo/categoría, mapeo cola/área, criterios de prioridad, futuras reglas de negocio, confianza pública y aprobación del contrato |
 
 ## Decisiones pendientes y bloqueos
 
 1. Resolver si tipo equivale a categoría o requiere ampliar el dominio.
 2. Aprobar el catálogo y mapeo de colas a áreas.
-3. Mantener cobertura explícita de `critical` y definir criterios funcionales de prioridad.
-4. Aprobar o descartar `urgent_priority` y validar su representación diferenciada de confianza antes de activarla; el código observado ya usa `null` para la decisión por regla.
+3. Verificar el catálogo vigente `low`, `medium`, `high` y la aplicación explícita de su migración.
+4. Verificar la inferencia sin la regla `urgent_priority`, retirada en esta rama.
 5. Acordar confianza por objetivo y su representación en dominio, base y frontend.
-6. Compartir preprocesamiento y unificar `top3`.
+6. Verificar en el futuro adaptador el preprocesamiento compartido y `top3`, ya implementados en ML.
 7. Completar procedencia/licencia, artefacto y entorno exacto; la muestra sintética ya está versionada y permite verificar el pipeline, pero no reproduce las métricas del dataset completo.
 8. Corregir conteos documentales y confirmar particiones efectivas y métricas actuales; el filtrado y la ruta agrupada están corregidos en la implementación observada, sin certificación de todos los caminos.
 9. Definir ejecución, límites, timeout, recuperación e idempotencia.

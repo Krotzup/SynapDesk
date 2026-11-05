@@ -10,7 +10,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "ml"))
 
-from dataset_io import CORRECTION_FIELDS, apply_priority_corrections, file_sha256, read_dataset
+from dataset_io import CORRECTION_FIELDS, apply_priority_corrections, correction_validation, file_sha256, read_dataset
 from train_ticket_classifier import load_and_prepare_dataset, safe_train_test_split
 
 
@@ -91,3 +91,25 @@ class DatasetIOTest(unittest.TestCase):
             load_and_prepare_dataset(self.source, "es", 1, self.corrections)
         self.source.write_text('subject,body\n"Línea uno\nLínea dos",Texto\n', encoding="utf-8")
         self.assertEqual(len(read_dataset(self.source)), 1)
+
+    def test_human_validation_is_pending_unless_explicitly_declared(self):
+        self.assertEqual(correction_validation({}, 63), {"status": "pending"})
+        validation = {"status": "validated", "reviewer": "Responsable ficticia de prueba",
+                      "validated_at": "2026-11-05T12:00:00Z", "reviewed_rows": 63}
+        self.assertEqual(correction_validation({"validation": validation}, 63), validation)
+        for changed in ({"reviewer": ""}, {"validated_at": "2026-11-05T12:00:00"},
+                        {"validated_at": "2026-11-05T12:00:00-03:00"},
+                        {"reviewed_rows": 38}, {"reviewed_rows": True}, {"status": "approved"}):
+            with self.subTest(changed=changed), self.assertRaises(ValueError):
+                correction_validation({"validation": dict(validation, **changed)}, 63)
+        with self.assertRaises(ValueError):
+            correction_validation({"validation": {"status": "pending", "reviewer": "Alguien"}}, 63)
+
+    def test_validation_provenance_is_preserved_with_correction_counts(self):
+        self.write_corrections([[3, "low", "high", "Impacto"]])
+        manifest = json.loads(self.manifest.read_text(encoding="utf-8"))
+        manifest["validation"] = {"status": "validated", "reviewer": "Responsable ficticia",
+                                  "validated_at": "2026-11-05T12:00:00Z", "reviewed_rows": 1}
+        self.manifest.write_text(json.dumps(manifest), encoding="utf-8")
+        result = apply_priority_corrections(read_dataset(self.source), self.corrections, self.manifest)
+        self.assertEqual(result.attrs["priority_corrections"]["validation"], manifest["validation"])

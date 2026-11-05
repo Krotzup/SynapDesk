@@ -81,14 +81,16 @@ Estados iniciales:
 | `resolved`    | Incidencia solucionada                |
 | `closed`      | Ticket cerrado administrativamente    |
 
-Prioridades iniciales:
+Prioridades vigentes:
 
 | Valor técnico | Significado               |
 | ------------- | ------------------------- |
 | `low`         | Impacto reducido          |
 | `medium`      | Impacto moderado          |
 | `high`        | Impacto importante        |
-| `critical`    | Impacto crítico o urgente |
+
+`critical` se retiró del catálogo; los registros existentes se convierten a
+`high` mediante la migración explícita `0003_retirar_prioridad_critical`.
 
 Los criterios definitivos de prioridad deberán acordarse con el equipo y documentarse antes de implementar la clasificación.
 

@@ -18,7 +18,7 @@ python -m alembic heads
 python -m alembic history
 ```
 
-Los comandos `heads` y `history` no requieren PostgreSQL. `heads` debe mostrar `0002_autenticacion_persistencia (head)`.
+Los comandos `heads` y `history` no requieren PostgreSQL. `heads` debe mostrar `0003_retirar_prioridad_critical (head)`.
 
 Para verificar primero contra `db_test`:
 
@@ -67,3 +67,9 @@ La función `downgrade()` de `0001_usuarios_tickets` elimina primero `tickets` y
 
 - [Tutorial oficial](https://alembic.sqlalchemy.org/en/latest/tutorial.html)
 - [Generación automática](https://alembic.sqlalchemy.org/en/latest/autogenerate.html)
+
+La revisión `0003_retirar_prioridad_critical` convierte las prioridades
+`critical` existentes a `high` y restringe el catálogo a `low`, `medium`, `high`.
+No elimina tickets. Su downgrade restaura el catálogo anterior, pero no puede
+reconstruir qué registros eran `critical`. Requiere aplicar Alembic
+explícitamente; no se ejecuta al arrancar FastAPI.

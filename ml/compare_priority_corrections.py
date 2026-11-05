@@ -22,17 +22,19 @@ def validate_population(original: pd.DataFrame, corrected: pd.DataFrame) -> str:
     return hashlib.sha256(records.encode("utf-8")).hexdigest()
 
 
-def evaluate_priority(expected: list[str], predicted: list[str]) -> dict:
+def evaluate_priority(
+    expected: list[str], predicted: list[str], *, labels: list[str] | None = None,
+) -> dict:
     if not expected or len(expected) != len(predicted):
         raise ValueError("La evaluación requiere predicciones para todos los registros de prueba.")
-    labels = sorted(set(expected) | set(predicted))
+    labels = labels if labels is not None else sorted(set(expected) | set(predicted))
     tp = sum(truth == "high" and guess == "high" for truth, guess in zip(expected, predicted, strict=True))
     fn = sum(truth == "high" and guess != "high" for truth, guess in zip(expected, predicted, strict=True))
     fp = sum(truth != "high" and guess == "high" for truth, guess in zip(expected, predicted, strict=True))
     return {
-        "macro_f1": float(f1_score(expected, predicted, average="macro")),
-        "weighted_f1": float(f1_score(expected, predicted, average="weighted")),
-        "per_class": classification_report(expected, predicted, output_dict=True, zero_division=0),
+        "macro_f1": float(f1_score(expected, predicted, labels=labels, average="macro", zero_division=0)),
+        "weighted_f1": float(f1_score(expected, predicted, labels=labels, average="weighted", zero_division=0)),
+        "per_class": classification_report(expected, predicted, labels=labels, output_dict=True, zero_division=0),
         "confusion_matrix": {"labels": labels, "rows_actual_columns_predicted":
                              confusion_matrix(expected, predicted, labels=labels).tolist()},
         "high_detection": {
