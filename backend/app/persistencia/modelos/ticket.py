@@ -29,7 +29,7 @@ class Ticket(FechasRegistro, Base):
             name="estado_valido",
         ),
         CheckConstraint(
-            "prioridad IN ('low', 'medium', 'high', 'critical')",
+            "prioridad IN ('low', 'medium', 'high')",
             name="prioridad_valida",
         ),
         CheckConstraint("btrim(titulo) <> ''", name="titulo_no_vacio"),

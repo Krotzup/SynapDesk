@@ -48,3 +48,14 @@ jobs:
           --min-target-count 1
           --max-features 2000
           --output-dir ml/artifacts/ticket_classifier_sample
+
+      - name: Train optional priority character features with synthetic dataset
+        run: >
+          python ml/train_ticket_classifier.py
+          --input-csv ml/samples/tickets_esp_sintetico.csv
+          --language es
+          --min-target-count 1
+          --max-features 2000
+          --character-ngram-targets priority
+          --disable-business-rules
+          --output-dir ml/artifacts/ticket_classifier_priority_chars_sample
