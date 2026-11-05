@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "incremental": false,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "rootDir": "src",
+    "outDir": "artifacts/search-tests",
+    "plugins": []
+  },
+  "include": ["src/lib/search-contract.ts", "src/lib/server/search-proxy.ts"],
+  "exclude": ["node_modules", "artifacts"]
+}

@@ -1,5 +1,23 @@
 # Estructura del frontend
 
+## Integración de recuperación semántica
+
+`/busqueda` conserva consulta y límite en la URL, pero realiza la búsqueda desde
+`SearchResults` en el navegador, después de verificar sesión. Así puede obtener
+la prueba CSRF y transportar la cookie sin POST anónimo desde un Server Component.
+El servicio llama al Route Handler dedicado `/api/v1/search`, con destino backend
+fijo de servidor; no es un proxy abierto ni implementa las otras rutas de API.
+
+`lib/search-contract.ts` valida estados y fragmentos, y `lib/server/search-proxy.ts`
+limita cuerpos, destinos, cabeceras y errores. La interfaz distingue base vacía
+de información insuficiente, presenta fuente/idioma cuando están disponibles y
+descarta resultados en tránsito al cambiar la sesión. El contrato es
+[recuperación V1](../contratos/recuperacion-semantica-v1.md).
+
+La autenticación HTTP completa y su despliegue siguen como dependencia. Las
+pruebas E2E no sustituyen esa implementación con cookies o identidades ficticias
+en código de producto: su bootstrap simulado solo existe en el entorno de test.
+
 Aplicación web de SynapDesk basada en Next.js 16 con App Router, React 19, TypeScript y Tailwind CSS.
 
 ## Estructura de carpetas

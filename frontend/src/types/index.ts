@@ -117,6 +117,8 @@ export interface SearchResult {
   title: string;
   excerpt: string;
   score: number;
+  sourceUrl?: string;
+  language?: string;
 }
 
 // ─── Paginación ───────────────────────────────────────────────────────────────

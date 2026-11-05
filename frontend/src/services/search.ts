@@ -1,21 +1,21 @@
 import { api } from "@/lib/api";
 import { USE_MOCKS } from "@/lib/config";
 import { searchMock } from "@/mocks/search";
-import { SearchResult } from "@/types";
+import { parseSearchResponse } from "@/lib/search-contract";
+import type { SearchResponse } from "@/lib/search-contract";
+export type { SearchResponse } from "@/lib/search-contract";
 
 interface SearchRequest {
   query: string;
   limit?: number;
 }
 
-export interface SearchResponse {
-  items: SearchResult[];
-}
-
 const searchApi = {
   // Fragmentos de la base de conocimientos más cercanos a la consulta
   semantic: (query: string, limit = 5): Promise<SearchResponse> =>
-    api.post<SearchResponse, SearchRequest>("/search", { query, limit }),
+    api
+      .postSameOrigin<SearchResponse, SearchRequest>("/search", { query, limit })
+      .then(parseSearchResponse),
 };
 
 export type SearchService = typeof searchApi;

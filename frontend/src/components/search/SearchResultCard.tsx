@@ -1,10 +1,13 @@
 import { formatExcerpt, formatScore, shortId } from "@/lib/format";
 import { SearchResult } from "@/types";
+import { safeSourceUrl } from "@/lib/search-contract";
 
 const SCORE_HINT =
   "Similitud semántica entre la consulta y el fragmento. Va de −1 a 1; mientras más alta, más cercano el significado. No es un porcentaje de confianza.";
 
 export function SearchResultCard({ result }: { result: SearchResult }) {
+  const source = safeSourceUrl(result.sourceUrl);
+  const language = result.language?.split("-")[0];
   return (
     <article className="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-sm space-y-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -24,6 +27,24 @@ export function SearchResultCard({ result }: { result: SearchResult }) {
       <p className="text-sm text-[#475569] leading-relaxed italic border-l-2 border-[#C7D2FE] pl-3">
         &ldquo;{formatExcerpt(result.excerpt)}&rdquo;
       </p>
+      <div className="flex flex-wrap gap-3 text-xs text-[#64748B]">
+        <span>Extracto del documento</span>
+        {result.language && (
+          <span>
+            Idioma: {language === "es" ? "Español" : language === "en" ? "Inglés" : result.language}
+          </span>
+        )}
+        {source && (
+          <a
+            href={source}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-[#2563EB] hover:underline"
+          >
+            Ver fuente original ↗
+          </a>
+        )}
+      </div>
     </article>
   );
 }

@@ -13,6 +13,8 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    // Salida compilada de las pruebas; sus fuentes sí se validan.
+    "artifacts/**",
     "next-env.d.ts",
   ]),
 ]);
