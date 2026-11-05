@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { ReactNode, Suspense } from "react";
-import { RetryButton } from "@/components/search/RetryButton";
+import { RetryButton } from "@/components/ui/RetryButton";
 import { SearchForm } from "@/components/search/SearchForm";
 import { SearchResultCard } from "@/components/search/SearchResultCard";
 import { USE_MOCKS } from "@/lib/config";
