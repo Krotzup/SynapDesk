@@ -364,3 +364,204 @@ de aprobar sus criterios funcionales.
 El backend FastAPI y el servicio de inferencia se integraran en una etapa
 posterior. Actualmente `compose.yaml` levanta PostgreSQL y pgvector, pero no
 ejecuta el entrenamiento ni carga el modelo automaticamente.
+
+## Prototipo de embeddings y recuperación semántica
+
+`semantic_retrieval/` implementa el flujo local de textos UTF-8 controlados →
+fragmentos → embeddings → PostgreSQL + pgvector → búsqueda. Es un prototipo
+experimental; la integración HTTP, autenticación, extracción de PDF y RAG siguen
+pendientes. Su tabla experimental no fija el esquema documental del producto.
+
+El candidato es `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`,
+revisión `e8f8c211226b894fcb81acc59f3b34ba3efd5f42`, con 384 dimensiones.
+Indexación y consulta usan exactamente el mismo `modelId`. Se fragmenta en
+ventanas de 96 tokens con 16 de solapamiento. Antes de generar vectores se
+comprueba el límite real del modelo: 128 tokens, incluidos los especiales.
+Las consultas que lo superen se rechazan explícitamente, sin truncarlas.
+También se conserva el límite de 1000 caracteres por consulta y 1 MB por archivo.
+
+`score = 1 - distancia_coseno` es similitud en [-1, 1], no probabilidad ni
+confianza calibrada. La búsqueda exacta filtra por modelo y devuelve
+`documentId`, `documentChunkId`, `title`, `excerpt` y `score`. Sin documentos
+para ese modelo devuelve `{"items": []}`. Sin umbral de relevancia, obtener
+resultados no garantiza que respondan a la consulta.
+
+### Entorno y comandos
+
+Usar Python 3.12 en un entorno virtual y las versiones fijadas, junto con las
+restricciones del clasificador cuando se prueben juntos. La revisión del modelo se fija
+independientemente de las versiones de las bibliotecas. Las dependencias
+transitivas pueden variar; registrar el entorno de la ejecución.
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r ml/requirements-semantic.txt
+.\.venv\Scripts\python.exe -m pip check
+```
+
+Al validar junto al clasificador en una copia de `main`, instalar en una sola
+operación `-r ml/requirements.txt -r ml/requirements-semantic.txt` para respetar
+sus versiones fijadas. Esa combinación se verifica por separado; no requiere
+fusionar las ramas para realizar una simulación local.
+
+En Windows, Docker Desktop con backend WSL 2 permite usar la imagen del proyecto.
+Si falta WSL, seguir la [instalación oficial de Microsoft](https://learn.microsoft.com/windows/wsl/install)
+y después la [instalación de Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/).
+Completar cualquier reinicio requerido antes de ejecutar los contenedores.
+
+Usar exclusivamente el servicio `db_test` para la verificación y una base propia
+del prototipo: `synapdesk_semantic_test`. La base `synapdesk_test` pertenece a las
+pruebas del backend: no ejecutar allí `init-db` ni indexar documentos, porque su
+tabla experimental interfiere con la comprobación de migraciones de Alembic.
+Un esquema separado no sustituye esta separación por base.
+
+Configurar localmente las variables de pruebas de `.env.example`, sin subir
+credenciales, e iniciar:
+
+```powershell
+docker compose --profile testing up -d db_test
+docker compose --profile testing ps db_test
+```
+
+Crear la base una sola vez en esa instancia de pruebas, sin borrar bases previas:
+
+```powershell
+docker compose --profile testing exec db_test psql -U synapdesk_test -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE synapdesk_semantic_test;"
+```
+
+El usuario del ejemplo corresponde a `POSTGRES_TEST_USER=synapdesk_test`;
+ajustar `-U` si se configuró otro. Si la base ya existe, comprobar su identidad y
+reutilizarla sin eliminarla. Si se recrea el contenedor temporal, crear nuevamente
+la base. Conservar `POSTGRES_TEST_DB=synapdesk_test` para el backend; solo las
+conexiones semánticas apuntan a `synapdesk_semantic_test`.
+
+```powershell
+$env:SYNAPDESK_SEMANTIC_DATABASE_URL = "postgresql://synapdesk_test:<clave-de-pruebas>@localhost:5433/synapdesk_semantic_test"
+.\.venv\Scripts\python.exe -X utf8 -m ml.semantic_retrieval.cli init-db
+.\.venv\Scripts\python.exe -X utf8 -m ml.semantic_retrieval.cli index --document-id 11111111-1111-4111-8111-111111111111 --title "Conectividad" --file ml/examples/conectividad.txt
+.\.venv\Scripts\python.exe -X utf8 -m ml.semantic_retrieval.cli index --document-id 22222222-2222-4222-8222-222222222222 --title "Impresora" --file ml/examples/impresora.txt
+.\.venv\Scripts\python.exe -X utf8 -m ml.semantic_retrieval.cli search --query "No puedo acceder a la red de la oficina" --limit 5
+.\.venv\Scripts\python.exe -X utf8 -m ml.semantic_retrieval.cli search --query "La impresora no imprime" --limit 5
+```
+
+Sustituir la contraseña de ejemplo por la de la base de pruebas y codificarla
+para URL si contiene caracteres especiales. El CLI no carga `.env`
+automáticamente. No pegar la conexión real ni sus credenciales en la evidencia.
+La primera carga puede descargar el modelo; las siguientes reutilizan la caché.
+`init-db` es repetible. Reindexar reemplaza atómicamente los fragmentos de ese
+documento y modelo, con UUID estables para cada posición.
+
+Archivos inexistentes, ilegibles, vacíos, UTF-8 inválido, tamaño excesivo y
+consultas inválidas producen un error de argumentos controlado (salida 2).
+Si no se puede acceder a PostgreSQL, se informa un error controlado sin traza,
+URL ni detalles de credenciales; se configura un timeout de conexión de cinco segundos.
+Los errores de programación o del esquema conservan su diagnóstico original.
+Para comprobar el caso solicitado, repetir `index` con un archivo inexistente:
+el error debe describir la lectura fallida, sin traza y antes de cargar el modelo.
+
+### Criterios verificables y pruebas
+
+Los siguientes criterios técnicos concretan la verificación del prototipo;
+la aceptación del PR corresponde al equipo:
+
+1. Inicializar PostgreSQL con pgvector e indexar ambos ejemplos con el modelo
+   real fijado. Registrar versiones y salidas efectivamente obtenidas.
+2. Recuperar conectividad primero para la consulta de red e impresora primero
+   para la de impresión, con los cinco campos y orden descendente por similitud.
+   Dos ejemplos no permiten estimar calidad general ni fijar umbrales.
+3. Verificar vectores finitos, no nulos, normalizados y de 384 dimensiones;
+   textos preparados dentro del límite del modelo, incluidos tokens especiales.
+4. Reindexar sin duplicados y con identificadores estables. Comprobar rollback
+   de una inserción fallida y aislamiento entre modelos.
+5. Rechazar entradas inválidas, devolver lista vacía sin documentos del modelo
+   y superar las pruebas automatizadas junto con las del clasificador.
+
+Las pruebas rápidas no necesitan PostgreSQL ni descargar un modelo:
+
+```powershell
+.\.venv\Scripts\python.exe -X utf8 -m unittest discover -s tests -t . -v
+```
+
+Para activar las pruebas del tokenizador con subpalabras y los vectores reales,
+primero disponer del modelo/revisión en caché y ejecutar:
+
+```powershell
+$env:SYNAPDESK_RUN_SEMANTIC_MODEL_TESTS = "1"
+.\.venv\Scripts\python.exe -X utf8 -m unittest tests.ml.test_semantic_chunking tests.ml.test_semantic_integration.RealSemanticModelTests -v
+```
+
+La prueba de base de datos real requiere su variable específica, apuntando también
+a `synapdesk_semantic_test`, para evitar usar por accidente la conexión del
+producto o del backend. Crea un esquema de nombre único y
+revierte su transacción completa al salir; no reemplaza documentos del producto.
+Verifica el flujo real, reindexación, rollback y aislamiento, e imprime un JSON
+`semantic_evidence` con resultados y versiones, sin la conexión ni contraseñas:
+
+```powershell
+$env:SYNAPDESK_SEMANTIC_TEST_DATABASE_URL = $env:SYNAPDESK_SEMANTIC_DATABASE_URL
+.\.venv\Scripts\python.exe -X utf8 -m unittest tests.ml.test_semantic_integration.RealSemanticDatabaseTests -v
+```
+
+Sin sus variables de activación, las pruebas reales se informan como omitidas;
+no constituyen evidencia de integración ejecutada. Guardar la salida real de
+los comandos del CLI y de esta prueba en la descripción o comentarios del PR.
+
+### Información insuficiente y calibración experimental
+
+La búsqueda admite un perfil opcional de relevancia. Se prioriza conservar
+resultados potencialmente útiles: la calibración mantiene todas las consultas
+etiquetadas con cobertura que obtuvieron resultados y, bajo esa condición,
+rechaza tantas consultas sin cobertura como permiten sus scores. Si hay un
+intervalo entre muestras, se usa su punto medio. No se impone un número universal.
+Si hay solapamiento se informa: el perfil puede seguir aceptando consultas sin
+cobertura. El score no se convierte en una probabilidad de respuesta correcta.
+
+Preparar un JSON local con consultas representativas, diferentes entre sí y
+etiquetadas **antes de observar sus scores**. `answerable` significa que la
+colección contiene información para la consulta, no que el primer resultado sea
+correcto. Debe haber consultas con y sin cobertura. Ejemplo de formato, sin
+valor como evaluación de calidad:
+
+```json
+{"queries": [
+  {"queryId": "covered-1", "query": "La impresora no imprime", "answerable": true},
+  {"queryId": "uncovered-1", "query": "¿Cómo preparo pan de masa madre?", "answerable": false}
+]}
+```
+
+Con la conexión semántica propia configurada y documentos ya indexados, crear
+la carpeta de salida y ejecutar (ajustar las rutas a los archivos locales):
+
+```powershell
+New-Item -ItemType Directory -Force ml/artifacts | Out-Null
+.\.venv\Scripts\python.exe -X utf8 -m ml.semantic_retrieval.cli calibrate-relevance --cases ml/data/consultas_relevancia.json --output ml/artifacts/relevancia.json
+.\.venv\Scripts\python.exe -X utf8 -m ml.semantic_retrieval.cli search --query "La impresora no imprime" --relevance-profile ml/artifacts/relevancia.json
+```
+
+El perfil registra modelo/revisión, huella de los fragmentos y vectores, huella
+del archivo de consultas, fecha UTC, umbral y decisiones de calibración. No se
+sobrescriben perfiles existentes. La lectura del corpus y su búsqueda se hacen
+en una misma instantánea de solo lectura. Si cambia el modelo o el corpus, el
+perfil se rechaza explícitamente y debe recalibrarse; no hay fallback silencioso.
+
+Con perfil, solo se devuelven fragmentos con `score >= minScore`. Si ninguno
+alcanza el corte, stdout conserva `{"items": []}` y stderr muestra
+«Información insuficiente». Es una búsqueda válida (salida 0), no una avería.
+Sin perfil se conserva la búsqueda original sin umbral, útil para evaluar.
+No se cambia el frontend ni se implementa un endpoint HTTP.
+
+La calibración no es una evaluación independiente. Reservar consultas nuevas
+para medir cobertura conservada, rechazos correctos y falsos positivos; revisar
+también si los fragmentos aceptados responden realmente. Un perfil experimental
+no demuestra calidad de producción ni garantiza respuestas suficientes.
+
+### Decisiones futuras
+
+Evaluar consultas anonimizadas con relevancia etiquetada mediante Recall@5,
+MRR@5, latencia, tamaño y costo antes de elegir el modelo definitivo, aprobar un
+perfil de relevancia para producción, un índice vectorial o la política de indexación.
+Un fragmento puede comenzar a mitad de frase por el solapamiento; acordar su
+presentación con frontend (por ejemplo, una elipsis) al conectar resultados
+reales. Estas propuestas no autorizan cambiar el frontend ni la API pública.
+
+Contrato experimental: [embeddings-recuperacion.md](../docs/contratos/embeddings-recuperacion.md).

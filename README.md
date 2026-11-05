@@ -176,12 +176,13 @@ El proyecto se encuentra actualmente en su etapa de preparación técnica y cons
 * proceso de revisión e integración de cambios;
 * entorno local reproducible mediante Docker Compose;
 * PostgreSQL 17 con pgvector 0.8.6;
+* prototipo aislado de embeddings y recuperación semántica sobre pgvector en `ml/` (sin integración HTTP todavía);
 * separación inicial entre los entornos de desarrollo y pruebas;
 * documentación de la estrategia futura de staging.
 
 ### Trabajo pendiente
 
-Las funcionalidades de gestión de usuarios, tickets, documentación, Machine Learning, recuperación semántica, RAG, LLM y validación humana se implementarán progresivamente durante las siguientes etapas.
+Las funcionalidades de gestión de usuarios, tickets, documentación, Machine Learning, integración de la recuperación semántica, RAG, LLM y validación humana se implementarán progresivamente durante las siguientes etapas.
 
 La estrategia de staging ha sido definida y aceptada por el equipo, pero el entorno todavía no se encuentra desplegado.
 
