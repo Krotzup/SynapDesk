@@ -7,6 +7,10 @@ aparte y el entrenamiento las aplica en memoria, antes de filtrar idioma,
 eliminar duplicados, limitar clases o separar entrenamiento y evaluación.
 La inferencia no carga este archivo ni activa reglas por su existencia.
 
+La [procedencia del dataset](DATASET_PROVENANCE.md) identifica el archivo exacto
+de Hugging Face del que se derivó el original local, su licencia CC BY-NC 4.0 y
+las transformaciones que todavía no pueden reproducirse por registro.
+
 ## Criterios `prioridad-impacto-v1`
 
 | Etiqueta | Evidencia necesaria |
@@ -134,11 +138,15 @@ Estos conteos describen las decisiones registradas; no convierten todos los
 candidatos léxicos de la auditoría en errores ni aprueban una taxonomía nueva.
 
 El par compartible es `tickets_esp_entrenamiento_v1.csv` y
-`tickets_esp_entrenamiento_v1.manifest.json`. Distribuirlo por un medio privado
-autorizado mientras se verifican licencia y datos sensibles. Mantenerlo en
-`ml/data/raw/`, excluido de Git; los colaboradores también pueden regenerarlo
-desde la misma fuente y las anotaciones versionadas. No hay descarga automática
-ni credenciales en el repositorio. El frontend no consume estos archivos.
+`tickets_esp_entrenamiento_v1.manifest.json`. La fuente externa está declarada
+bajo CC BY-NC 4.0; al distribuir el derivado se debe atribuirla, enlazar la
+licencia, indicar los cambios y limitar el uso a fines no comerciales. También
+deben revisarse los datos sensibles. Mantenerlo en `ml/data/raw/`, excluido de
+Git; los colaboradores pueden regenerarlo desde el original local y las
+anotaciones versionadas, pero todavía no desde la fuente externa sin reconstruir
+la selección y traducción descritas en [procedencia](DATASET_PROVENANCE.md). No
+hay descarga automática ni credenciales en el repositorio. El frontend no
+consume estos archivos.
 
 El lector detecta el manifiesto junto al CSV, verifica nombre, hash y conteos,
 y conserva la procedencia y validación en métricas y artefactos. Si se renombra

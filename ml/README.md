@@ -21,9 +21,11 @@ asistencia para el agente; la decision final permanece bajo supervision humana.
   o el dataset sintetico versionado en `ml/samples/tickets_esp_sintetico.csv`
   para verificar el pipeline.
 
-El dataset de tickets y los artefactos generados no se versionan en Git. Debe
-confirmarse la licencia, procedencia y ausencia de informacion sensible antes
-de compartir el CSV fuera del entorno local.
+El dataset de tickets y los artefactos generados no se versionan en Git. Su
+[fuente, cadena de transformación y licencia](DATASET_PROVENANCE.md) están
+documentadas por separado. La fuente externa usa CC BY-NC 4.0: cualquier
+distribución debe atribuirla, enlazar la licencia, indicar los cambios, limitarse
+a usos no comerciales y revisar antes la presencia de información sensible.
 
 El lector exige CSV con comas, comillas válidas y UTF-8 (admite BOM). Rechaza
 filas con campos desalineados sin omitirlas ni sustituir caracteres. Renombrar
@@ -83,6 +85,12 @@ El pipeline principal utiliza `ml/data/raw/tickets_esp.csv`. Ese archivo no se
 versiona porque puede contener datos externos o sensibles. Para verificar el
 pipeline sin exponer datos reales se incluye
 `ml/samples/tickets_esp_sintetico.csv`.
+
+El original local es una selección/adaptación del archivo externo
+[`aa_dataset-tickets-multi-lang-5-2-50-version.csv`](https://huggingface.co/datasets/Tobi-Bueck/customer-support-tickets/blob/main/aa_dataset-tickets-multi-lang-5-2-50-version.csv).
+La [procedencia detallada](DATASET_PROVENANCE.md) distingue su hash del archivo
+externo y de la V2 corregida, y registra las limitaciones de reproducción de la
+selección y traducción.
 
 - El CSV completo utilizado en la evaluacion local contiene 2.239 registros
   en espanol; 2.237 quedan despues del filtrado y la eliminacion de duplicados.
@@ -408,6 +416,7 @@ de aprobar sus criterios funcionales.
 
 ## Documentacion relacionada
 
+- [Procedencia, transformaciones y licencia del dataset](DATASET_PROVENANCE.md).
 - [Evaluación cruzada por grupos, candidatos, grilla y umbral experimental](CLASSIFIER_EVALUATION.md).
 - [CSV de entrenamiento reproducible y manifiesto de procedencia](CORRECCIONES_PRIORIDAD.md#csv-derivado-para-entrenamiento).
 

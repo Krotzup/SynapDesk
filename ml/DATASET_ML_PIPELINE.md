@@ -16,6 +16,12 @@ El CSV actual se guarda localmente en:
 ml/data/raw/tickets_esp.csv
 ```
 
+Este CSV es una selección/adaptación local del archivo de Hugging Face
+`aa_dataset-tickets-multi-lang-5-2-50-version.csv`. Consultar la
+[procedencia, hashes, transformaciones conocidas y licencia CC BY-NC 4.0](DATASET_PROVENANCE.md)
+antes de copiar o distribuir datos. El archivo externo, el original local y la
+V2 corregida tienen identidades diferentes.
+
 Para trabajar con la versión corregida y compartible se admite el par
 `tickets_esp_entrenamiento_v2.csv` / `tickets_esp_entrenamiento_v2.manifest.json`.
 Se genera con el comando versionado de

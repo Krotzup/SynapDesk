@@ -13,6 +13,12 @@ reexportado con columnas desalineadas no se arregla cambiando su nombre,
 ignorando errores de codificación o descartando filas. Conservarlo aparte para
 revisión; volver a la fuente antes de preparar otra exportación.
 
+El término «original» en esta guía se refiere al original local
+`tickets_esp.csv`, no al archivo externo completo. La
+[procedencia documentada](DATASET_PROVENANCE.md) enlaza el archivo exacto de
+Hugging Face y distingue los hashes de la fuente externa, la selección/adaptación
+local y el derivado V2.
+
 La presencia de «urgente» con prioridad `medium` o `low` es una señal para
 revisión, no una contradicción demostrada. Leer el contexto e impacto con
 `prioridad-impacto-v1`; una negación o urgencia expresada por el solicitante no
