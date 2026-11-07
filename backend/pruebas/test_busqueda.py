@@ -115,3 +115,22 @@ def test_relative_profile_path_is_resolved_from_repository_root():
     from app.configuracion import RAIZ_PROYECTO
     configuration = Configuracion(_env_file=None, search_relevance_profile="ml/artifacts/profile.json")
     assert configuration.search_relevance_profile == RAIZ_PROYECTO / "ml/artifacts/profile.json"
+
+
+@pytest.mark.parametrize(("profile", "cookie"), [
+    ("local", "synapdesk_session_dev"),
+    ("production", "__Host-synapdesk_session"),
+])
+def test_profile_cookie_is_used_and_conflicting_configuration_fails_closed(profile, cookie):
+    config = Configuracion(_env_file=None, app_env="testing", auth_cookie_profile=profile,
+                           auth_origenes_permitidos=["http://testserver"])
+    with TestClient(crear_aplicacion(config)) as client:
+        response = client.post("/api/v1/search", json={"query": "red"},
+                               headers={"Cookie": cookie + "=invalid"})
+        assert response.status_code == 403
+        assert response.json()["error"]["code"] == "ORIGIN_INVALID"
+    config = config.model_copy(update={"search_session_cookie_name": "different_session"})
+    with TestClient(crear_aplicacion(config)) as client:
+        response = client.post("/api/v1/search", json={"query": "red"},
+                               headers={"Cookie": cookie + "=invalid"})
+        assert response.status_code == 503

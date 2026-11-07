@@ -7,6 +7,7 @@ export async function POST(request: Request) {
     backendUrl: process.env.BACKEND_INTERNAL_URL,
     publicOrigin: process.env.SEARCH_PUBLIC_ORIGIN,
     sessionCookieName: process.env.SEARCH_SESSION_COOKIE_NAME,
+    cookieProfile: process.env.AUTH_COOKIE_PROFILE,
     allowHttpLocal: process.env.BACKEND_ALLOW_HTTP_LOCAL === "true",
   });
 }

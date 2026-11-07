@@ -63,7 +63,8 @@ Configurar exclusivamente en el servidor Next.js:
 | --- | --- |
 | `BACKEND_INTERNAL_URL` | URL raíz fija de FastAPI; nunca se acepta del cliente ni se expone mediante NEXT_PUBLIC. |
 | `SEARCH_PUBLIC_ORIGIN` | Origen público exacto, coincidente con el permitido por el backend. |
-| `SEARCH_SESSION_COOKIE_NAME` | Único nombre de cookie de sesión autorizado; debe coincidir con FastAPI. |
+| `AUTH_COOKIE_PROFILE` | Perfil explícito `local` o `production`. Usar el mismo valor en FastAPI y en el proxy general de #30 al integrarlos. |
+| `SEARCH_SESSION_COOKIE_NAME` | Alternativa de ensayo sin perfil. Si se configura junto al perfil, debe coincidir con él. |
 | `BACKEND_ALLOW_HTTP_LOCAL` | `true` solo permite HTTP explícito hacia loopback local; los demás destinos exigen HTTPS. |
 
 Ejemplo de transporte local: frontend `http://localhost:3000`, backend
@@ -77,18 +78,22 @@ cabeceras de IP aportadas por el cliente. Rechaza destinos/redirecciones
 arbitrarios y cookies ambiguas; usa no-store, plazo finito y errores saneados.
 No funciona como proxy genérico para otras rutas.
 
+Al combinar esta rama con el PR #30, el proxy general atiende `/auth/me`
+y `/auth/csrf`. La ruta específica de búsqueda aplica sus límites, valida el
+origen y reenvía solo la cookie de sesión. Ambos usan el mismo perfil de
+cookies, un plazo de 30 segundos y HTTP 503 `SERVICE_UNAVAILABLE` para fallos
+de transporte.
+
 La pantalla diferencia resultados, base vacía e información insuficiente;
 muestra extractos, idioma y enlace HTTPS de la fuente cuando existen metadatos.
 Conserva el máximo de 1000 caracteres y comunica 422
 `QUERY_TOKEN_LIMIT_EXCEEDED` si se superan los 128 tokens del modelo, sin
 truncamiento silencioso. Un cambio de sesión descarta resultados en tránsito.
 
-La búsqueda requiere sesión y CSRF válidos. Las rutas HTTP de login/logout,
-`/auth/me` y bootstrap CSRF no se implementan en esta tarea. Deben estar
-disponibles mediante su transporte aprobado antes de habilitar el flujo real
-para usuarios finales; no se añade un bypass ni se acepta la identidad del mock
-como sesión del backend. Los ensayos E2E lo declaran explícitamente cuando usan
-un doble del bootstrap junto a sesión/CSRF persistidos y búsqueda reales.
+La búsqueda requiere sesión y CSRF válidos. Para habilitarla a usuarios
+finales, el transporte de AUTH-07 debe ofrecer login, logout, `/auth/me` y el
+bootstrap de CSRF. Los ensayos E2E identifican cuándo simulan el bootstrap y
+cuándo usan sesión, CSRF y búsqueda reales.
 
 Ver [recuperación V1](../docs/contratos/recuperacion-semantica-v1.md). Para las
 pruebas de contrato y proxy, sin servidor externo ni nuevas librerías de test:

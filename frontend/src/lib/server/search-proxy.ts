@@ -4,11 +4,13 @@ export interface SearchProxyConfig {
   backendUrl?: string;
   publicOrigin?: string;
   sessionCookieName?: string;
+  cookieProfile?: string;
   allowHttpLocal?: boolean;
 }
 
 const noStore = { "Cache-Control": "no-store" };
 const messages: Record<string, string> = {
+  SERVICE_UNAVAILABLE: "El servicio no está disponible en este momento.",
   AUTHENTICATION_REQUIRED: "Debes iniciar sesión para buscar en los documentos.",
   ORIGIN_INVALID: "El origen de la solicitud no está permitido.",
   CSRF_INVALID: "No se pudo validar el contexto de seguridad. Inténtalo nuevamente.",
@@ -36,14 +38,23 @@ function failure(status: number, code: string, requestId: string = crypto.random
   );
 }
 
-function destination(config: SearchProxyConfig): string {
+function sessionCookieName(config: SearchProxyConfig): string {
+  let profileName: string | undefined;
+  if (config.cookieProfile === "local") profileName = "synapdesk_session_dev";
+  else if (config.cookieProfile === "production") profileName = "__Host-synapdesk_session";
+  else if (config.cookieProfile !== undefined) throw new Error("Perfil de cookies inválido.");
+  const name = profileName ?? config.sessionCookieName;
   if (
-    !config.backendUrl ||
-    !config.publicOrigin ||
-    !config.sessionCookieName ||
-    !/^[A-Za-z0-9_-]{1,80}$/.test(config.sessionCookieName)
+    !name ||
+    !/^[A-Za-z0-9_-]{1,80}$/.test(name) ||
+    (profileName && config.sessionCookieName && config.sessionCookieName !== profileName)
   )
-    throw new Error("Configuración incompleta.");
+    throw new Error("Configuración de cookie incompatible.");
+  return name;
+}
+
+function destination(config: SearchProxyConfig): string {
+  if (!config.backendUrl || !config.publicOrigin) throw new Error("Configuración incompleta.");
   const url = new URL(config.backendUrl);
   const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
   const origin = new URL(config.publicOrigin);
@@ -93,20 +104,19 @@ export async function forwardSemanticSearch(
   send: typeof fetch = fetch
 ): Promise<Response> {
   let target: string;
+  let cookieName: string;
   try {
     target = destination(config);
+    cookieName = sessionCookieName(config);
   } catch {
-    return failure(503, "SEARCH_UNAVAILABLE");
+    return failure(503, "SERVICE_UNAVAILABLE");
   }
   if (request.method !== "POST") return failure(405, "VALIDATION_ERROR");
   if (request.headers.get("origin") !== config.publicOrigin) return failure(403, "ORIGIN_INVALID");
   const cookies = (request.headers.get("cookie") ?? "")
     .split(";")
     .map((part) => part.trim())
-    .filter(
-      (part) =>
-        part.indexOf("=") > 0 && part.slice(0, part.indexOf("=")) === config.sessionCookieName
-    );
+    .filter((part) => part.indexOf("=") > 0 && part.slice(0, part.indexOf("=")) === cookieName);
   if (
     cookies.length !== 1 ||
     !/^[A-Za-z0-9_-]{43}$/.test(cookies[0].slice(cookies[0].indexOf("=") + 1))
@@ -150,7 +160,7 @@ export async function forwardSemanticSearch(
       headers,
       cache: "no-store",
       redirect: "error",
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(30000),
     });
     const body = await response.json();
     if (!response.ok) {
@@ -158,7 +168,7 @@ export async function forwardSemanticSearch(
       if (
         [401, 403, 422, 503].includes(response.status) &&
         typeof code === "string" &&
-        code in messages
+        Object.hasOwn(messages, code)
       ) {
         const id = body.error.requestId;
         return failure(
@@ -167,10 +177,10 @@ export async function forwardSemanticSearch(
           typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id) ? id : undefined
         );
       }
-      return failure(502, "SEARCH_UNAVAILABLE");
+      return failure(503, "SERVICE_UNAVAILABLE");
     }
     return Response.json(parseSearchResponse(body), { headers: noStore });
   } catch {
-    return failure(502, "SEARCH_UNAVAILABLE");
+    return failure(503, "SERVICE_UNAVAILABLE");
   }
 }

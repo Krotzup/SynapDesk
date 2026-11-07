@@ -154,8 +154,10 @@ test("upstream errors and network failures never expose provider messages or pri
   const failed = await forwardSemanticSearch(request(), config, async () => {
     throw new Error("private-credentials");
   });
-  assert.equal(failed.status, 502);
-  assert.ok(!(await failed.text()).includes("private-credentials"));
+  assert.equal(failed.status, 503);
+  const failure = await failed.json();
+  assert.equal(failure.error.code, "SERVICE_UNAVAILABLE");
+  assert.ok(!JSON.stringify(failure).includes("private-credentials"));
   const stale = await forwardSemanticSearch(request(), config, async () =>
     Response.json(
       {
@@ -172,6 +174,33 @@ test("upstream errors and network failures never expose provider messages or pri
   const body = await stale.json();
   assert.equal(body.error.code, "SEARCH_PROFILE_STALE");
   assert.ok(!JSON.stringify(body).includes("private-credentials"));
+});
+
+test("cookie profiles match the shared proxy and reject conflicting settings", async () => {
+  for (const [cookieProfile, name] of [
+    ["local", "synapdesk_session_dev"],
+    ["production", "__Host-synapdesk_session"],
+  ]) {
+    const cookie = `${name}=${sid}`;
+    const profiledRequest = () =>
+      request(undefined, { Cookie: `${cookie}; synapdesk_csrf_context_dev=ignored` });
+    const profileConfig = { ...config, sessionCookieName: undefined, cookieProfile };
+    const result = await forwardSemanticSearch(
+      profiledRequest(),
+      profileConfig,
+      async (_, init) => {
+        assert.equal(init.headers.Cookie, cookie);
+        return Response.json({ status: "no_documents", items: [] });
+      }
+    );
+    assert.equal(result.status, 200);
+    const incompatible = await forwardSemanticSearch(
+      profiledRequest(),
+      { ...profileConfig, sessionCookieName: "different_session" },
+      async () => assert.fail("La configuración incompatible no debe reenviar la petición")
+    );
+    assert.equal(incompatible.status, 503);
+  }
 });
 
 test("valid empty statuses are preserved through the proxy", async () => {

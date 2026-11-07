@@ -30,9 +30,10 @@ def session_credential(request, name: str) -> str:
 @contextmanager
 def autorizar_busqueda(request):
     config = request.app.state.configuracion
-    if not config.search_session_cookie_name:
+    cookie_name = config.search_cookie_name
+    if not cookie_name:
         raise ErrorRecuperacion("SEARCH_UNAVAILABLE", "La búsqueda protegida todavía no está configurada.")
-    credential = session_credential(request, config.search_session_cookie_name)
+    credential = session_credential(request, cookie_name)
     try:
         try:
             origin = ServicioOrigen(config)

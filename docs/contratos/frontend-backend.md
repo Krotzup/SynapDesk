@@ -137,11 +137,63 @@ Respuesta resumida:
   },
   "assignedTo": null,
   "createdAt": "2026-09-11T18:30:00Z",
-  "updatedAt": "2026-09-11T18:30:00Z"
+  "updatedAt": "2026-09-11T18:30:00Z",
+  "resolvedAt": null
 }
 ```
 
 Los valores predichos mediante Machine Learning deberán identificarse claramente y no confundirse con decisiones validadas.
+
+### Creación de tickets (`POST /api/v1/tickets`)
+
+Reglas acordadas entre frontend y backend el 03-11-2026. El frontend ya las aplica con datos de ejemplo (PR #27); el endpoint todavía no está implementado en el backend.
+
+**Solicitud.** El cliente envía únicamente `title` y `description`. El servidor asigna los demás campos: `id`, `status`, `priority`, `createdBy`, fechas y, más adelante, la clasificación.
+
+**Normalización.** Se eliminan los espacios en blanco al inicio y al final de `title` y `description` **antes de validar**, y se guarda el valor recortado. El frontend envía los valores ya recortados, pero el backend debe recortarlos igualmente y no confiar en el cliente.
+
+**Validación.** Las longitudes se cuentan sobre el valor recortado:
+
+| Campo         | Tipo  | Obligatorio | Mínimo | Máximo |
+| ------------- | ----- | ----------- | -----: | -----: |
+| `title`       | texto | Sí          |      5 |    150 |
+| `description` | texto | Sí          |     10 |   5000 |
+
+Un valor vacío, o que quede vacío tras recortar, es inválido.
+
+**Valores iniciales.** Un ticket recién creado tiene `status: "open"`, `priority: "medium"`, `category: null`, `area: null`, `assignedTo: null` y `resolvedAt: null`. `createdBy` corresponde al usuario autenticado que crea el ticket.
+
+**Respuesta exitosa.** `201 Created`, con el ticket completo en el mismo formato de `GET /api/v1/tickets/{id}`, como en el ejemplo anterior. El frontend navega al detalle del ticket con el `id` recibido.
+
+**Clasificación.** La creación es independiente de la clasificación ML: primero se guarda el ticket y la clasificación se ejecuta en un flujo separado. Una falla del clasificador no impide crear el ticket ni cambia la respuesta `201`. El endpoint de clasificación sigue pendiente ([contrato backend–ML](backend-ml.md)).
+
+**Autenticación y permisos.** Requiere sesión válida. Pueden crear tickets los roles `admin` y `agent`. Como toda mutación de V1, se envía con `fetch` desde el cliente, a través del proxy de mismo origen, con `X-CSRF-Token` y `Origin` válido, según el [contrato de autenticación V1](autenticacion-v1.md). La asignación, la modificación y la visibilidad de tickets quedan para la matriz de permisos.
+
+**Errores.**
+
+| HTTP  | `error.code`                     | Caso                                                     |
+| ----: | -------------------------------- | -------------------------------------------------------- |
+| `401` | `AUTHENTICATION_REQUIRED`        | Sin sesión válida                                        |
+| `403` | `CSRF_INVALID`, `ORIGIN_INVALID` | Token CSRF u `Origin` inválidos (rechazo previo a efectos) |
+| `403` | `FORBIDDEN`                      | El rol no puede crear tickets                            |
+| `422` | `VALIDATION_ERROR`               | `title` o `description` no cumplen las reglas            |
+| `503` | `SERVICE_UNAVAILABLE`            | Servicio temporalmente no disponible                     |
+
+Ejemplo de `422`, con el formato descrito en [Errores de validación](#errores-de-validación):
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Los datos del ticket no son válidos.",
+    "details": [
+      { "field": "title", "message": "Debe tener al menos 5 caracteres." },
+      { "field": "description", "message": "Ingresa una descripción." }
+    ],
+    "requestId": "8d1f3c52-7a4e-4b9a-9c2d-5e6f7a8b9c0d"
+  }
+}
+```
 
 ## Documentos
 
@@ -311,6 +363,15 @@ Códigos HTTP principales:
 
 Los errores internos no deberán revelar contraseñas, consultas SQL, rutas del servidor, variables de entorno ni trazas completas.
 
+### Errores de validación
+
+Acordado el 03-11-2026 para todos los endpoints que validan datos de entrada. Un error de validación responde `422` con `error.code: "VALIDATION_ERROR"`, dentro de la misma envoltura `error` de los demás errores. `error.details` es una lista de objetos `{ field, message }`:
+
+* `field`: nombre del campo en la solicitud JSON, en `camelCase`, igual que en el contrato (por ejemplo, `title`);
+* `message`: mensaje en español que el frontend puede mostrar junto a ese campo.
+
+El backend debe adaptar la respuesta de validación predeterminada de FastAPI (`{"detail": [...]}`), que no cumple este formato. Si `details` no trae la lista esperada, el frontend muestra un mensaje general. Si un campo trae varios mensajes, se muestra el primero.
+
 ### Servicio temporalmente no disponible
 
 HTTP 503 significa indisponibilidad temporal. Se aprueba SERVICE_UNAVAILABLE como código general de operaciones de aplicación cuando la causa específica no sea parte del contrato público. GET `/api/v1/ready` conserva DATABASE_UNAVAILABLE cuando falla su comprobación PostgreSQL, con la misma estructura error.code, error.message, error.details y error.requestId. Ese comportamiento existente no se modifica. El frontend maneja 503 por estado HTTP sin asumir un único error.code y sin revelar detalles de infraestructura ni reintentar mutaciones automáticamente. Un fallo PostgreSQL que impide comprobar o confirmar una revocación requerida debe devolver 503, nunca un 204 ficticio.
@@ -340,6 +401,7 @@ Cuando se apruebe este contrato, los servicios de `frontend/src/services/` deber
 * límite de tamaño y formatos de documentos;
 * códigos definitivos de errores;
 * filtros disponibles para tickets;
+* en la creación de tickets: unidad de conteo de las longitudes (el frontend cuenta unidades de JavaScript `string.length`, que pueden diferir de los caracteres de Python en emojis y otros símbolos) y respuesta ante campos no previstos en la solicitud;
 * forma de representar categorías y áreas;
 * estrategia para operaciones de IA que requieran procesamiento prolongado;
 * política de reintentos y tiempos máximos;

@@ -96,8 +96,8 @@ export function SearchResults({ query, limit }: { query: string; limit: SearchLi
         ordenados por similitud.
       </p>
       <p className="text-xs text-[#3730A3] bg-[#EEF2FF] border border-[#C7D2FE] rounded-xl px-4 py-2.5">
-        La similitud no es una probabilidad ni un porcentaje de acierto. Revisa los fragmentos y su
-        fuente antes de aplicarlos.
+        La similitud mide la cercanía entre tu consulta y cada fragmento según el modelo. Un valor
+        mayor indica más relación. Revisa los fragmentos y su fuente antes de aplicarlos.
       </p>
       {state.response.items.map((result) => (
         <SearchResultCard key={result.documentChunkId} result={result} />

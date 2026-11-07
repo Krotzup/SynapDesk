@@ -1,0 +1,82 @@
+{
+  "annotationStatus": "synthetic_pending_human_review",
+  "queries": [
+    {
+      "queryId": "PROBE-01",
+      "query": "Puedo abrir el servidor usando su dirección IP, pero falla cuando escribo su nombre.",
+      "answerable": true,
+      "expectedDocumentId": "be5e3aff-fcc8-5346-8a36-9d9cbd1551ee"
+    },
+    {
+      "queryId": "PROBE-02",
+      "query": "Quiero liberar y renovar la concesión DHCP de Windows usando ipconfig.",
+      "answerable": true,
+      "expectedDocumentId": "f149bcc1-c82b-501e-ae98-b1fa9a613eba"
+    },
+    {
+      "queryId": "PROBE-03",
+      "query": "El servicio Print Spooler está detenido; ¿cómo investigo por qué se para?",
+      "answerable": true,
+      "expectedDocumentId": "cce574ee-1671-5f08-9939-9279104c37e8"
+    },
+    {
+      "queryId": "PROBE-04",
+      "query": "¿Qué comando instala WSL en Windows y cómo elijo una distribución?",
+      "answerable": true,
+      "expectedDocumentId": "988e335e-f30a-5319-bf38-8aaeda412795"
+    },
+    {
+      "queryId": "PROBE-05",
+      "query": "El contenedor no inicia porque otra aplicación ocupa el mismo puerto; necesito revisar el conflicto.",
+      "answerable": true,
+      "expectedDocumentId": "1235a5d6-0f6b-5d91-8326-94a8bb116d54"
+    },
+    {
+      "queryId": "PROBE-06",
+      "query": "¿Cómo debo escribir una ruta de Windows al montar una carpeta con Docker desde CMD?",
+      "answerable": true,
+      "expectedDocumentId": "b1942f68-9bd6-5db7-ac7e-d1b28368f257"
+    },
+    {
+      "queryId": "PROBE-07",
+      "query": "Necesito usar Test-NetConnection para comprobar un puerto TCP y ver el resultado detallado.",
+      "answerable": true,
+      "expectedDocumentId": "06907ab6-604a-50cf-bdc3-bf9f14413fbd"
+    },
+    {
+      "queryId": "PROBE-08",
+      "query": "¿Cómo configuro listas de correo en Google Workspace?",
+      "answerable": false
+    },
+    {
+      "queryId": "PROBE-09",
+      "query": "¿Cómo configuro un registro SPF para el correo de Google Workspace?",
+      "answerable": false
+    },
+    {
+      "queryId": "PROBE-10",
+      "query": "Necesito crear una política de retención de documentos en SharePoint.",
+      "answerable": false
+    },
+    {
+      "queryId": "PROBE-11",
+      "query": "¿Qué pasos debo seguir para cambiar la batería de un teléfono Samsung?",
+      "answerable": false
+    },
+    {
+      "queryId": "PROBE-12",
+      "query": "Quiero preparar una receta de pan de masa madre.",
+      "answerable": false
+    },
+    {
+      "queryId": "PROBE-13",
+      "query": "¿Qué temperatura y probabilidad de lluvia habrá mañana en Santiago?",
+      "answerable": false
+    },
+    {
+      "queryId": "PROBE-14",
+      "query": "¿Cómo resuelvo una ecuación de segundo grado?",
+      "answerable": false
+    }
+  ]
+}

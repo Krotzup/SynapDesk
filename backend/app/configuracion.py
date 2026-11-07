@@ -26,6 +26,7 @@ class Configuracion(BaseSettings):
     search_enabled: bool = False
     search_relevance_profile: Path | None = None
     search_session_cookie_name: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{1,80}$")
+    auth_cookie_profile: Literal["local", "production"] | None = None
     synapdesk_semantic_database_url: SecretStr | None = Field(default=None, repr=False)
 
     # PROVISIONAL_CONFIGURATION / PENDING_MEASUREMENT; memoria en KiB.
@@ -65,6 +66,14 @@ class Configuracion(BaseSettings):
     @classmethod
     def resolver_perfil_recuperacion(cls, value: Path | None) -> Path | None:
         return RAIZ_PROYECTO / value if value is not None and not value.is_absolute() else value
+
+    @property
+    def search_cookie_name(self) -> str | None:
+        profiles = {"local": "synapdesk_session_dev", "production": "__Host-synapdesk_session"}
+        name = profiles.get(self.auth_cookie_profile)
+        if name and self.search_session_cookie_name not in (None, name):
+            return None
+        return name or self.search_session_cookie_name
 
     @field_validator("auth_hmac_clave")
     @classmethod

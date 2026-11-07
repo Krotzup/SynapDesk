@@ -41,7 +41,7 @@ def read_source(url, expected, cached=None):
         opener = build_opener(OfficialRedirects())
         with opener.open(Request(url, headers={"User-Agent": "SynapDesk-source-verification/1.0"}), timeout=30) as response:
             raw = response.read(MAX_SOURCE_BYTES + 1)
-    if len(raw) > MAX_SOURCE_BYTES or digest(raw) != expected:
+    if len(raw) > MAX_SOURCE_BYTES or (expected is not None and digest(raw) != expected):
         raise ValueError("La fuente cambió o supera el límite; conservar la versión anterior y revisar una nueva versión del registro.")
     return raw
 
@@ -80,14 +80,19 @@ def build(registry_path, output, cache_dir=None):
     if output.exists():
         raise ValueError("La carpeta de salida debe ser nueva; no se sobrescriben corpus existentes.")
     registry = json.loads(registry_path.read_text(encoding="utf-8"))
-    originals, documents = {}, []
+    originals, documents, source_checks = {}, [], {}
     for spec in registry["sources"]:
         name = Path(spec["sourceSnapshot"]).name
         if not re.fullmatch(r"source_\d+\.html", name):
             raise ValueError("Nombre de snapshot no válido.")
         if name not in originals:
             cached = cache_dir / "sources" / name if cache_dir else None
-            originals[name] = read_source(spec["url"], spec["sourceSha256"], cached)
+            # El HTML servido puede cambiar sin alterar el artículo. Para una
+            # descarga se verifica abajo la huella del texto de cada sección.
+            expected = spec["sourceSha256"] if cached is not None else None
+            originals[name] = read_source(spec["url"], expected, cached)
+            source_checks[name] = {"expectedSha256": spec["sourceSha256"],
+                                   "receivedSha256": digest(originals[name])}
         documents.append((spec, extract_document(spec, originals[name]),
                           extract_document(spec, originals[name], retrieval=True)))
     licenses = []
@@ -108,6 +113,7 @@ def build(registry_path, output, cache_dir=None):
         (output / "documents" / name).write_bytes(raw)
         (output / "retrieval" / name).write_bytes(body)
         catalog.append(dict(spec, file="documents/" + name, sha256=digest(raw),
+                            receivedSourceSha256=source_checks[Path(spec["sourceSnapshot"]).name]["receivedSha256"],
                             retrievalFile="retrieval/" + name, retrievalSha256=digest(body),
                             preprocessingVersion="official_body_v1",
                             sourceUrl=spec["url"] + ("#" + (spec["section"][0] if isinstance(spec["section"], list) else spec["section"]) if spec["section"] else "")))
@@ -123,9 +129,12 @@ def build(registry_path, output, cache_dir=None):
     (output / "cases.json").write_text(json.dumps({"annotationStatus": "synthetic_pending_human_review", "queries": cases}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     files = sorted(path for path in output.rglob("*") if path.is_file())
     manifest = {"createdAt": datetime.now(timezone.utc).isoformat(), "registrySha256": digest(registry_path.read_bytes()),
+                "sourceSnapshots": source_checks,
                 "sha256": {path.relative_to(output).as_posix(): digest(path.read_bytes()) for path in files}}
     (output / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-    return {"documents": len(documents), "sources": len(originals), "cases": len(cases)}
+    return {"documents": len(documents), "sources": len(originals), "cases": len(cases),
+            "changedHtmlSnapshots": sum(check["expectedSha256"] != check["receivedSha256"]
+                                        for check in source_checks.values())}
 
 
 if __name__ == "__main__":

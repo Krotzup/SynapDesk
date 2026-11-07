@@ -13,7 +13,7 @@ class ServicioRecuperacion:
     def __init__(self, configuracion, *, embedder=None):
         from ml.semantic_retrieval.relevance import load_profile
         if (not configuracion.search_relevance_profile or not configuracion.synapdesk_semantic_database_url
-                or not configuracion.search_session_cookie_name):
+                or not configuracion.search_cookie_name):
             raise ValueError("Falta configurar el perfil V2, la conexión semántica y el nombre de cookie de sesión.")
         self.profile = load_profile(configuracion.search_relevance_profile)
         if self.profile["schemaVersion"] != 2:

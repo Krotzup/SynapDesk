@@ -301,8 +301,9 @@ Configurar en el proceso o `.env` privado:
 - `SYNAPDESK_SEMANTIC_DATABASE_URL` para la base semántica propia.
 - `SEARCH_RELEVANCE_PROFILE` para el perfil V2 existente, en ruta absoluta o
   relativa a la raíz del repositorio.
-- `SEARCH_SESSION_COOKIE_NAME` explícito, acordado con la integración de
-  autenticación y el servidor Next.js; no hay nombre por defecto.
+- `AUTH_COOKIE_PROFILE` explícito (`local` o `production`) compartido con Next.js.
+  En ensayos sin perfil se puede configurar `SEARCH_SESSION_COOKIE_NAME` en
+  ambos procesos. Los valores incompatibles impiden autorizar la búsqueda.
 - `AUTH_ORIGENES_PERMITIDOS` con los orígenes públicos autorizados.
 - Las variables PostgreSQL habituales para validar sesiones en la base del backend.
 

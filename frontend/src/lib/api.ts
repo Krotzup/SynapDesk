@@ -41,6 +41,20 @@ async function send<TResponse, TBody>(
   options: RequestOptions<TBody>,
   csrfToken?: string
 ): Promise<TResponse> {
+  if (options.sameOrigin) {
+    const response = await fetch(`${API_PREFIX}${endpoint}`, {
+      method: options.method ?? "GET",
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: {
+        "Content-Type": "application/json",
+        ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {}),
+        ...options.headers,
+      },
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    });
+    return readResponse<TResponse>(response);
+  }
   const { method = "GET", body, headers = {} } = options;
 
   const config: RequestInit = {
@@ -58,11 +72,12 @@ async function send<TResponse, TBody>(
     config.body = JSON.stringify(body);
   }
 
-  const response = await fetch(
-    `${options.sameOrigin ? "" : BASE_URL}${API_PREFIX}${endpoint}`,
-    config
-  );
+  const response = await fetch(`${BASE_URL}${API_PREFIX}${endpoint}`, config);
 
+  return readResponse<TResponse>(response);
+}
+
+async function readResponse<TResponse>(response: Response): Promise<TResponse> {
   if (!response.ok) {
     const errorBody: ApiError = await response.json().catch(() => ({
       error: {

@@ -47,7 +47,7 @@ def test_empty_and_unprepared_databases_are_not_reported_as_low_similarity(datab
 def test_search_with_real_session_csrf_model_and_independent_databases(configuracion_bd_test):
     from app.recuperacion.servicio import ServicioRecuperacion
     configuration = Configuracion(_env_file=None, app_env="testing", search_enabled=False,
-        search_session_cookie_name="test_search_session", auth_origenes_permitidos=["http://testserver"],
+        auth_cookie_profile="local", auth_origenes_permitidos=["http://testserver"],
         search_relevance_profile=Path(os.environ["SEARCH_TEST_PROFILE"]),
         synapdesk_semantic_database_url=os.environ["SYNAPDESK_SEMANTIC_TEST_DATABASE_URL"],
         postgres_host=configuracion_bd_test.postgres_host, postgres_port=configuracion_bd_test.postgres_port,
@@ -67,7 +67,7 @@ def test_search_with_real_session_csrf_model_and_independent_databases(configura
         service = ServicioRecuperacion(configuration)
         with TestClient(crear_aplicacion(configuration)) as client:
             client.app.state.recuperacion = service
-            headers = {"Cookie": "test_search_session=" + emitted.credencial.get_secret_value(),
+            headers = {"Cookie": "synapdesk_session_dev=" + emitted.credencial.get_secret_value(),
                        "Origin": "http://testserver", "X-CSRF-Token": token.token.get_secret_value()}
             missing = client.post("/api/v1/search", json={"query": "La impresora no imprime"})
             assert missing.status_code == 401

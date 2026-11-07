@@ -9,8 +9,12 @@ Esas rutas y la validación operativa del despliegue de autenticación continúa
 como dependencias; no se introduce autenticación ficticia para evitarlas.
 
 El servicio está deshabilitado por defecto. Requiere conexión semántica, perfil
-V2 calibrado y un nombre de cookie configurado explícitamente. No se aprueban
-automáticamente los nombres de cookies propuestos en autenticación V1.
+V2 calibrado y un perfil de cookies explícito compartido con Next.js. Para
+compatibilidad con el proxy de #30, `AUTH_COOKIE_PROFILE=local` selecciona
+`synapdesk_session_dev` y `AUTH_COOKIE_PROFILE=production` selecciona
+`__Host-synapdesk_session`. El despliegue y el flujo HTTP siguen sujetos a
+AUTH-07. En ensayos se admite el nombre explícito anterior. Si el nombre y el
+perfil se configuran juntos y discrepan, se rechaza la búsqueda.
 
 ## Solicitud
 
@@ -78,6 +82,7 @@ del driver ni contenido de la consulta original en los errores.
 | 503 | `SEARCH_CONFIGURATION_ERROR` | Base no independiente o configuración incompatible. |
 | 503 | `SEARCH_UNAVAILABLE` | Servicio deshabilitado o fallo de búsqueda/modelo. |
 | 503 | `DEPENDENCY_UNAVAILABLE` | No se pudo verificar la sesión o confirmar su transacción. |
+| 503 | `SERVICE_UNAVAILABLE` | El proxy no pudo comunicarse con el backend o recibió una respuesta incompatible. |
 
 Solo 403 + `CSRF_INVALID` admite el reintento ya aprobado por autenticación V1,
 tras renovar su prueba y confirmar que la sesión no cambió. No se agregan

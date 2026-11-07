@@ -44,7 +44,7 @@ humana. La distribución de textos oficiales/traducciones sigue pendiente de
 revisar avisos y licencias; el repositorio contiene metadatos/preparador, no las
 copias de las páginas.
 
-El login/logout, `/auth/me` y bootstrap CSRF HTTP no se implementan en esta rama.
+AUTH-07 incluye login/logout, `/auth/me` y bootstrap CSRF HTTP.
 La búsqueda reutiliza sus servicios internos sin abrir una ruta pública ni
 fabricar identidades. Las pruebas de navegador usan un doble explícito de las
 rutas de bootstrap, junto con sesión/CSRF persistentes y recuperación reales;
@@ -75,6 +75,21 @@ orienta la mejora de preprocesamiento, pero no es una evaluación ciega ni
 representativa de tickets reales. Todavía queda un desacierto de primer
 documento entre las siete consultas con cobertura de evaluación. La revisión
 humana del contenido recuperado sigue siendo necesaria.
+
+La receta para reconstruir el cuerpo oficial desde fuentes públicas, generar
+el perfil V2 y evaluar las 14 consultas está en
+[Fuentes y reproducción](../../ml/sources/README.md).
+
+Para una evaluación representativa, reservar consultas anonimizadas distintas
+de la calibración y acordar con soporte qué documentos responden cada caso.
+Medir cobertura, rechazos y ranking por separado. Si se amplía el corpus,
+registrar su versión y repetir el proceso con el perfil correspondiente.
+
+La autorización conserva la transacción abierta hasta obtener el resultado.
+Para evaluar su costo, comparar solicitudes simultáneas de una misma sesión
+con solicitudes de sesiones independientes y registrar la espera de bloqueos
+y la latencia. Cualquier cambio al alcance de la transacción debe preservar
+las garantías de revocación y validación CSRF.
 
 ## Referencias
 

@@ -1,9 +1,11 @@
 import hashlib
 import json
 import importlib.util
+from io import BytesIO
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 
 @unittest.skipUnless(importlib.util.find_spec("bs4"), "Requiere ml/requirements-corpus.txt")
@@ -46,3 +48,39 @@ class ProcedureCorpusTests(unittest.TestCase):
         text = render(BeautifulSoup(raw, "html.parser").div)
         self.assertIn('```\nipconfig /all\n```', text)
         self.assertNotIn('do_not_execute', text)
+
+    def test_public_snapshot_accepts_html_changes_only_with_verified_text(self):
+        from ml.tools.build_procedure_corpus import build
+
+        original = b'<main><h1>Guia</h1><div class="content"><p>Revisar.</p></div></main>'
+        archived = ("Prueba\nAplicabilidad editorial: Windows\n\nGuia\n\nRevisar.\n\n"
+                    "Procedencia: Ejemplo\nFuente publicada: https://learn.microsoft.com/example"
+                    "\nLicencia del repositorio fuente: CC-BY-4.0; véanse catálogo y avisos adjuntos.\n")
+        original_digest = hashlib.sha256(original).hexdigest()
+        spec = {"id": "P01", "title": "Prueba", "applies": "Windows", "publisher": "Ejemplo",
+                "licenseId": "CC-BY-4.0", "url": "https://learn.microsoft.com/example",
+                "sourceSnapshot": "sources/source_01.html", "sourceSha256": original_digest,
+                "expectedTextSha256": hashlib.sha256(archived.encode("utf-8")).hexdigest(),
+                "documentId": "11111111-1111-4111-8111-111111111111", "queries": [],
+                "contentLanguage": "es", "section": None}
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            registry = folder / "registry.json"
+            registry.write_text(json.dumps({"sources": [spec], "licenses": [], "corpusId": "test",
+                                            "distributionStatus": "test"}), encoding="utf-8")
+            updated = b'<!-- publicacion nueva -->' + original
+            output = folder / "verified"
+            with patch("ml.tools.build_procedure_corpus.build_opener") as opener:
+                opener.return_value.open.return_value = BytesIO(updated)
+                self.assertEqual(build(registry, output)["changedHtmlSnapshots"], 1)
+                self.assertEqual((output / "documents/p01.txt").read_bytes(), archived.encode("utf-8"))
+                manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+                self.assertEqual(manifest["sourceSnapshots"]["source_01.html"], {
+                    "expectedSha256": original_digest,
+                    "receivedSha256": hashlib.sha256(updated).hexdigest(),
+                })
+                opener.return_value.open.return_value = BytesIO(updated.replace(b"Revisar.", b"Ejecutar."))
+                rejected = folder / "rejected"
+                with self.assertRaisesRegex(ValueError, "texto extraído no coincide"):
+                    build(registry, rejected)
+                self.assertFalse(rejected.exists())
