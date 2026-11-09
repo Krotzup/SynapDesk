@@ -8,7 +8,7 @@ import { SESSION_CHANGED } from "@/lib/api";
 import { USE_MOCKS } from "@/lib/config";
 import { getFieldErrors, isApiError, isAuthenticationRequired } from "@/lib/errors";
 import { recommendationsService } from "@/services/recommendations";
-import { HumanReview, Recommendation, RecommendationStatus } from "@/types";
+import { HumanReview, Recommendation, RecommendationStatus, ReviewDecision } from "@/types";
 import { RecommendationSources } from "./RecommendationSources";
 
 const statusLabels: Record<RecommendationStatus, string> = {
@@ -23,6 +23,12 @@ const reviewedMessages: Record<RecommendationStatus, string> = {
   accepted: "La recomendación fue aceptada.",
   modified: "La recomendación fue modificada por un especialista.",
   rejected: "La recomendación fue descartada.",
+};
+
+const statusByDecision: Record<ReviewDecision, RecommendationStatus> = {
+  accepted: "accepted",
+  modified: "modified",
+  rejected: "rejected",
 };
 
 type Mode = "view" | "edit" | "discard";
@@ -95,9 +101,13 @@ export function AssistantRecommendation({
   const [draft, setDraft] = useState("");
   const [feedback, setFeedback] = useState("");
   const [contentError, setContentError] = useState<string | null>(null);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<ActionError | null>(null);
   const [pending, setPending] = useState<Action | null>(null);
   const [changedLocally, setChangedLocally] = useState(false);
+  // Revisión registrada en esta pestaña. Se guarda aparte para no sobrescribir el contenido
+  // original generado por la IA (modelo de dominio).
+  const [review, setReview] = useState<HumanReview | null>(null);
 
   const busy = pending !== null;
 
@@ -105,6 +115,7 @@ export function AssistantRecommendation({
     setDraft("");
     setFeedback("");
     setContentError(null);
+    setFeedbackError(null);
   }
 
   function startEdit() {
@@ -129,23 +140,29 @@ export function AssistantRecommendation({
 
   // Con datos de ejemplo el detalle se genera en el servidor y no vería el cambio:
   // se actualiza aquí. Con el backend real se vuelve a pedir la página.
-  function afterSuccess(next: Recommendation) {
+  function afterSuccess(next: Recommendation, nextReview: HumanReview | null = null) {
     setRecommendation(next);
+    setReview(nextReview);
     setMode("view");
     resetForms();
     if (USE_MOCKS) setChangedLocally(true);
     else router.refresh();
   }
 
+  // Cada error de campo se muestra junto a su campo; si el backend devuelve varios, se
+  // muestran todos.
   function handleError(error: unknown, action: Action) {
     const fields = getFieldErrors(error);
-    if (action === "edit" && fields.modifiedContent) {
-      setContentError(fields.modifiedContent);
+    const contentMessage = action === "edit" ? fields.modifiedContent : undefined;
+    const feedbackMessage = action === "generate" ? undefined : fields.feedback;
+    setContentError(contentMessage ?? null);
+    setFeedbackError(feedbackMessage ?? null);
+    if (contentMessage || feedbackMessage) {
       setActionError(null);
       return;
     }
     setActionError({
-      message: fields.feedback ?? actionErrorMessage(error, action),
+      message: actionErrorMessage(error, action),
       needsLogin: isAuthenticationRequired(error),
     });
   }
@@ -154,7 +171,7 @@ export function AssistantRecommendation({
     if (!recommendation || busy) return;
 
     const trimmedFeedback = feedback.trim();
-    let review: HumanReview;
+    let submitted: HumanReview;
     if (action === "edit") {
       const content = draft.trim();
       if (!content) {
@@ -165,22 +182,20 @@ export function AssistantRecommendation({
         setContentError("No hiciste cambios. Edita el texto o cancela.");
         return;
       }
-      review = { decision: "modified", modifiedContent: content };
+      submitted = { decision: "modified", modifiedContent: content };
     } else {
-      review = { decision: "rejected" };
+      submitted = { decision: "rejected" };
     }
-    if (trimmedFeedback) review.feedback = trimmedFeedback;
+    if (trimmedFeedback) submitted.feedback = trimmedFeedback;
 
     setContentError(null);
+    setFeedbackError(null);
     setActionError(null);
     setPending(action);
     try {
-      await recommendationsService.review(recommendation.id, review);
-      afterSuccess({
-        ...recommendation,
-        status: action === "edit" ? "modified" : "rejected",
-        content: review.modifiedContent ?? recommendation.content,
-      });
+      await recommendationsService.review(recommendation.id, submitted);
+      // Solo cambia el estado: el contenido original se conserva.
+      afterSuccess({ ...recommendation, status: statusByDecision[submitted.decision] }, submitted);
     } catch (error) {
       handleError(error, action);
     } finally {
@@ -239,6 +254,8 @@ export function AssistantRecommendation({
   }
 
   const isPending = recommendation.status === "pending";
+  const modifiedContent =
+    recommendation.status === "modified" ? review?.modifiedContent : undefined;
 
   return (
     <div className="space-y-5" aria-busy={busy}>
@@ -271,10 +288,37 @@ export function AssistantRecommendation({
               </p>
             )}
           </div>
+        ) : modifiedContent ? (
+          <div className="space-y-2">
+            <div className="rounded-xl border border-[#C7D2FE] bg-white px-3 py-2.5">
+              <p className="text-[11px] font-semibold text-[#4338CA] mb-1">
+                Versión modificada por el especialista
+              </p>
+              <p className="text-xs text-[#1E293B] leading-relaxed whitespace-pre-line">
+                {modifiedContent}
+              </p>
+            </div>
+            <details className="text-xs">
+              <summary className="cursor-pointer text-[11px] font-medium text-[#4338CA]">
+                Ver la recomendación original generada por la IA
+              </summary>
+              <p className="mt-1.5 text-[#475569] leading-relaxed whitespace-pre-line">
+                {recommendation.content}
+              </p>
+            </details>
+          </div>
         ) : (
-          <p className="text-xs text-[#1E293B] leading-relaxed whitespace-pre-line">
-            {recommendation.content}
-          </p>
+          <>
+            <p className="text-xs text-[#1E293B] leading-relaxed whitespace-pre-line">
+              {recommendation.content}
+            </p>
+            {recommendation.status === "modified" && (
+              <p className="mt-1.5 text-[11px] text-[#64748B]">
+                Este es el texto original generado por la IA. La versión del especialista se
+                mostrará cuando el backend entregue las revisiones de la recomendación.
+              </p>
+            )}
+          </>
         )}
       </div>
 
@@ -352,13 +396,20 @@ export function AssistantRecommendation({
                 value={feedback}
                 onChange={(event) => setFeedback(event.target.value)}
                 disabled={busy}
+                aria-invalid={Boolean(feedbackError)}
+                aria-describedby={feedbackError ? "review-feedback-error" : undefined}
                 placeholder={
                   mode === "edit"
                     ? "Ej.: faltaba un paso para renovar la configuración de red."
                     : "Ej.: la recomendación no corresponde al problema del ticket."
                 }
-                className={`${textareaClass} ${borderClass(false)}`}
+                className={`${textareaClass} ${borderClass(Boolean(feedbackError))}`}
               />
+              {feedbackError && (
+                <p id="review-feedback-error" className="text-xs text-[#EF4444]">
+                  {feedbackError}
+                </p>
+              )}
               {errorBox}
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -385,6 +436,14 @@ export function AssistantRecommendation({
       ) : (
         <div className="pt-2 border-t border-[#C7D2FE] space-y-2">
           <p className="text-xs text-[#475569]">{reviewedMessages[recommendation.status]}</p>
+          {review?.feedback && (
+            <p className="text-xs text-[#475569]">
+              <span className="font-semibold">
+                {review.decision === "rejected" ? "Motivo:" : "Comentario del especialista:"}
+              </span>{" "}
+              <span className="whitespace-pre-line">{review.feedback}</span>
+            </p>
+          )}
           {recommendation.status === "rejected" && (
             <>
               {errorBox}

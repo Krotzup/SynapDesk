@@ -55,6 +55,21 @@ export function getMockRecommendations(): readonly Recommendation[] {
   return recommendations;
 }
 
+/**
+ * Revisión humana registrada por el mock, separada de la recomendación (modelo de dominio:
+ * `reviewerId` lo pondrá el backend desde la sesión). No es parte de la API pública.
+ */
+interface MockReview {
+  id: string;
+  recommendationId: string;
+  decision: ReviewDecision;
+  modifiedContent: string | null;
+  feedback: string | null;
+  reviewedAt: string;
+}
+
+const reviews: MockReview[] = [];
+
 const statusByDecision: Record<ReviewDecision, RecommendationStatus> = {
   accepted: "accepted",
   modified: "modified",
@@ -128,10 +143,18 @@ export const recommendationsMock: RecommendationsService = {
       ]);
     }
 
+    // El contenido generado no se toca: la versión editada y el comentario quedan en la
+    // revisión, como indica el modelo de dominio.
+    const feedback = data.feedback?.trim();
+    reviews.push({
+      id: crypto.randomUUID(),
+      recommendationId: recommendation.id,
+      decision: data.decision,
+      modifiedContent: data.decision === "modified" ? (modifiedContent ?? null) : null,
+      feedback: feedback || null,
+      reviewedAt: new Date().toISOString(),
+    });
     recommendation.status = statusByDecision[data.decision];
-    if (data.decision === "modified" && modifiedContent) {
-      recommendation.content = modifiedContent;
-    }
     return simulateLatency(undefined);
   },
 };
