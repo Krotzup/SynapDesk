@@ -1,4 +1,4 @@
-import { TicketPriority, TicketStatus } from "@/types";
+import { DocumentProcessingStatus, TicketPriority, TicketStatus } from "@/types";
 
 // ─── Badge de prioridad ───────────────────────────────────────────────────────
 
@@ -6,14 +6,12 @@ const priorityStyles: Record<TicketPriority, string> = {
   low: "bg-[#DCFCE7] text-[#16A34A]",
   medium: "bg-[#FEF9C3] text-[#D97706]",
   high: "bg-[#FEE2E2] text-[#991B1B]",
-  critical: "bg-[#FEE2E2] text-[#991B1B]",
 };
 
 export const priorityLabels: Record<TicketPriority, string> = {
   low: "Baja",
   medium: "Media",
   high: "Alta",
-  critical: "Crítica",
 };
 
 interface PriorityBadgeProps {
@@ -25,7 +23,7 @@ export function PriorityBadge({ priority }: PriorityBadgeProps) {
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${priorityStyles[priority]}`}
     >
-      {(priority === "high" || priority === "critical") && <span aria-hidden="true">🔴</span>}
+      {priority === "high" && <span aria-hidden="true">🔴</span>}
       {priorityLabels[priority]}
     </span>
   );
@@ -57,6 +55,36 @@ export function StatusBadge({ status }: StatusBadgeProps) {
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusStyles[status]}`}
     >
       {statusLabels[status]}
+    </span>
+  );
+}
+
+// ─── Badge de procesamiento de documento ──────────────────────────────────────
+
+const documentStatusStyles: Record<DocumentProcessingStatus, string> = {
+  pending: "bg-[#F1F5F9] text-[#475569]",
+  processing: "bg-[#FEF9C3] text-[#D97706]",
+  processed: "bg-[#DCFCE7] text-[#16A34A]",
+  failed: "bg-[#FEE2E2] text-[#991B1B]",
+};
+
+export const documentStatusLabels: Record<DocumentProcessingStatus, string> = {
+  pending: "Pendiente",
+  processing: "Procesando",
+  processed: "Procesado",
+  failed: "Error",
+};
+
+interface DocumentStatusBadgeProps {
+  status: DocumentProcessingStatus;
+}
+
+export function DocumentStatusBadge({ status }: DocumentStatusBadgeProps) {
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${documentStatusStyles[status]}`}
+    >
+      {documentStatusLabels[status]}
     </span>
   );
 }

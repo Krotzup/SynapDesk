@@ -7,7 +7,7 @@ indice_original,subject,body,answer,type,queue,priority,business_type,tag_1,tag_
 6,Error recurrente en reportes,Los reportes fallan cada cierre de mes con el mismo mensaje,Se abre problema,problem,application_support,high,soporte,reportes,error,recurrente,es,sintetico
 7,Cambio de permisos,Requiero habilitar permisos de lectura para carpeta compartida,Se planifica cambio,change,it_support,low,soporte,permisos,carpeta,cambio,es,sintetico
 8,Actualizar regla de firewall,Se solicita abrir puerto interno para nueva integracion,Se evalua cambio,change,network,medium,soporte,firewall,red,cambio,es,sintetico
-9,URGENTE servicio caido,El sistema principal esta caido y afecta a toda la oficina,Se atiende incidente,incident,service_outages_and_maintenance,critical,soporte,caida,servicio,urgente,es,sintetico
-10,Emergencia con internet,No hay conectividad en la sucursal y todos los usuarios estan detenidos,Se escala emergencia,incident,network,critical,soporte,red,internet,emergencia,es,sintetico
+9,URGENTE servicio caido,El sistema principal esta caido y afecta a toda la oficina,Se atiende incidente,incident,service_outages_and_maintenance,high,soporte,caida,servicio,urgente,es,sintetico
+10,Emergencia con internet,No hay conectividad en la sucursal y todos los usuarios estan detenidos,Se escala emergencia,incident,network,high,soporte,red,internet,emergencia,es,sintetico
 11,Alta prioridad impresora,La impresora de recepcion esta detenida durante atencion a clientes,Se revisa impresora,incident,hardware,high,soporte,impresora,hardware,prioridad,es,sintetico
 12,Problema conocido de facturacion,Facturacion presenta errores intermitentes ya registrados antes,Se vincula a problema,problem,application_support,high,soporte,facturacion,error,problema,es,sintetico

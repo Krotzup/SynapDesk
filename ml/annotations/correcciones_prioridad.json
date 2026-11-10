@@ -2,5 +2,12 @@
   "source_sha256": "ade38dba719f54bfd06d3fcd12a4c6ff031887eca5545a98c74fac97b10db11a",
   "corrections_sha256": "cd44b1479cb489658e4bbbe016f487c079dc34283a50e69536051dd9d5a5ef85",
   "criteria_version": "prioridad-impacto-v1",
-  "review_method": "Lectura asistida de asunto y cuerpo originales; decisiones previas a entrenamiento y sin consultar predicciones. Requiere validación de la responsable de datos."
+  "review_method": "Lectura asistida de asunto y cuerpo originales; decisiones previas a entrenamiento y sin consultar predicciones. América Figueroa confirmó la revisión de las 63 decisiones.",
+  "validation": {
+    "status": "validated",
+    "reviewer": "América Figueroa",
+    "validated_at": "2026-11-05T17:57:02Z",
+    "reviewed_rows": 63
+  },
+  "validation_note": "validated_at registra la confirmación explícita de la responsable el 5 de noviembre de 2026. La fecha histórica de la revisión no se conoce; no se deduce de la publicación o del merge del PR #13. Esta validación corresponde a las 63 decisiones, no a una revisión completa de todas las etiquetas del dataset."
 }

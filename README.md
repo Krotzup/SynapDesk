@@ -176,12 +176,13 @@ El proyecto se encuentra actualmente en su etapa de preparación técnica y cons
 * proceso de revisión e integración de cambios;
 * entorno local reproducible mediante Docker Compose;
 * PostgreSQL 17 con pgvector 0.8.6;
+* prototipo aislado de embeddings y recuperación semántica sobre pgvector en `ml/` (sin integración HTTP todavía);
 * separación inicial entre los entornos de desarrollo y pruebas;
 * documentación de la estrategia futura de staging.
 
 ### Trabajo pendiente
 
-Las funcionalidades de gestión de usuarios, tickets, documentación, Machine Learning, recuperación semántica, RAG, LLM y validación humana se implementarán progresivamente durante las siguientes etapas.
+Las funcionalidades de gestión de usuarios, tickets, documentación, Machine Learning, integración de la recuperación semántica, RAG, LLM y validación humana se implementarán progresivamente durante las siguientes etapas.
 
 La estrategia de staging ha sido definida y aceptada por el equipo, pero el entorno todavía no se encuentra desplegado.
 
@@ -256,3 +257,8 @@ Esta posibilidad se considera trabajo futuro y no forma parte del alcance princi
 ## Licencia
 
 La licencia será definida según los criterios académicos, institucionales y de propiedad intelectual acordados por el equipo.
+
+Esta definición pendiente corresponde al código y documentación propios de
+SynapDesk. El dataset externo usado por el componente ML tiene una licencia
+independiente CC BY-NC 4.0 y requisitos de atribución, indicación de cambios y
+uso no comercial; consultar su [procedencia y condiciones](ml/DATASET_PROVENANCE.md).
