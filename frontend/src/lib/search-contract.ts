@@ -6,6 +6,29 @@ export interface SearchResponse {
   items: SearchResult[];
 }
 
+export interface SearchResultGroup {
+  document: SearchResult;
+  fragments: SearchResult[];
+}
+
+export function groupSearchResults(
+  items: SearchResult[],
+  spanishFirst = false
+): SearchResultGroup[] {
+  const byDocument = new Map<string, SearchResultGroup>();
+  for (const item of items) {
+    const group = byDocument.get(item.documentId);
+    if (group) group.fragments.push(item);
+    else byDocument.set(item.documentId, { document: item, fragments: [item] });
+  }
+  const groups = [...byDocument.values()];
+  if (spanishFirst) {
+    const spanish = (group: SearchResultGroup) => /^es(?:-|$)/i.test(group.document.language ?? "");
+    groups.sort((a, b) => Number(spanish(b)) - Number(spanish(a)));
+  }
+  return groups;
+}
+
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function safeSourceUrl(value: unknown): string | null {
@@ -59,6 +82,6 @@ export function emptySearchMessage(status: Exclude<SearchStatus, "results">) {
     : {
         title: "Información insuficiente",
         message:
-          "Los documentos disponibles no ofrecen una coincidencia suficiente. Describe el problema con otras palabras o solicita apoyo a un especialista.",
+          "La búsqueda no encontró fragmentos con similitud suficiente. Agrega el sistema afectado, el mensaje de error o lo que ya intentaste y vuelve a buscar. También puedes solicitar apoyo a un especialista.",
       };
 }

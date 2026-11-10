@@ -31,11 +31,11 @@ no introduce microservicios, un modelo definitivo ni un proveedor LLM.
 
 ## Validación y límites
 
-Las consultas incluidas son sintéticas y están marcadas como pendientes de
-revisión humana. Los manuales oficiales no son un conjunto de consultas reales
-anonimizadas. El CSV del clasificador no se utiliza como sustituto de etiquetas
-de relevancia documental. Un mejor score o un caso aceptado no prueba suficiencia
-de la respuesta; se registran también los desaciertos de documento esperado.
+Las consultas incluidas son sintéticas o adaptaciones de reportes públicos.
+Sus etiquetas son exploratorias y están pendientes de revisión independiente.
+El CSV del clasificador no se utiliza como sustituto de etiquetas de relevancia
+documental. Un caso aceptado puede mostrar una guía que no responde a la
+consulta. Por eso se registran por separado abstención y ranking.
 
 La revisión por corpus es experimental y no sustituye un catálogo documental
 definitivo ni las futuras políticas de acceso, versionado histórico o retención.
@@ -85,10 +85,64 @@ de la calibración y acordar con soporte qué documentos responden cada caso.
 Medir cobertura, rechazos y ranking por separado. Si se amplía el corpus,
 registrar su versión y repetir el proceso con el perfil correspondiente.
 
-La autorización conserva la transacción abierta hasta obtener el resultado.
-Para evaluar su costo, comparar solicitudes simultáneas de una misma sesión
-con solicitudes de sesiones independientes y registrar la espera de bloqueos
-y la latencia. Cualquier cambio al alcance de la transacción debe preservar
+### Evaluación con paráfrasis nuevas
+
+Se evaluaron 25 consultas etiquetadas con el perfil del cuerpo oficial
+(15 documentos y 340 fragmentos), sin reajustar el corte (0,4982). El CLI midió
+los candidatos antes del corte y el servicio de recuperación comprobó
+los estados y los fragmentos devueltos con un límite de cinco.
+
+| Medida | Resultado |
+| --- | ---: |
+| Consultas con cobertura que mostraron algún resultado | 14/16 |
+| Consultas sin cobertura con `insufficient_information` | 7/9 |
+| Documento esperado primero, antes del corte | 8/15 |
+| Documento esperado entre los cinco candidatos, antes del corte | 14/15 |
+| Documento esperado primero, en los resultados devueltos | 7/15 |
+| Documento esperado incluido en los resultados devueltos | 13/15 |
+
+Las cuatro adaptaciones de reportes públicos mostraron la guía esperada
+entre los resultados devueltos, dos de ellas en primer lugar. La paráfrasis
+DNS `PAR-01` devolvió la guía esperada en el cuarto fragmento.
+
+El servicio se abstuvo al buscar cómo montar una ruta desde CMD (`PAR-14`),
+aunque la guía esperada era el primer candidato. En cambio, mostró guías
+para transferencias de zona DNS (`PAR-15`) y Wi-Fi con EAP-TLS (`PAR-19`),
+dos tareas que el corpus no explica. Ambos falsos positivos obtuvieron
+mayor similitud que la consulta cubierta rechazada. Ajustar solo el corte
+no corrige los tres casos a la vez.
+
+«No tengo internet en mi computador» (`PAR-21`) reporta un problema de
+conectividad. Las guías permiten orientar comprobaciones iniciales, como
+verificar la conexión y si otros equipos están afectados. La prueba devolvió
+`insufficient_information`, por lo que cuenta como la segunda abstención
+con cobertura. La consulta entra en la métrica de cobertura. Para el ranking
+se usan los 15 casos con una guía específica asignada. En la interfaz, el
+aviso pide indicar el sistema afectado, el mensaje de error o los intentos
+previos antes de volver a buscar. Los casos, la procedencia y los comandos
+están en
+[Fuentes y reproducción](../../ml/sources/README.md).
+
+### Medición local de concurrencia
+
+Se ejecutaron tres rondas de cuatro solicitudes simultáneas por escenario
+contra FastAPI, el modelo multilingüe y dos bases PostgreSQL de prueba
+separadas para autenticación y recuperación. Se indexaron 15 documentos
+con 340 fragmentos. Las sesiones y los tokens CSRF se generaron con los
+servicios internos.
+
+| Medida por solicitud | Una sesión compartida | Cuatro sesiones independientes |
+| --- | ---: | ---: |
+| Latencia mediana | 728,0 ms | 639,9 ms |
+| Latencia máxima | 1549,2 ms | 832,9 ms |
+| Tiempo mediano con conexión de autenticación ocupada | 664,8 ms | 605,1 ms |
+| Espera mediana por el bloqueo del modelo | 0,0 ms | 178,7 ms |
+
+Las 12 solicitudes de cada escenario respondieron correctamente. La conexión
+de autenticación permanece ocupada durante gran parte de la solicitud. Se midió
+la espera por el bloqueo del modelo, con un máximo de 449,5 ms entre sesiones
+independientes. El ensayo no instrumentó la espera por bloqueos SQL ni estima
+capacidad de producción. Cualquier ajuste de la transacción requiere preservar
 las garantías de revocación y validación CSRF.
 
 ## Referencias

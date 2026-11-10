@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAuthGeneration, onAuthChange } from "@/lib/auth-sync";
 import { isApiError, isAuthenticationRequired } from "@/lib/errors";
-import { emptySearchMessage } from "@/lib/search-contract";
+import { emptySearchMessage, groupSearchResults } from "@/lib/search-contract";
 import type { SearchResponse } from "@/lib/search-contract";
 import type { SearchLimit } from "@/lib/search-params";
 import { searchService } from "@/services/search";
+import { Button } from "@/components/ui/Button";
 import { SearchResultCard } from "./SearchResultCard";
 
 type State =
@@ -19,6 +20,7 @@ export function SearchResults({ query, limit }: { query: string; limit: SearchLi
   const router = useRouter();
   const [state, setState] = useState<State>({ kind: "loading" });
   const [attempt, setAttempt] = useState(0);
+  const [spanishFirst, setSpanishFirst] = useState(false);
   useEffect(() => {
     let cancelled = false;
     const generation = getAuthGeneration();
@@ -64,16 +66,16 @@ export function SearchResults({ query, limit }: { query: string; limit: SearchLi
       >
         <h2 className="text-lg font-bold text-[#0F172A]">No se pudo completar la búsqueda</h2>
         <p className="text-sm text-[#475569]">{state.message}</p>
-        <button
+        <Button
           type="button"
-          className="text-sm font-semibold text-[#2563EB]"
+          variant="secondary"
           onClick={() => {
             setState({ kind: "loading" });
             setAttempt((value) => value + 1);
           }}
         >
           Reintentar
-        </button>
+        </Button>
       </section>
     );
   if (state.response.status !== "results") {
@@ -88,19 +90,28 @@ export function SearchResults({ query, limit }: { query: string; limit: SearchLi
       </section>
     );
   }
+  const groups = groupSearchResults(state.response.items, spanishFirst);
   return (
     <section className="space-y-4" aria-label="Resultados de la búsqueda">
       <p className="text-sm text-[#475569]">
         {state.response.items.length}{" "}
-        {state.response.items.length === 1 ? "fragmento encontrado" : "fragmentos encontrados"},
-        ordenados por similitud.
+        {state.response.items.length === 1 ? "fragmento encontrado" : "fragmentos encontrados"} en{" "}
+        {groups.length} {groups.length === 1 ? "documento" : "documentos"}.
       </p>
+      <label className="flex items-center gap-2 text-sm text-[#475569]">
+        <input
+          type="checkbox"
+          checked={spanishFirst}
+          onChange={(event) => setSpanishFirst(event.target.checked)}
+        />
+        Mostrar primero los documentos en español
+      </label>
       <p className="text-xs text-[#3730A3] bg-[#EEF2FF] border border-[#C7D2FE] rounded-xl px-4 py-2.5">
         La similitud mide la cercanía entre tu consulta y cada fragmento según el modelo. Un valor
         mayor indica más relación. Revisa los fragmentos y su fuente antes de aplicarlos.
       </p>
-      {state.response.items.map((result) => (
-        <SearchResultCard key={result.documentChunkId} result={result} />
+      {groups.map((group) => (
+        <SearchResultCard key={group.document.documentId} group={group} />
       ))}
     </section>
   );

@@ -2,16 +2,25 @@
 
 ## Integración de recuperación semántica
 
-`/busqueda` conserva consulta y límite en la URL, pero realiza la búsqueda desde
-`SearchResults` en el navegador, después de verificar sesión. Así puede obtener
-la prueba CSRF y transportar la cookie sin POST anónimo desde un Server Component.
+`/busqueda` conserva la página de servidor para leer la consulta y el límite de
+la URL. La obtención de resultados es una excepción a la convención de cargar
+datos con services en páginas de servidor. `SearchResults` ejecuta la búsqueda
+en el navegador después de verificar la sesión, porque la petición necesita la
+cookie de sesión, el Origin del navegador y la prueba CSRF vigente.
 El servicio llama al Route Handler dedicado `/api/v1/search`, con destino backend
 fijo de servidor; no es un proxy abierto ni implementa las otras rutas de API.
 
 `lib/search-contract.ts` valida estados y fragmentos, y `lib/server/search-proxy.ts`
-limita cuerpos, destinos, cabeceras y errores. La interfaz distingue base vacía
+limita cuerpos, destinos, cabeceras y errores. El proxy filtra por nombre de
+cookie y deja a FastAPI validar la credencial. Si FastAPI responde
+`429 RATE_LIMITED`, el proxy conserva el estado y un `Retry-After` válido.
+La interfaz distingue base vacía
 de información insuficiente, presenta fuente/idioma cuando están disponibles y
-descarta resultados en tránsito al cambiar la sesión. El contrato es
+descarta resultados en tránsito al cambiar la sesión. Cada tarjeta reúne los
+fragmentos de un documento en el orden devuelto por la API. El usuario puede
+mostrar primero los documentos en español entre los resultados obtenidos.
+Esta preferencia ordena las tarjetas en pantalla y conserva todos los fragmentos,
+sus puntuaciones y el criterio de abstención. El contrato es
 [recuperación V1](../contratos/recuperacion-semantica-v1.md).
 
 La autenticación HTTP completa y su despliegue siguen como dependencia. Las

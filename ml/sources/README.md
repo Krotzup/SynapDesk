@@ -66,6 +66,39 @@ evaluación contiene las 14 consultas sintéticas de la comparación original.
 El perfil queda ligado a la identidad y revisión de esa base. Generar un perfil
 nuevo al reconstruir el corpus en otra base.
 
+El conjunto adicional `ml/examples/relevancia/parafrasis_evaluacion.json`
+incluye 25 consultas etiquetadas. Las 21 con prefijo `PAR` son sintéticas y las
+cuatro con prefijo `PUB` son adaptaciones al español de reportes públicos. En
+las adaptaciones se conserva el síntoma técnico, se omiten identificadores
+del texto y se registra el enlace de procedencia. Se asigna un documento
+esperado cuando hay una guía concreta para el problema. «No tengo internet
+en mi computador» se cuenta como una consulta con cobertura de diagnóstico
+inicial. Se omite el documento esperado porque la guía apropiada depende de
+la conexión y del alcance de la falla. Los casos fuera de alcance incluyen
+solicitudes que comparten vocabulario con el corpus, como transferencias de
+zonas DNS o credenciales de Docker Hub.
+
+Evalúa el conjunto con el perfil del piloto ya calibrado y una ruta de salida
+nueva. Los casos adicionales quedan reservados para evaluación.
+
+```powershell
+python -m ml.semantic_retrieval.cli evaluate-relevance --cases ml/examples/relevancia/parafrasis_evaluacion.json --relevance-profile ml/artifacts/piloto_perfil_v2.json --output ml/artifacts/parafrasis_evaluacion.json
+```
+
+El informe separa los casos con y sin cobertura que superaron el umbral y la
+posición del documento esperado entre los primeros cinco fragmentos candidatos.
+Ese ranking se calcula antes de filtrar. Para ver los fragmentos que superan
+el umbral, ejecuta `search` con el mismo perfil. Este comando reproduce la
+consulta de conectividad general del comentario de revisión.
+
+```powershell
+python -m ml.semantic_retrieval.cli search --query "No tengo internet en mi computador" --limit 5 --relevance-profile ml/artifacts/piloto_perfil_v2.json
+```
+
+Los reportes públicos y sus etiquetas editoriales permiten un ensayo
+exploratorio. La validación representativa sigue requiriendo consultas de
+soporte anonimizadas y etiquetas revisadas por alguien independiente.
+
 Para comparar con la variante histórica, configurar una segunda base semántica
 vacía. Indexar los archivos archivados del mismo catálogo con los mismos UUID.
 

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import proxy from "../artifacts/search-tests/lib/server/search-proxy.js";
 import contract from "../artifacts/search-tests/lib/search-contract.js";
 const { forwardSemanticSearch } = proxy;
-const { parseSearchResponse, safeSourceUrl, emptySearchMessage } = contract;
+const { parseSearchResponse, safeSourceUrl, emptySearchMessage, groupSearchResults } = contract;
 const config = {
   backendUrl: "https://backend.invalid",
   publicOrigin: "https://desk.invalid",
@@ -34,10 +34,11 @@ function request(body = { query: "DNS", limit: 5 }, headers = {}) {
 }
 
 test("empty states are distinct and source URLs reject credentials and executable schemes", () => {
-  assert.notEqual(
-    emptySearchMessage("no_documents").title,
-    emptySearchMessage("insufficient_information").title
-  );
+  const noDocuments = emptySearchMessage("no_documents");
+  const insufficientInformation = emptySearchMessage("insufficient_information");
+  assert.equal(noDocuments.title, "La base de conocimientos está vacía");
+  assert.equal(insufficientInformation.title, "Información insuficiente");
+  assert.match(insufficientInformation.message, /el mensaje de error.*vuelve a buscar/);
   assert.equal(
     safeSourceUrl("https://learn.microsoft.com/es-es/"),
     "https://learn.microsoft.com/es-es/"
@@ -99,6 +100,8 @@ test("ambiguous cookies, invalid origin and missing CSRF are rejected before con
   };
   for (const [headers, status] of [
     [{ Cookie: `test_session=${sid}; test_session=${sid}` }, 401],
+    [{ Cookie: "test_session=" }, 401],
+    [{ Cookie: "test_session=one,two" }, 401],
     [{ Cookie: "other=value" }, 401],
     [{ Origin: "https://evil.invalid" }, 403],
     [{ "X-CSRF-Token": "" }, 403],
@@ -108,6 +111,69 @@ test("ambiguous cookies, invalid origin and missing CSRF are rejected before con
       status
     );
   assert.equal(calls, 0);
+});
+
+test("opaque cookie values reach FastAPI without requiring a particular token format", async () => {
+  const cookie = "test_session=v2.opaque=credential";
+  const response = await forwardSemanticSearch(
+    request(undefined, { Cookie: `analytics=ignored; ${cookie}` }),
+    config,
+    async (_, init) => {
+      assert.equal(init.headers.Cookie, cookie);
+      return Response.json({ status: "no_documents", items: [] });
+    }
+  );
+  assert.equal(response.status, 200);
+});
+
+test("rate limiting preserves only valid Retry-After values and sanitizes the body", async () => {
+  for (const [retryAfter, expected] of [
+    ["30", "30"],
+    ["Wed, 21 Oct 2037 07:28:00 GMT", "Wed, 21 Oct 2037 07:28:00 GMT"],
+    ["Invalid Date", null],
+    ["private-credentials", null],
+  ]) {
+    const response = await forwardSemanticSearch(request(), config, async () =>
+      Response.json(
+        { error: { code: "RATE_LIMITED", message: "private-credentials" } },
+        { status: 429, headers: { "Retry-After": retryAfter, "Set-Cookie": "private=1" } }
+      )
+    );
+    assert.equal(response.status, 429);
+    assert.equal(response.headers.get("retry-after"), expected);
+    assert.equal(response.headers.get("cache-control"), "no-store");
+    assert.equal(response.headers.get("set-cookie"), null);
+    const body = await response.json();
+    assert.equal(body.error.code, "RATE_LIMITED");
+    assert.ok(!JSON.stringify(body).includes("private-credentials"));
+  }
+});
+
+test("results group by document and Spanish preference preserves every fragment and score", () => {
+  const english = { ...item, language: "en" };
+  const spanish = {
+    ...item,
+    documentId: "33333333-3333-4333-8333-333333333333",
+    documentChunkId: "44444444-4444-4444-8444-444444444444",
+    language: "es-CL",
+    score: 0.65,
+  };
+  const secondEnglish = {
+    ...english,
+    documentChunkId: "55555555-5555-4555-8555-555555555555",
+    score: 0.6,
+  };
+  const items = [english, spanish, secondEnglish];
+  const groups = groupSearchResults(items);
+  assert.deepEqual(
+    groups.map((group) => group.fragments),
+    [[english, secondEnglish], [spanish]]
+  );
+  assert.deepEqual(
+    groupSearchResults(items, true).map((group) => group.fragments),
+    [[spanish], [english, secondEnglish]]
+  );
+  assert.deepEqual(items, [english, spanish, secondEnglish]);
 });
 
 test("only configured HTTPS or explicitly allowed loopback HTTP destinations are accepted", async () => {

@@ -22,6 +22,7 @@ const messages: Record<string, string> = {
   SEARCH_CONFIGURATION_ERROR: "La búsqueda requiere una configuración de base independiente.",
   SEARCH_UNAVAILABLE: "La búsqueda no está disponible temporalmente.",
   DEPENDENCY_UNAVAILABLE: "No se pudo verificar la sesión temporalmente.",
+  RATE_LIMITED: "Se alcanzó el límite de solicitudes. Espera antes de volver a buscar.",
 };
 
 function failure(status: number, code: string, requestId: string = crypto.randomUUID()) {
@@ -36,6 +37,20 @@ function failure(status: number, code: string, requestId: string = crypto.random
     },
     { status, headers: noStore }
   );
+}
+
+function rateLimited(response: Response, requestId: string | undefined) {
+  const result = failure(429, "RATE_LIMITED", requestId);
+  const retryAfter = response.headers.get("retry-after");
+  if (
+    retryAfter &&
+    (/^[0-9]{1,10}$/.test(retryAfter) ||
+      (Number.isFinite(Date.parse(retryAfter)) &&
+        new Date(retryAfter).toUTCString() === retryAfter))
+  ) {
+    result.headers.set("Retry-After", retryAfter);
+  }
+  return result;
 }
 
 function sessionCookieName(config: SearchProxyConfig): string {
@@ -117,9 +132,12 @@ export async function forwardSemanticSearch(
     .split(";")
     .map((part) => part.trim())
     .filter((part) => part.indexOf("=") > 0 && part.slice(0, part.indexOf("=")) === cookieName);
+  // Cookie-octet excluye espacios, comillas, comas, punto y coma y barras inversas.
+  // FastAPI valida el formato de la credencial y la sesión.
+  const cookieValue = cookies[0]?.slice(cookies[0].indexOf("=") + 1) ?? "";
   if (
     cookies.length !== 1 ||
-    !/^[A-Za-z0-9_-]{43}$/.test(cookies[0].slice(cookies[0].indexOf("=") + 1))
+    !/^[\x21\x23-\x2b\x2d-\x3a\x3c-\x5b\x5d-\x7e]{1,4096}$/.test(cookieValue)
   ) {
     return failure(401, "AUTHENTICATION_REQUIRED");
   }
@@ -165,17 +183,17 @@ export async function forwardSemanticSearch(
     const body = await response.json();
     if (!response.ok) {
       const code = body?.error?.code;
+      const id = body?.error?.requestId;
+      const requestId = typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id) ? id : undefined;
+      if (response.status === 429 && code === "RATE_LIMITED") {
+        return rateLimited(response, requestId);
+      }
       if (
         [401, 403, 422, 503].includes(response.status) &&
         typeof code === "string" &&
         Object.hasOwn(messages, code)
       ) {
-        const id = body.error.requestId;
-        return failure(
-          response.status,
-          code,
-          typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id) ? id : undefined
-        );
+        return failure(response.status, code, requestId);
       }
       return failure(503, "SERVICE_UNAVAILABLE");
     }
