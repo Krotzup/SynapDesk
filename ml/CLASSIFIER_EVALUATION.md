@@ -31,11 +31,12 @@ vinculados al original; nunca se sobreescribe el origen. Consultar
 [correcciones reproducibles](CORRECCIONES_PRIORIDAD.md). El manifiesto conserva
 el estado de validación humana; una evaluación no aprueba sus etiquetas.
 
-También se admite el CSV derivado `tickets_esp_entrenamiento_v1.csv` junto a
-`tickets_esp_entrenamiento_v1.manifest.json`. Se lee sin volver a aplicar las
-correcciones: el lector verifica el sidecar y conserva fuente, validación y
-huella del manifiesto en el reporte. La variante se llama `derived` y la
-referencia `derived_input_labels`, para no presentar este archivo como original.
+La entrega vigente admite el CSV derivado `tickets_esp_entrenamiento_v2.csv`
+junto a `tickets_esp_entrenamiento_v2.manifest.json`. Se lee sin volver a
+aplicar las correcciones: el lector verifica el sidecar y conserva fuente,
+validación y huella del manifiesto en el reporte. La variante se llama `derived`
+y la referencia `derived_input_labels`, para no presentar este archivo como
+original.
 La exportación reproducible y la distribución privada se describen en la guía
 de correcciones.
 
@@ -83,7 +84,7 @@ el número de particiones. No se reducen silenciosamente por falta de datos.
 Para comparar etiquetas originales y corregidas sobre la misma población:
 
 ```text
-python ml/evaluate_ticket_classifier.py --input-csv ml/data/raw/tickets_esp.csv --corrections-csv ml/annotations/correcciones_prioridad.csv --corrections-manifest ml/annotations/correcciones_prioridad.json --output ml/artifacts/evaluacion_clasificador/correcciones.json
+python ml/evaluate_ticket_classifier.py --input-csv ml/data/raw/tickets_esp.csv --corrections-csv ml/annotations/correcciones_prioridad_v2.csv --corrections-manifest ml/annotations/correcciones_prioridad_v2.json --output ml/artifacts/evaluacion_clasificador/correcciones_v2.json
 ```
 
 Este modo admite solo prioridad. Exige idénticos registros, textos, orden y
@@ -155,8 +156,9 @@ quedan fuera de esta herramienta.
 La finalización de estas herramientas experimentales no exige declarar óptimo
 el CSV ni promover un modelo. El dataset V2 conserva los textos y solo las
 correcciones confirmadas; las señales léxicas restantes se revisan según impacto
-y no se convierten automáticamente en nuevas etiquetas. El catálogo vigente se limita a `low`, `medium` y `high`; `critical` y la
-regla de urgencia se retiraron tras la confirmación de América Figueroa. El
+y no se convierten automáticamente en nuevas etiquetas. El catálogo vigente se
+limita a `low`, `medium` y `high`; América Figueroa confirmó el 10 de noviembre
+de 2026 que `critical` y la regla de urgencia se retiren también del dominio. El
 alcance solicitado en GitHub es validación cruzada por grupos; obtener otro
 corpus independiente no es una condición de cierre de esta rama.
 

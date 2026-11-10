@@ -6,6 +6,12 @@ Alembic utiliza la configuración de PostgreSQL del backend. No guardes credenci
 
 Existe una revisión inicial: `0001_usuarios_tickets`, que crea `usuarios` y `tickets`, sus relaciones, restricciones e índices. La revisión `0002_autenticacion_persistencia` agrega sesiones opacas, contextos y tokens CSRF, estado persistente de límites y eventos de auditoría.
 
+La revisión `0003_retirar_prioridad_critical` convierte las prioridades
+`critical` existentes a `high` y restringe el catálogo a `low`, `medium`,
+`high`. No elimina tickets. Su downgrade restaura el catálogo anterior, pero no
+puede reconstruir qué registros eran `critical`. Requiere aplicar Alembic
+explícitamente; no se ejecuta al arrancar FastAPI.
+
 `upgrade head` crea las tablas y registra la revisión en `alembic_version`. No inserta registros de usuarios o tickets ni crea columnas vectoriales. La revisión AUTH-05 no almacena credenciales portadoras, tokens ni contraseñas en texto plano y no fija cuotas ni retención.
 
 ## Comandos
@@ -67,9 +73,3 @@ La función `downgrade()` de `0001_usuarios_tickets` elimina primero `tickets` y
 
 - [Tutorial oficial](https://alembic.sqlalchemy.org/en/latest/tutorial.html)
 - [Generación automática](https://alembic.sqlalchemy.org/en/latest/autogenerate.html)
-
-La revisión `0003_retirar_prioridad_critical` convierte las prioridades
-`critical` existentes a `high` y restringe el catálogo a `low`, `medium`, `high`.
-No elimina tickets. Su downgrade restaura el catálogo anterior, pero no puede
-reconstruir qué registros eran `critical`. Requiere aplicar Alembic
-explícitamente; no se ejecuta al arrancar FastAPI.

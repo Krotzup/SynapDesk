@@ -302,9 +302,9 @@ python ml/train_ticket_classifier.py --input-csv ml/data/raw/tickets_esp_entrena
 ```
 
 Los datos y pesos no se publican en Git. La integración FastAPI queda fuera
-de este cambio. Tras la confirmación de América Figueroa se retiran `critical`
-y su regla en ML, frontend y catálogo de persistencia. La migración nueva
-`0003_retirar_prioridad_critical` convierte registros existentes a `high` y
+de este cambio. América Figueroa confirmó el 10 de noviembre de 2026 que se
+retiren `critical` y su regla en ML, frontend y catálogo de persistencia. La
+migración nueva `0003_retirar_prioridad_critical` convierte registros existentes a `high` y
 restringe el catálogo; no se reescribe la migración inicial ni se ejecuta la
 migración automáticamente. El downgrade restaura el catálogo anterior, pero
 no reconstruye qué tickets eran `critical`.

@@ -257,6 +257,12 @@ python -m alembic history
 
 La revisión actual es `0003_retirar_prioridad_critical`; `heads` debe mostrarla como `(head)`, con `0002_autenticacion_persistencia` como revisión anterior.
 
+Esta revisión convierte las prioridades `critical` existentes a `high` y
+restringe el catálogo a `low`, `medium`, `high`. No elimina tickets. Su
+downgrade restaura el catálogo anterior, pero no puede reconstruir qué registros
+eran `critical`. Requiere aplicar Alembic explícitamente; no se ejecuta al
+arrancar FastAPI.
+
 Para aplicar primero la revisión en `db_test`, con Docker funcionando:
 
 ```cmd
@@ -305,9 +311,3 @@ Consulta el [procedimiento de migraciones](migraciones/README.md) antes de incor
 - [Modelo inicial del dominio](../docs/arquitectura/modelo-dominio.md)
 - [Persistencia relacional inicial](../docs/arquitectura/persistencia-inicial.md)
 - [Infraestructura y PostgreSQL](../infra/README.md)
-
-La revisión `0003_retirar_prioridad_critical` convierte las prioridades
-`critical` existentes a `high` y restringe el catálogo a `low`, `medium`, `high`.
-No elimina tickets. Su downgrade restaura el catálogo anterior, pero no puede
-reconstruir qué registros eran `critical`. Requiere aplicar Alembic
-explícitamente; no se ejecuta al arrancar FastAPI.

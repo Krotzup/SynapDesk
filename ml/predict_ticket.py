@@ -41,7 +41,7 @@ def predict(
     return response
 
 
-def parse_args() -> argparse.Namespace:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Predice atributos de un ticket.")
     parser.add_argument(
         "--model",
@@ -61,25 +61,37 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Usa solo el modelo aunque el artefacto antiguo configure reglas retiradas.",
     )
+    return parser
+
+
+def parse_args(parser: argparse.ArgumentParser | None = None) -> argparse.Namespace:
+    parser = parser or build_parser()
     args = parser.parse_args()
     if args.enable_business_rules:
         parser.error("La regla de urgencia fue retirada; --enable-business-rules ya no está disponible.")
     return args
 
 
-if __name__ == "__main__":
-    args = parse_args()
+def main() -> None:
+    parser = build_parser()
+    args = parse_args(parser)
     business_rules = None
     if args.disable_business_rules:
         business_rules = False
 
-    if not args.subject.strip() and not args.body.strip():
-        raise SystemExit("Error de entrada: el ticket debe incluir asunto o descripcion.")
-
-    result = predict(
-        Path(args.model),
-        args.subject,
-        args.body,
-        business_rules=business_rules,
-    )
+    try:
+        if not args.subject.strip() and not args.body.strip():
+            raise ValueError("El ticket debe incluir asunto o descripcion.")
+        result = predict(
+            Path(args.model),
+            args.subject,
+            args.body,
+            business_rules=business_rules,
+        )
+    except (ValueError, OSError) as error:
+        parser.error(str(error))
     print(json.dumps(result, indent=2, ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    main()

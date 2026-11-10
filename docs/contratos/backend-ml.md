@@ -198,17 +198,18 @@ Antes de asignar `clasificacion_sugerida` a `predictedCategory`, el equipo deber
 
 ### Catálogo vigente de prioridad
 
-Tras la confirmación de América Figueroa, el catálogo de esta rama se limita a
-`low`, `medium` y `high` en ML, frontend y persistencia. Se retiraron `critical`
-y la regla que la imponía por señales léxicas. El CSV original y V2 no contienen
-esa clase y no requieren cambios adicionales.
+América Figueroa confirmó explícitamente el 10 de noviembre de 2026 que
+`critical` desaparezca también del dominio. El catálogo se limita a `low`,
+`medium` y `high` en ML, frontend y persistencia; se retiraron `critical` y la
+regla que la imponía por señales léxicas. El CSV original y V2 no contienen esa
+clase y no requieren cambios adicionales.
 
 La migración `0003_retirar_prioridad_critical`, posterior a la persistencia de
 autenticación ya integrada, convierte los tickets existentes de `critical` a
 `high` e instala la restricción de tres valores. Se conserva la migración
 inicial como antecedente. El downgrade restaura el catálogo anterior sin
 reconstruir etiquetas convertidas. La migración requiere aplicación explícita;
-no se ejecutó al preparar este cambio.
+se verificó únicamente en `db_test` y no se aplicó en desarrollo ni producción.
 
 ### Confianza única frente a confianza por objetivo
 

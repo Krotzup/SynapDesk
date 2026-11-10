@@ -337,7 +337,7 @@ def train(config: TrainingConfig) -> None:
     print(f"Metricas guardadas: {output_dir / 'metrics.json'}")
 
 
-def parse_args() -> TrainingConfig:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Prepara el CSV de tickets y entrena los modelos ML de SynapDesk."
     )
@@ -389,6 +389,11 @@ def parse_args() -> TrainingConfig:
             "Es el comportamiento por defecto."
         ),
     )
+    return parser
+
+
+def parse_args(parser: argparse.ArgumentParser | None = None) -> TrainingConfig:
+    parser = parser or build_parser()
     args = parser.parse_args()
     if args.enable_business_rules:
         parser.error("La regla de urgencia fue retirada; --enable-business-rules ya no está disponible.")
@@ -410,5 +415,13 @@ def parse_args() -> TrainingConfig:
     )
 
 
+def main() -> None:
+    parser = build_parser()
+    try:
+        train(parse_args(parser))
+    except (ValueError, OSError) as error:
+        parser.error(str(error))
+
+
 if __name__ == "__main__":
-    train(parse_args())
+    main()

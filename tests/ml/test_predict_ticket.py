@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import subprocess
 import unittest
 import tempfile
 import json
@@ -89,6 +90,36 @@ class PredictTicketTest(unittest.TestCase):
             joblib.dump({"models": {"prioridad_estimada": model}}, path)
             with self.assertRaisesRegex(ValueError, "prioridades no admitidas"):
                 predict(path, "Consulta", "Manual", business_rules=False)
+
+    def test_cli_rejects_legacy_artifact_without_traceback(self) -> None:
+        model = build_model(200, (1, 2))
+        model.fit(
+            ["falla correo red", "falla correo acceso", "manual consulta", "manual ayuda"],
+            ["critical", "critical", "low", "low"],
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "legacy.joblib"
+            joblib.dump({"models": {"prioridad_estimada": model}}, path)
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "ml/predict_ticket.py"),
+                    "--model",
+                    str(path),
+                    "--subject",
+                    "Consulta",
+                    "--body",
+                    "Manual",
+                ],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+            )
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("prioridades no admitidas", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
 
     def test_training_rejects_removed_rule_before_reading_dataset(self):
         config = TrainingConfig(

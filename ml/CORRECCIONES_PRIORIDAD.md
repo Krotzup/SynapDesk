@@ -128,6 +128,12 @@ mismo nombre base. Conserva todos los campos y registros originales y modifica
 duplicados en la exportación; la preparación de entrenamiento hace su propia
 deduplicación. Rechaza archivos destino existentes y correcciones incompatibles.
 
+#### Antecedente V1 (histórico)
+
+Los comandos y conteos siguientes documentan la primera revisión de 63
+decisiones. No representan la entrega vigente; para nuevos entrenamientos usar
+la V2 confirmada de la sección siguiente.
+
 ```text
 python ml/export_training_dataset.py --input-csv ml/data/raw/tickets_esp.csv --corrections-csv ml/annotations/correcciones_prioridad.csv --corrections-manifest ml/annotations/correcciones_prioridad.json --output-csv ml/data/raw/tickets_esp_entrenamiento_v1.csv
 ```
@@ -190,8 +196,9 @@ python ml/export_training_dataset.py --input-csv ml/data/raw/tickets_esp.csv --c
 
 El conjunto de los 126 candidatos léxicos originales queda cubierto por una
 decisión registrada en V2; esto no significa que todos sean errores ni que la
-validación de anotaciones sea una evaluación independiente del modelo. La
-retirada de `critical` y su regla fue confirmada posteriormente por América Figueroa y está implementada en esta rama.
+validación de anotaciones sea una evaluación independiente del modelo.
+América Figueroa confirmó el 10 de noviembre de 2026 que `critical` y su regla
+se retiren también del dominio; la decisión está implementada en esta rama.
 
 La entrega vigente es `tickets_esp_entrenamiento_v2.csv` junto a
 `tickets_esp_entrenamiento_v2.manifest.json`. La copia con sufijo `_propuesto`
