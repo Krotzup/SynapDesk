@@ -5,8 +5,10 @@
 export interface Transport {
   baseUrl: string;
   headers: Record<string, string>;
+  /** Hace la petición. En el servidor agrega tiempo de espera y rechaza redirecciones. */
+  fetch: (url: string, init: RequestInit) => Promise<Response>;
 }
 
 export async function getTransport(): Promise<Transport> {
-  return { baseUrl: "", headers: {} };
+  return { baseUrl: "", headers: {}, fetch: (url, init) => fetch(url, init) };
 }

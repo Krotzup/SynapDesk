@@ -121,7 +121,7 @@ Están documentadas en `.env.example` en la raíz del repositorio.
 | Variable | Descripción | Ejemplo |
 |---|---|---|
 | `BACKEND_INTERNAL_URL` | Destino FastAPI del proxy de mismo origen y de las lecturas SSR; solo de servidor. El navegador usa rutas relativas `/api/v1/*` | `http://127.0.0.1:8000` |
-| `AUTH_COOKIE_PROFILE` | Cookies que reenvía el proxy: `local` (`synapdesk_*_dev`) o `production` (`__Host-synapdesk_*`); solo de servidor | `local` |
+| `AUTH_COOKIE_PROFILE` | Cookies que reenvía el proxy: `local` (`synapdesk_*_dev`) o `production` (`__Host-synapdesk_*`); otro valor es un error de configuración (503); solo de servidor | `local` (si no está definida) |
 | `NEXT_PUBLIC_USE_MOCKS` | `true` para que los services devuelvan datos de ejemplo de `src/mocks`; cualquier otro valor llama al backend | `true` |
 
 El prefijo `NEXT_PUBLIC_` es obligatorio para que Next.js exponga la variable al navegador.

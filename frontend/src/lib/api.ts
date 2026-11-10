@@ -34,7 +34,7 @@ const sessionChangedError = (): ApiError => ({
     code: SESSION_CHANGED,
     message: "La sesión cambió mientras se preparaba la solicitud.",
     details: null,
-    requestId: "",
+    requestId: crypto.randomUUID(),
   },
 });
 
@@ -64,15 +64,16 @@ async function send<TResponse, TBody>(
     config.body = JSON.stringify(body);
   }
 
-  const response = await fetch(`${transport.baseUrl}${API_PREFIX}${endpoint}`, config);
+  const response = await transport.fetch(`${transport.baseUrl}${API_PREFIX}${endpoint}`, config);
 
   if (!response.ok) {
+    // Si la respuesta no trae el formato del contrato, se genera un error con requestId propio.
     const errorBody: ApiError = await response.json().catch(() => ({
       error: {
         code: "UNKNOWN_ERROR",
         message: "Error desconocido",
         details: null,
-        requestId: "",
+        requestId: crypto.randomUUID(),
       },
     }));
     throw new HttpError(response.status, errorBody);
