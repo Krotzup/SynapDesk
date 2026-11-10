@@ -255,7 +255,13 @@ python -m alembic heads
 python -m alembic history
 ```
 
-La revisión actual es `0002_autenticacion_persistencia`; `heads` debe mostrarla como `(head)`, con `0001_usuarios_tickets` como revisión anterior.
+La revisión actual es `0003_retirar_prioridad_critical`; `heads` debe mostrarla como `(head)`, con `0002_autenticacion_persistencia` como revisión anterior.
+
+Esta revisión convierte las prioridades `critical` existentes a `high` y
+restringe el catálogo a `low`, `medium`, `high`. No elimina tickets. Su
+downgrade restaura el catálogo anterior, pero no puede reconstruir qué registros
+eran `critical`. Requiere aplicar Alembic explícitamente; no se ejecuta al
+arrancar FastAPI.
 
 Para aplicar primero la revisión en `db_test`, con Docker funcionando:
 
@@ -272,7 +278,7 @@ python -m alembic current
 python -m alembic check
 ```
 
-`current` debe mostrar `0002_autenticacion_persistencia (head)`. `check` debe informar que no se detectaron nuevas operaciones de actualización: compara modelos registrados y estructura de la base, sin generar revisiones.
+`current` debe mostrar `0003_retirar_prioridad_critical (head)`. `check` debe informar que no se detectaron nuevas operaciones de actualización: compara modelos registrados y estructura de la base, sin generar revisiones.
 
 Las revisiones no insertan usuarios ni tickets. La autenticación y las rutas de estos módulos siguen pendientes. Los campos y relaciones se documentan en [Persistencia relacional inicial](../docs/arquitectura/persistencia-inicial.md); los [modelos de persistencia](app/persistencia/modelos/) comparten la misma base declarativa y la [revisión de autenticación](migraciones/versiones/0002_autenticacion_persistencia.py) depende de la revisión inicial.
 

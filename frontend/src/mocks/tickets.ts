@@ -15,7 +15,7 @@ const tickets: Ticket[] = [
     description:
       "Ningún usuario de la oficina central puede enviar ni recibir correos desde las 08:00.",
     status: "open",
-    priority: "critical",
+    priority: "high",
     category: null,
     area: null,
     createdBy: roberto,
@@ -184,7 +184,7 @@ const tickets: Ticket[] = [
     title: "Servidor de archivos sin espacio disponible",
     description: "El disco del servidor de archivos está al 98 % y los usuarios no pueden guardar.",
     status: "open",
-    priority: "critical",
+    priority: "high",
     category: "Infraestructura",
     area: "Infraestructura",
     createdBy: roberto,

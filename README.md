@@ -257,3 +257,8 @@ Esta posibilidad se considera trabajo futuro y no forma parte del alcance princi
 ## Licencia
 
 La licencia será definida según los criterios académicos, institucionales y de propiedad intelectual acordados por el equipo.
+
+Esta definición pendiente corresponde al código y documentación propios de
+SynapDesk. El dataset externo usado por el componente ML tiene una licencia
+independiente CC BY-NC 4.0 y requisitos de atribución, indicación de cambios y
+uso no comercial; consultar su [procedencia y condiciones](ml/DATASET_PROVENANCE.md).
