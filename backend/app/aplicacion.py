@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.concurrency import run_in_threadpool
 
 from app.api.salud import router as router_salud
+from app.api.errores_auth import registrar_errores
 from app.configuracion import Configuracion
 from app.persistencia.conexion import crear_motor_bd
 
@@ -35,6 +36,8 @@ def crear_aplicacion(configuracion: Configuracion | None = None) -> FastAPI:
         lifespan=ciclo_de_vida,
     )
     aplicacion.state.motor_bd = None
+    aplicacion.state.configuracion = configuracion
+    registrar_errores(aplicacion)
 
     aplicacion.add_middleware(
         CORSMiddleware,

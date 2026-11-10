@@ -27,6 +27,8 @@ Los [servicios internos de seguridad](app/seguridad/README.md) reutilizan las ta
 
 ## Fundamentos de seguridad
 
+Los [fundamentos HTTP AUTH-07A](app/api/README.md) preparan esquemas, errores saneados, cookies con perfiles explícitos propuestos, Origin y sesiones ORM por petición. No registran endpoints de autenticación. La IP HTTP permanece cerrada hasta resolver la autenticidad del proxy; el comando local desactiva la interpretación de forwarded headers.
+
 [ServicioContrasenas](app/seguridad/contrasenas.py) utiliza `argon2-cffi==25.1.0` y Argon2id con sal aleatoria individual de 16 bytes y hash de 32 bytes. Genera hashes codificados, verifica y detecta necesidad de rehash; no consulta usuarios, cambia contraseñas ni inicia sesión. La contraseña no se recorta ni normaliza. Una verificación correcta devuelve true; `VerifyMismatchError` devuelve false. Un hash almacenado malformado/incompatible o `InvalidHashError` produce [ErrorContrasena](app/seguridad/contrasenas.py), al igual que un `VerificationError` interno (por ejemplo, fallo de asignación de memoria), con mensajes saneados distintos y sin detalles de Argon2. Estos errores no son credenciales incorrectas ni deben convertirse en ellas por el llamador; no se implementa su traducción HTTP aquí. `necesita_rehash` conserva su comportamiento y debe consultarse solo tras una verificación correcta. Solo se aceptan hashes del almacenamiento confiable, nunca hashes enviados por un cliente: sus parámetros controlan trabajo criptográfico. Los errores propios están saneados y el servicio no escribe logs.
 
 Se reutiliza [Configuracion](app/configuracion.py), su carga de variables y su validación inicial:
@@ -140,7 +142,7 @@ La configuración se carga al crear la aplicación. El punto de entrada `app.mai
 Con el entorno activo y ubicado en `backend/`:
 
 ```cmd
-python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000 --no-proxy-headers
 ```
 
 - API: <http://127.0.0.1:8000/api/v1/health>
