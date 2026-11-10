@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { SESSION_CHANGED } from "@/lib/api";
 import { USE_MOCKS } from "@/lib/config";
@@ -81,6 +81,22 @@ function borderClass(hasError: boolean) {
   return hasError ? "border-[#EF4444]" : "border-[#C7D2FE]";
 }
 
+interface DemoState {
+  recommendation: Recommendation;
+  review: HumanReview | null;
+}
+
+/**
+ * Solo con datos de ejemplo: el detalle se genera en el servidor, que no ve lo registrado en el
+ * mock del navegador. Se guarda aquí por ticket, mientras dure la pestaña (se pierde al recargar,
+ * igual que el mock), para que al volver al ticket se muestre lo ya revisado y no se ofrezca una
+ * segunda revisión. Con el backend real no se usa: la página trae el estado del servidor.
+ */
+const demoStateByTicket = new Map<string, DemoState>();
+
+const editButtonId = "recommendation-edit-button";
+const discardButtonId = "recommendation-discard-button";
+
 interface AssistantRecommendationProps {
   ticketId: string;
   initialRecommendation: Recommendation | null;
@@ -96,7 +112,12 @@ export function AssistantRecommendation({
   initialRecommendation,
 }: AssistantRecommendationProps) {
   const router = useRouter();
-  const [recommendation, setRecommendation] = useState(initialRecommendation);
+  // Al volver al ticket en la misma pestaña, la demo parte de lo ya registrado. En la primera
+  // carga el mapa está vacío, así que coincide con lo generado en el servidor.
+  const [saved] = useState(() => (USE_MOCKS ? demoStateByTicket.get(ticketId) : undefined));
+  const [recommendation, setRecommendation] = useState(
+    saved ? saved.recommendation : initialRecommendation
+  );
   const [mode, setMode] = useState<Mode>("view");
   const [draft, setDraft] = useState("");
   const [feedback, setFeedback] = useState("");
@@ -104,12 +125,27 @@ export function AssistantRecommendation({
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<ActionError | null>(null);
   const [pending, setPending] = useState<Action | null>(null);
-  const [changedLocally, setChangedLocally] = useState(false);
+  const [changedLocally, setChangedLocally] = useState(Boolean(saved));
   // Revisión registrada en esta pestaña. Se guarda aparte para no sobrescribir el contenido
   // original generado por la IA (modelo de dominio).
-  const [review, setReview] = useState<HumanReview | null>(null);
+  const [review, setReview] = useState<HumanReview | null>(saved ? saved.review : null);
+  const contentRef = useRef<HTMLTextAreaElement>(null);
+  const feedbackRef = useRef<HTMLTextAreaElement>(null);
+  // Botón al que vuelve el foco al cancelar.
+  const focusAfterCancel = useRef<string | null>(null);
 
   const busy = pending !== null;
+
+  // Foco del teclado: al abrir el editor o el descarte va al primer campo; al cancelar vuelve
+  // al botón que lo abrió.
+  useEffect(() => {
+    if (mode === "edit") contentRef.current?.focus();
+    else if (mode === "discard") feedbackRef.current?.focus();
+    else if (focusAfterCancel.current) {
+      document.getElementById(focusAfterCancel.current)?.focus();
+      focusAfterCancel.current = null;
+    }
+  }, [mode]);
 
   function resetForms() {
     setDraft("");
@@ -133,20 +169,26 @@ export function AssistantRecommendation({
   }
 
   function cancel() {
+    focusAfterCancel.current = mode === "edit" ? editButtonId : discardButtonId;
     resetForms();
     setActionError(null);
     setMode("view");
   }
 
   // Con datos de ejemplo el detalle se genera en el servidor y no vería el cambio:
-  // se actualiza aquí. Con el backend real se vuelve a pedir la página.
+  // se actualiza aquí y se guarda para la navegación. Con el backend real se vuelve a pedir
+  // la página.
   function afterSuccess(next: Recommendation, nextReview: HumanReview | null = null) {
     setRecommendation(next);
     setReview(nextReview);
     setMode("view");
     resetForms();
-    if (USE_MOCKS) setChangedLocally(true);
-    else router.refresh();
+    if (USE_MOCKS) {
+      demoStateByTicket.set(ticketId, { recommendation: next, review: nextReview });
+      setChangedLocally(true);
+    } else {
+      router.refresh();
+    }
   }
 
   // Cada error de campo se muestra junto a su campo; si el backend devuelve varios, se
@@ -274,6 +316,7 @@ export function AssistantRecommendation({
             </label>
             <textarea
               id="recommendation-content"
+              ref={contentRef}
               rows={8}
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
@@ -351,6 +394,7 @@ export function AssistantRecommendation({
                 variant="secondary"
                 fullWidth
                 disabled={busy}
+                id={editButtonId}
                 onClick={startEdit}
               >
                 ✏️ Editar
@@ -363,6 +407,7 @@ export function AssistantRecommendation({
                 variant="danger"
                 fullWidth
                 disabled={busy}
+                id={discardButtonId}
                 onClick={startDiscard}
               >
                 🗑️ Descartar
@@ -392,6 +437,7 @@ export function AssistantRecommendation({
               </label>
               <textarea
                 id="review-feedback"
+                ref={feedbackRef}
                 rows={3}
                 value={feedback}
                 onChange={(event) => setFeedback(event.target.value)}
