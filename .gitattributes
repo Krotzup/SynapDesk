@@ -1,5 +1,8 @@
 * text=auto eol=lf
 
+# Los manifiestos verifican estos CSV por sus bytes, incluidos los saltos de línea.
+ml/annotations/*.csv -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+
 *.bat text eol=crlf
 *.cmd text eol=crlf
 *.ps1 text eol=crlf

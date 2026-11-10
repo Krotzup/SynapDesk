@@ -89,7 +89,6 @@ No usar este color para elementos que no sean de origen automático o de IA.
 | Baja | `#DCFCE7` | `#16A34A` |
 | Media | `#FEF9C3` | `#D97706` |
 | Alta | `#FEE2E2` | `#991B1B` |
-| Crítica | `#FEE2E2` | `#991B1B` |
 
 ### Botones de acción Human-in-the-loop
 

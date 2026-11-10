@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import json
 import platform
-from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from importlib.metadata import version
@@ -16,15 +15,11 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import SGDClassifier
 from sklearn.metrics import classification_report, f1_score
 from sklearn.model_selection import GroupShuffleSplit
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import FeatureUnion, Pipeline
 
-from dataset_io import apply_priority_corrections, read_dataset
+from dataset_io import PRIORITIES, apply_priority_corrections, file_sha256, read_dataset
 from prediction_output import model_prediction
 from text_preprocessing import build_text, normalize_label, normalize_text
-from ticket_rules import (
-    apply_priority_rule_to_labels,
-    apply_priority_rule_to_prediction,
-)
 
 
 REQUIRED_COLUMNS = {
@@ -57,6 +52,7 @@ class TrainingConfig:
     business_rules_enabled: bool
     corrections_csv: str | None = None
     corrections_manifest: str | None = None
+    character_ngram_targets: tuple[str, ...] = ()
 
 
 def validate_columns(df: pd.DataFrame) -> None:
@@ -97,6 +93,10 @@ def load_and_prepare_dataset(
     for target in TARGETS:
         prepared[target] = prepared[target].map(normalize_label)
 
+    invalid_priorities = set(prepared["priority"]) - PRIORITIES - {""}
+    if invalid_priorities:
+        raise ValueError("Prioridad no admitida: el catálogo vigente es low, medium, high. Revisa el dataset.")
+
     prepared = prepared.dropna(subset=["text", *TARGETS.keys()])
     prepared = prepared[prepared["text"].str.len() > 0]
     for target in TARGETS:
@@ -126,8 +126,11 @@ def load_and_prepare_dataset(
     return prepared
 
 
-def build_model(max_features: int, ngram_range: tuple[int, int]) -> Pipeline:
-    return Pipeline(
+def build_model(
+    max_features: int, ngram_range: tuple[int, int], *, random_state: int = 42,
+    include_character_ngrams: bool = False,
+) -> Pipeline:
+    model = Pipeline(
         steps=[
             (
                 "tfidf",
@@ -148,11 +151,20 @@ def build_model(max_features: int, ngram_range: tuple[int, int]) -> Pipeline:
                     class_weight="balanced",
                     max_iter=1000,
                     tol=1e-3,
-                    random_state=42,
+                    random_state=random_state,
                 ),
             ),
         ]
     )
+    if include_character_ngrams:
+        model.steps[0] = ("tfidf", FeatureUnion([
+            ("words", model.named_steps["tfidf"]),
+            ("characters", TfidfVectorizer(
+                analyzer="char_wb", ngram_range=(3, 5), min_df=2,
+                sublinear_tf=True, strip_accents="unicode", max_features=max_features,
+            )),
+        ]))
+    return model
 
 
 def safe_train_test_split(
@@ -193,6 +205,11 @@ def target_distribution(df: pd.DataFrame, targets: Iterable[str]) -> dict[str, d
 
 
 def train(config: TrainingConfig) -> None:
+    if config.business_rules_enabled:
+        raise ValueError("La regla de urgencia fue retirada; no se pueden habilitar reglas de prioridad.")
+    if (len(set(config.character_ngram_targets)) != len(config.character_ngram_targets)
+            or any(target not in TARGETS for target in config.character_ngram_targets)):
+        raise ValueError("Los objetivos con caracteres deben ser únicos y pertenecer a type, priority o queue.")
     csv_path = Path(config.input_csv)
     output_dir = Path(config.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -222,10 +239,8 @@ def train(config: TrainingConfig) -> None:
             )},
         },
         "business_rules": {
-            "enabled": config.business_rules_enabled,
-            "urgent_priority_rule": (
-                "strong Spanish urgency phrases force priority critical"
-            ),
+            "enabled": False,
+            "urgent_priority_rule": None,
         },
         "models": {},
     }
@@ -242,16 +257,13 @@ def train(config: TrainingConfig) -> None:
         model = build_model(
             max_features=config.max_features,
             ngram_range=(config.ngram_min, config.ngram_max),
+            random_state=config.random_state,
+            include_character_ngrams=target in config.character_ngram_targets,
         )
         model.fit(x_train, y_train)
 
         raw_predictions = model.predict(x_test).tolist()
         predictions = raw_predictions
-        rule_triggers: list[str] = []
-        if target == "priority" and config.business_rules_enabled:
-            predictions, rule_triggers = apply_priority_rule_to_labels(
-                x_test.tolist(), raw_predictions
-            )
 
         raw_report = classification_report(
             y_test,
@@ -284,17 +296,14 @@ def train(config: TrainingConfig) -> None:
                 ),
                 "classification_report": raw_report,
             },
-            "business_rule_overrides": int(
-                sum(bool(trigger) for trigger in rule_triggers)
-            ),
-            "business_rule_triggers": dict(
-                Counter(trigger for trigger in rule_triggers if trigger)
-            ),
+            "business_rule_overrides": 0,
+            "business_rule_triggers": {},
         }
         models[business_name] = model
 
     artifact = {
-        "model_name": "synapdesk_tfidf_sgd_ticket_classifier",
+        "model_name": ("synapdesk_tfidf_sgd_words_chars_ticket_classifier"
+                       if config.character_ngram_targets else "synapdesk_tfidf_sgd_ticket_classifier"),
         "model_version": datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S"),
         "targets": TARGETS,
         "models": models,
@@ -303,7 +312,17 @@ def train(config: TrainingConfig) -> None:
         "dataset": metrics["dataset"],
     }
 
-    joblib.dump(artifact, output_dir / "ticket_classifier.joblib")
+    artifact_path = output_dir / "ticket_classifier.joblib"
+    joblib.dump(artifact, artifact_path)
+    write_json(output_dir / "artifact_manifest.json", {
+        "schema_version": 1, "artifact_file": artifact_path.name,
+        "artifact_sha256": file_sha256(artifact_path),
+        "model_name": artifact["model_name"], "model_version": artifact["model_version"],
+        "runtime": artifact["runtime"], "dataset": artifact["dataset"],
+        "business_rules_enabled": config.business_rules_enabled,
+        "character_ngram_targets": config.character_ngram_targets,
+        "classes": {name: [str(label) for label in model.classes_] for name, model in models.items()},
+    })
     write_json(output_dir / "metrics.json", metrics)
 
     sample_text = df.iloc[0]["text"]
@@ -311,11 +330,6 @@ def train(config: TrainingConfig) -> None:
         business_name: top_prediction(model, sample_text)
         for business_name, model in models.items()
     }
-    if config.business_rules_enabled:
-        sample_prediction["prioridad_estimada"] = apply_priority_rule_to_prediction(
-            sample_text,
-            sample_prediction["prioridad_estimada"],
-        )
     write_json(output_dir / "sample_prediction.json", sample_prediction)
 
     print(f"Dataset preparado: {prepared_path}")
@@ -323,7 +337,7 @@ def train(config: TrainingConfig) -> None:
     print(f"Metricas guardadas: {output_dir / 'metrics.json'}")
 
 
-def parse_args() -> TrainingConfig:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Prepara el CSV de tickets y entrena los modelos ML de SynapDesk."
     )
@@ -355,13 +369,16 @@ def parse_args() -> TrainingConfig:
     parser.add_argument("--max-features", type=int, default=120000)
     parser.add_argument("--ngram-min", type=int, default=1)
     parser.add_argument("--ngram-max", type=int, default=2)
+    parser.add_argument(
+        "--character-ngram-targets", choices=tuple(TARGETS), nargs="+", default=(),
+        help="Objetivos que añaden char_wb 3–5 a las palabras; variante experimental optativa.",
+    )
     rules_group = parser.add_mutually_exclusive_group()
     rules_group.add_argument(
         "--enable-business-rules",
         action="store_true",
         help=(
-            "Aplica reglas deterministas de prioridad durante la evaluacion. "
-            "Requiere aprobacion funcional del criterio urgent_priority."
+            "Opción retirada: su uso produce error. No hay reglas automáticas de prioridad."
         ),
     )
     rules_group.add_argument(
@@ -372,7 +389,14 @@ def parse_args() -> TrainingConfig:
             "Es el comportamiento por defecto."
         ),
     )
+    return parser
+
+
+def parse_args(parser: argparse.ArgumentParser | None = None) -> TrainingConfig:
+    parser = parser or build_parser()
     args = parser.parse_args()
+    if args.enable_business_rules:
+        parser.error("La regla de urgencia fue retirada; --enable-business-rules ya no está disponible.")
 
     return TrainingConfig(
         input_csv=args.input_csv,
@@ -384,11 +408,20 @@ def parse_args() -> TrainingConfig:
         max_features=args.max_features,
         ngram_min=args.ngram_min,
         ngram_max=args.ngram_max,
-        business_rules_enabled=args.enable_business_rules,
+        business_rules_enabled=False,
         corrections_csv=args.corrections_csv,
         corrections_manifest=args.corrections_manifest,
+        character_ngram_targets=tuple(args.character_ngram_targets),
     )
 
 
+def main() -> None:
+    parser = build_parser()
+    try:
+        train(parse_args(parser))
+    except (ValueError, OSError) as error:
+        parser.error(str(error))
+
+
 if __name__ == "__main__":
-    train(parse_args())
+    main()
