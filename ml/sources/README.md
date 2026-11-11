@@ -99,6 +99,29 @@ Los reportes públicos y sus etiquetas editoriales permiten un ensayo
 exploratorio. La validación representativa sigue requiriendo consultas de
 soporte anonimizadas y etiquetas revisadas por alguien independiente.
 
+El conjunto `ml/examples/relevancia/soporte_evaluacion.json` añade ocho
+consultas sintéticas redactadas como solicitudes de soporte. Cuatro tienen una
+guía esperada y cuatro requieren procedimientos ausentes del catálogo aunque
+comparten vocabulario con él. Evalúalo con el mismo corpus y perfil V2 del
+piloto. Los casos quedan reservados para evaluación.
+
+```powershell
+python -m ml.semantic_retrieval.cli evaluate-relevance --cases ml/examples/relevancia/soporte_evaluacion.json --relevance-profile ml/artifacts/piloto_perfil_v2.json --output ml/artifacts/soporte_evaluacion.json
+```
+
+Para revisar las etiquetas, pide a otra persona que contraste cada consulta
+con el catálogo antes de ver los resultados del modelo. Debe confirmar si
+alguna guía cubre la solicitud y, para las consultas con cobertura, si el
+`expectedDocumentId` corresponde al procedimiento esperado. Si la cobertura
+es ambigua, registra el motivo antes de interpretar el informe.
+La [hoja de revisión ciega](../../docs/gestion/revision-ciega-relevancia-pr32.md)
+incluye las ocho consultas, las guías y una plantilla para casos reales anonimizados.
+
+Revisa por separado `counts.coveredRejected` (consultas cubiertas que se
+abstuvieron) y `counts.uncoveredAccepted` (consultas fuera de cobertura que
+recibieron resultados). Las observaciones por `queryId` permiten revisar
+cada desacuerdo y consultar la posición del documento esperado cuando aplica.
+
 Para comparar con la variante histórica, configurar una segunda base semántica
 vacía. Indexar los archivos archivados del mismo catálogo con los mismos UUID.
 

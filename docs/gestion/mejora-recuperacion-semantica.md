@@ -145,6 +145,37 @@ independientes. El ensayo no instrumentó la espera por bloqueos SQL ni estima
 capacidad de producción. Cualquier ajuste de la transacción requiere preservar
 las garantías de revocación y validación CSRF.
 
+### Evaluación adicional y concurrencia
+
+El índice reconstruido conservó la huella del corpus de 15 documentos y 340
+fragmentos. La calibración con las 33 consultas originales reprodujo el umbral
+de 0,4981627604760416. La restauración del respaldo conservó la huella y la
+revisión necesarias para utilizar el nuevo perfil V2.
+
+Se evaluaron ocho consultas sintéticas. Tres de las cuatro consultas con
+cobertura devolvieron resultados. Tres de las cuatro fuera de cobertura
+también devolvieron resultados. El documento esperado fue el primer candidato
+en dos de los cuatro casos con guía asignada. Las etiquetas quedan pendientes
+de revisión independiente con la
+[hoja de revisión ciega](revision-ciega-relevancia-pr32.md).
+
+El ensayo adicional envió 124 solicitudes locales a FastAPI con el modelo y
+PostgreSQL reales y sesiones de prueba emitidas por los servicios internos.
+Todas devolvieron HTTP 200. El p95 se calculó por rango más cercano.
+
+| Solicitudes simultáneas | Sesiones | Solicitudes | Latencia p95 | Conexión de autenticación ocupada p95 | Espera del modelo p95 |
+| ---: | --- | ---: | ---: | ---: | ---: |
+| 1 | Una | 12 | 586 ms | 570 ms | 0 ms |
+| 4 | Compartida | 24 | 1394 ms | 1355 ms | 0 ms |
+| 4 | Independientes | 24 | 884 ms | 837 ms | 356 ms |
+| 8 | Compartida | 32 | 2424 ms | 2282 ms | 0 ms |
+| 8 | Independientes | 32 | 1373 ms | 1269 ms | 850 ms |
+
+Se observaron hasta ocho conexiones de autenticación simultáneas. La espera
+del modelo aumentó con sesiones independientes. La causa de la mayor latencia
+con sesión compartida queda por medir, incluida la posible espera por bloqueos
+SQL. Los valores corresponden a un entorno local y una sola consulta.
+
 ## Referencias
 
 - [Contrato de recuperación V1](../contratos/recuperacion-semantica-v1.md).
