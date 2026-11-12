@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/Button";
 import { SESSION_CHANGED } from "@/lib/api";
 import { USE_MOCKS } from "@/lib/config";
@@ -82,17 +82,39 @@ function borderClass(hasError: boolean) {
 }
 
 interface DemoState {
-  recommendation: Recommendation;
-  review: HumanReview | null;
+  /** Última recomendación y revisión registradas en la pestaña. */
+  saved: { recommendation: Recommendation; review: HumanReview | null } | null;
+  /** Acción en curso; sigue aquí aunque el panel que la inició ya no esté montado. */
+  pending: Action | null;
 }
 
 /**
  * Solo con datos de ejemplo: el detalle se genera en el servidor, que no ve lo registrado en el
  * mock del navegador. Se guarda aquí por ticket, mientras dure la pestaña (se pierde al recargar,
  * igual que el mock), para que al volver al ticket se muestre lo ya revisado y no se ofrezca una
- * segunda revisión. Con el backend real no se usa: la página trae el estado del servidor.
+ * segunda revisión. Los paneles se suscriben: si se reabre el ticket mientras se guarda, el panel
+ * nuevo muestra la acción en curso y se actualiza cuando termina. Con el backend real no se usa:
+ * la página trae el estado del servidor.
  */
 const demoStateByTicket = new Map<string, DemoState>();
+const demoListeners = new Set<() => void>();
+
+function updateDemoState(ticketId: string, change: Partial<DemoState>) {
+  const current = demoStateByTicket.get(ticketId) ?? { saved: null, pending: null };
+  // Objeto nuevo en cada cambio: useSyncExternalStore compara por referencia.
+  demoStateByTicket.set(ticketId, { ...current, ...change });
+  demoListeners.forEach((listener) => listener());
+}
+
+function subscribeDemoState(listener: () => void) {
+  demoListeners.add(listener);
+  return () => {
+    demoListeners.delete(listener);
+  };
+}
+
+// En el servidor y durante la hidratación no hay estado de la demo.
+const noDemoState = () => undefined;
 
 const editButtonId = "recommendation-edit-button";
 const discardButtonId = "recommendation-discard-button";
@@ -112,23 +134,30 @@ export function AssistantRecommendation({
   initialRecommendation,
 }: AssistantRecommendationProps) {
   const router = useRouter();
-  // Al volver al ticket en la misma pestaña, la demo parte de lo ya registrado. En la primera
-  // carga el mapa está vacío, así que coincide con lo generado en el servidor.
-  const [saved] = useState(() => (USE_MOCKS ? demoStateByTicket.get(ticketId) : undefined));
-  const [recommendation, setRecommendation] = useState(
-    saved ? saved.recommendation : initialRecommendation
+  // Con datos de ejemplo, el panel sigue lo registrado en la pestaña para este ticket (también
+  // lo que termine de guardarse después de reabrirlo). En la primera carga no hay nada, así que
+  // coincide con lo generado en el servidor.
+  const demo = useSyncExternalStore(
+    subscribeDemoState,
+    () => (USE_MOCKS ? demoStateByTicket.get(ticketId) : undefined),
+    noDemoState
   );
+  const [localRecommendation, setRecommendation] = useState(initialRecommendation);
+  // Revisión registrada en esta pestaña. Se guarda aparte para no sobrescribir el contenido
+  // original generado por la IA (modelo de dominio).
+  const [localReview, setReview] = useState<HumanReview | null>(null);
+  const [localPending, setPending] = useState<Action | null>(null);
   const [mode, setMode] = useState<Mode>("view");
   const [draft, setDraft] = useState("");
   const [feedback, setFeedback] = useState("");
   const [contentError, setContentError] = useState<string | null>(null);
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<ActionError | null>(null);
-  const [pending, setPending] = useState<Action | null>(null);
-  const [changedLocally, setChangedLocally] = useState(Boolean(saved));
-  // Revisión registrada en esta pestaña. Se guarda aparte para no sobrescribir el contenido
-  // original generado por la IA (modelo de dominio).
-  const [review, setReview] = useState<HumanReview | null>(saved ? saved.review : null);
+
+  const recommendation = demo?.saved ? demo.saved.recommendation : localRecommendation;
+  const review = demo?.saved ? demo.saved.review : localReview;
+  const pending = localPending ?? demo?.pending ?? null;
+  const changedLocally = Boolean(demo?.saved);
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const feedbackRef = useRef<HTMLTextAreaElement>(null);
   // Botón al que vuelve el foco al cancelar.
@@ -184,11 +213,16 @@ export function AssistantRecommendation({
     setMode("view");
     resetForms();
     if (USE_MOCKS) {
-      demoStateByTicket.set(ticketId, { recommendation: next, review: nextReview });
-      setChangedLocally(true);
+      updateDemoState(ticketId, { saved: { recommendation: next, review: nextReview } });
     } else {
       router.refresh();
     }
+  }
+
+  // La acción en curso se comparte con la demo para que un panel reabierto no la ofrezca de nuevo.
+  function startPending(action: Action | null) {
+    setPending(action);
+    if (USE_MOCKS) updateDemoState(ticketId, { pending: action });
   }
 
   // Cada error de campo se muestra junto a su campo; si el backend devuelve varios, se
@@ -233,7 +267,7 @@ export function AssistantRecommendation({
     setContentError(null);
     setFeedbackError(null);
     setActionError(null);
-    setPending(action);
+    startPending(action);
     try {
       await recommendationsService.review(recommendation.id, submitted);
       // Solo cambia el estado: el contenido original se conserva.
@@ -241,20 +275,20 @@ export function AssistantRecommendation({
     } catch (error) {
       handleError(error, action);
     } finally {
-      setPending(null);
+      startPending(null);
     }
   }
 
   async function generate() {
     if (busy) return;
     setActionError(null);
-    setPending("generate");
+    startPending("generate");
     try {
       afterSuccess(await recommendationsService.generate(ticketId));
     } catch (error) {
       handleError(error, "generate");
     } finally {
-      setPending(null);
+      startPending(null);
     }
   }
 
@@ -309,7 +343,7 @@ export function AssistantRecommendation({
           </span>
         </div>
 
-        {mode === "edit" ? (
+        {mode === "edit" && isPending ? (
           <div className="space-y-1.5">
             <label htmlFor="recommendation-content" className="sr-only">
               Texto de la recomendación
