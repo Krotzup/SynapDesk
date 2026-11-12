@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -6,15 +7,13 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "ml"))
 
 from evaluate_ticket_classifier import (
-    CANDIDATES, EvaluationConfig, apply_high_threshold, candidate_model,
-    choose_high_threshold, evaluate_models, fit_outer_model, grouped_folds,
+    CANDIDATES, EvaluationConfig, candidate_model, evaluate_models, fit_outer_model, grouped_folds,
 )
 from train_ticket_classifier import build_model
 
@@ -83,11 +82,10 @@ class GroupedEvaluationTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             evaluate_models(original, config, reference=corrected.assign(text="otro"))
 
-    def test_optional_nested_search_and_threshold_never_fit_on_outer_test(self):
+    def test_optional_nested_search_never_fit_on_outer_test(self):
         data = synthetic_tickets()
         config = EvaluationConfig(folds=3, inner_folds=2, max_features=100,
-                                  candidates=("sgd_words",), tune_hyperparameters=True,
-                                  tune_high_threshold=True)
+                                  candidates=("sgd_words",), tune_hyperparameters=True)
         fitted_groups = []
         from sklearn.pipeline import Pipeline
         actual_fit = Pipeline.fit
@@ -101,33 +99,20 @@ class GroupedEvaluationTest(unittest.TestCase):
             with patch.object(Pipeline, "fit", record_fit), patch(
                 "evaluate_ticket_classifier.parameter_grid", return_value={"classifier__alpha": [1e-5, 1e-4]},
             ):
-                _, params, threshold = fit_outer_model("sgd_words", data.iloc[train], config)
+                _, params = fit_outer_model("sgd_words", data.iloc[train], config)
             self.assertIn("classifier__alpha", params)
-            self.assertEqual(threshold["source"], "grouped_oof_outer_training_only")
             self.assertTrue(fitted_groups)
             for group in fitted_groups:
                 self.assertTrue(group <= set(data.iloc[train]["text"]))
                 self.assertFalse(group & set(data.iloc[test]["text"]))
             self.assertTrue(any(group < set(data.iloc[train]["text"]) for group in fitted_groups))
 
-    def test_invalid_config_and_absent_high_are_explicit(self):
+    def test_invalid_config_is_rejected(self):
         data = synthetic_tickets()
         for config in (EvaluationConfig(candidates=()), EvaluationConfig(candidates=("unknown",)),
-                       EvaluationConfig(target="type", tune_high_threshold=True),
-                       EvaluationConfig(tune_high_threshold=True, high_beta=float("nan")),
-                       EvaluationConfig(tune_high_threshold=True, high_thresholds=(True,))):
+                       EvaluationConfig(max_features=0)):
             with self.subTest(config=config), self.assertRaises(ValueError):
                 evaluate_models(data, config)
-        data.loc[data.priority == "high", "priority"] = "medium"
-        with self.assertRaisesRegex(ValueError, "high"):
-            fit_outer_model("sgd_words", data, EvaluationConfig(tune_high_threshold=True, inner_folds=2))
-
-    def test_threshold_is_opt_in_and_not_invented_for_svc(self):
-        result = evaluate_models(synthetic_tickets(), EvaluationConfig(
-            folds=3, candidates=("linear_svc_words",), max_features=100, tune_high_threshold=True,
-        ))
-        experiment = result["candidates"]["linear_svc_words"]["high_threshold_experiment"]
-        self.assertEqual(experiment["status"], "not_applicable")
 
     def test_cli_uses_strict_reader_and_does_not_overwrite_existing_reports(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -145,28 +130,19 @@ class GroupedEvaluationTest(unittest.TestCase):
             self.assertEqual(existing.returncode, 2)
             self.assertEqual(report.read_text(encoding="utf-8"), "preservado")
 
-
-class HighThresholdTest(unittest.TestCase):
-    def test_threshold_preserves_high_and_does_not_mutate_inputs(self):
-        predictions = ["low", "medium", "high", "high"]
-        adjusted = apply_high_threshold(predictions, [0.4, 0.1, 0.2, 0.9], 0.35)
-        self.assertEqual(adjusted, ["high", "medium", "high", "high"])
-        self.assertEqual(predictions, ["low", "medium", "high", "high"])
-
-    def test_threshold_selection_uses_validation_labels_and_reports_false_alarms(self):
-        result = choose_high_threshold(["high", "low", "low"], ["low"] * 3,
-                                       [0.4, 0.3, 0.1], [0.2, 0.35, 0.8], 2.0)
-        self.assertEqual(result["value"], 0.35)
-        self.assertEqual(result["trials"][0]["false_high"], 1)
-        self.assertEqual(result["trials"][1]["false_high"], 0)
-
-    def test_nonfinite_or_misaligned_probabilities_and_invalid_selection_fail(self):
-        for probabilities, threshold in (([np.nan], 0.5), ([1.1], 0.5), ([], 0.5), ([0.5], True)):
-            with self.subTest(probabilities=probabilities), self.assertRaises(ValueError):
-                apply_high_threshold(["low"], probabilities, threshold)
-        for expected, beta in ((["low"], 2.0), (["high"], 2.0), (["low", "high"], 0)):
-            with self.subTest(expected=expected), self.assertRaises(ValueError):
-                choose_high_threshold(expected, ["low"] * len(expected), [0.5] * len(expected), [0.35], beta)
+    def test_cli_exits_successfully_after_writing_report_with_cp932_stdout(self):
+        with tempfile.TemporaryDirectory() as directory:
+            report = Path(directory) / "report.json"
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "ml/evaluate_ticket_classifier.py"),
+                 "--input-csv", str(ROOT / "ml/samples/tickets_esp_sintetico.csv"),
+                 "--output", str(report), "--folds", "3", "--min-target-count", "1",
+                 "--candidates", "sgd_words"],
+                cwd=ROOT, env={**os.environ, "PYTHONIOENCODING": "cp932"},
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(report.read_text(encoding="utf-8"))["status"], "experimental")
 
 
 if __name__ == "__main__":
