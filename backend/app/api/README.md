@@ -1,6 +1,6 @@
 # Fundamentos HTTP de autenticación — AUTH-07A
 
-Esta fase prepara utilidades, sin registrar rutas de autenticación, emitir cookies desde endpoints ni crear seeds. Reutiliza [AUTH-06](../seguridad/README.md), sus modelos y sus transacciones. Salud y disponibilidad conservan su comportamiento.
+AUTH-07A prepara utilidades sin emitir cookies desde endpoints ni crear seeds. Reutiliza [AUTH-06](../seguridad/README.md), sus modelos y sus transacciones. Salud y disponibilidad conservan su comportamiento. La adaptación parcial AUTH-07B1 se describe al final.
 
 ## Esquemas y errores
 
@@ -40,4 +40,16 @@ El adaptador `exigir_origin` pasa todas las ocurrencias originales al servicio A
 
 El comando local documentado utiliza `uvicorn ... --no-proxy-headers`: Uvicorn no debe reescribir el peer desde cabeceras del cliente. Esa opción no autentica Next.js ni resuelve despliegues de varios saltos; la app nunca considera confiable automáticamente el peer aunque el servidor se inicie con otras opciones. Se deben aprobar redes, aislamiento/autenticidad y metadatos reconstruidos antes de habilitar IP en AUTH-07B.
 
-Siguen pendientes recuperación ante cookie vencida, actividad exacta de sesión, perfil operativo definitivo de cookies, cuotas/bootstrap, saturación CSRF, calibración y políticas administrativas. No se implementan AUTH-07B/C, proxy Next.js, SSR ni cambios de roles o migraciones.
+Siguen pendientes recuperación ante cookie vencida, actividad exacta de sesión, perfil operativo definitivo de cookies, cuotas/bootstrap, saturación CSRF, calibración y políticas administrativas. Los flujos completos AUTH-07B/C, proxy Next.js y SSR no están implementados; no hay cambios de roles o migraciones.
+
+## AUTH-07B1: ruta registrada, emisión bloqueada
+
+[csrf_auth.py](csrf_auth.py) registra únicamente `GET /api/v1/auth/csrf`. Valida todas las ocurrencias de Origin con AUTH-06. Si Origin falta, exige una única cabecera `Sec-Fetch-Site: same-origin`, según la condición de bootstrap del contrato; esa cabecera no acredita al proxy ni la IP. Un rechazo devuelve `403 ORIGIN_INVALID`. Sin orígenes configurados conserva el error interno de configuración de AUTH-07A.
+
+Con bootstrap válido devuelve `503 SERVICE_UNAVAILABLE`, con ApiErrorBody, requestId de servidor y no-store. No emite tokens, contextos ni cookies, no lee sesiones y no inicia transacciones. La ausencia de IP verificable mantiene el cierre existente. Incluso si se reemplazase ese adaptador, la ruta conserva el rechazo mientras falte el control persistente de emisión aprobado.
+
+`ServicioLimites.reservar` exige cuenta e IP verificada; no limita bootstrap sin cuenta por sí solo. Los ocho tokens por contexto no impiden crear contextos ilimitados descartando cookies. No se inventa una cuenta compartida ni se omite cuota IP. Deben acordarse la clave/ámbito de bootstrap, umbrales, ventana y espera verificable, además de la autenticidad del proxy.
+
+La emisión exitosa con `ServicioCsrf`, su respuesta `csrfToken`/`expiresAt`, cookies y recuperación de contextos no está conectada. AUTH-06 conserva sus valores configurables provisionales: token 600 segundos, contexto anónimo 900 segundos y máximo de ocho tokens vigentes, sin expulsión. No son duraciones certificadas ni aprobación nueva. Los nombres/perfil operativo de cookies y la recuperación de una cookie de sesión vencida siguen pendientes. En esta fase toda cookie presentada, incluida una antigua o malformada, permanece sin modificar y nunca habilita emisión ni renueva actividad.
+
+Las pruebas nuevas acreditan controles HTTP y ausencia de efectos, también con PostgreSQL real; no acreditan una emisión HTTP exitosa ni un limitador de bootstrap operativo. El inventario de rutas de AUTH-07A se amplía solo con esta ruta, conservando las comprobaciones de salud/disponibilidad. No se implementan login, me o logout.

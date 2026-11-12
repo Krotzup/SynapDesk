@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.concurrency import run_in_threadpool
 
 from app.api.salud import router as router_salud
+from app.api.csrf_auth import router as router_csrf
 from app.api.errores_auth import registrar_errores
 from app.configuracion import Configuracion
 from app.persistencia.conexion import crear_motor_bd
@@ -48,4 +49,5 @@ def crear_aplicacion(configuracion: Configuracion | None = None) -> FastAPI:
     )
 
     aplicacion.include_router(router_salud, prefix="/api/v1")
+    aplicacion.include_router(router_csrf, prefix="/api/v1")
     return aplicacion
