@@ -23,7 +23,9 @@ from app.persistencia.conexion import construir_url_bd
 from app.persistencia.entornos import seleccionar_configuracion_bd
 
 
-def validar() -> int:
+def validar(*, nombre_reporte: str = "auth07-sec01a-validacion.json") -> int:
+    if not re.fullmatch(r"auth07-sec01[ab]-validacion\.json", nombre_reporte):
+        raise ValueError("Nombre de reporte de validación inválido.")
     config = seleccionar_configuracion_bd("testing")
     if config.postgres_host not in {"localhost", "127.0.0.1", "::1"} or config.postgres_port != 5433:
         raise ValueError("Se exige PostgreSQL de pruebas local en 5433.")
@@ -35,7 +37,7 @@ def validar() -> int:
                           connect_args={"connect_timeout": 5})
     creada = False
     reporte = {"base_temporal": nombre, "puerto_cliente": 5433, "pasos": [], "eliminada": False}
-    salida = RAIZ.parent / "docs" / "auditorias" / "auth07-sec01a-validacion.json"
+    salida = RAIZ.parent / "docs" / "auditorias" / nombre_reporte
     salida.parent.mkdir(parents=True, exist_ok=True)
     # Todos los artefactos temporales permanecen en el workspace autorizado.
     temporal = RAIZ / (".validacion-bootstrap-" + uuid4().hex)

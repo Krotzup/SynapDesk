@@ -33,12 +33,11 @@ def exigir_bootstrap_csrf(request: Request, configuracion: ConfiguracionHttp) ->
 def obtener_csrf(request: Request) -> RespuestaCsrf:
     """No emitir contexto/token/cookie sin procedencia y cuota verificables.
 
-    AUTH-07A rechaza actualmente la IP HTTP no acreditada. Aun después de
-    resolver esa adaptación, falta una política persistente de bootstrap:
-    ServicioLimites.reservar exige cuenta e IP; no inventar una cuenta común,
-    una IP ni habilitar el flujo solo por reemplazar el adaptador de IP.
-    La futura emisión debe reutilizar ServicioCsrf y confirmar antes de
-    construir respuesta o cookies. No se inicia una transacción aquí.
+    SEC-01B verifica el intermediario; la procedencia IP HTTP sigue pendiente.
+    SEC-01A ya dispone de cuotas persistentes independientes del login. Su
+    integración HTTP y las decisiones de cookies/saturación siguen pendientes:
+    reemplazar el adaptador de IP no habilita emisión. La futura respuesta debe
+    construirse después del commit. No se inicia una transacción aquí.
     """
     obtener_ip_verificada(request)
     raise ErrorSeguridad(CodigoSeguridad.INFRAESTRUCTURA)

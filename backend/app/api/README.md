@@ -40,7 +40,7 @@ El adaptador `exigir_origin` pasa todas las ocurrencias originales al servicio A
 
 El comando local documentado utiliza `uvicorn ... --no-proxy-headers`: Uvicorn no debe reescribir el peer desde cabeceras del cliente. Esa opción no autentica Next.js ni resuelve despliegues de varios saltos; la app nunca considera confiable automáticamente el peer aunque el servidor se inicie con otras opciones. Se deben aprobar redes, aislamiento/autenticidad y metadatos reconstruidos antes de habilitar IP en AUTH-07B.
 
-Siguen pendientes recuperación ante cookie vencida, actividad exacta de sesión, perfil operativo definitivo de cookies, cuotas/bootstrap, saturación CSRF, calibración y políticas administrativas. Los flujos completos AUTH-07B/C, proxy Next.js y SSR no están implementados; no hay cambios de roles o migraciones.
+Siguen pendientes recuperación ante cookie vencida, actividad exacta de sesión, perfil operativo definitivo de cookies, integración HTTP de cuotas/bootstrap, saturación CSRF, calibración y políticas administrativas. Los flujos completos AUTH-07B/C, proxy Next.js y SSR no están implementados en esta rama; no hay cambios de roles por SEC-01B.
 
 ## AUTH-07B1: ruta registrada, emisión bloqueada
 
@@ -48,8 +48,54 @@ Siguen pendientes recuperación ante cookie vencida, actividad exacta de sesión
 
 Con bootstrap válido devuelve `503 SERVICE_UNAVAILABLE`, con ApiErrorBody, requestId de servidor y no-store. No emite tokens, contextos ni cookies, no lee sesiones y no inicia transacciones. La ausencia de IP verificable mantiene el cierre existente. Incluso si se reemplazase ese adaptador, la ruta conserva el rechazo mientras falte el control persistente de emisión aprobado.
 
-`ServicioLimites.reservar` exige cuenta e IP verificada; no limita bootstrap sin cuenta por sí solo. Los ocho tokens por contexto no impiden crear contextos ilimitados descartando cookies. No se inventa una cuenta compartida ni se omite cuota IP. Deben acordarse la clave/ámbito de bootstrap, umbrales, ventana y espera verificable, además de la autenticidad del proxy.
+`ServicioLimites.reservar` exige cuenta e IP verificada; no limita bootstrap sin cuenta por sí solo. SEC-01A incorpora el coordinador interno [ServicioBootstrapCsrf](../seguridad/bootstrap_csrf.py), con cuotas separadas por IP, globales y por contexto, todavía sin conectar a HTTP. No se inventa una cuenta compartida ni se omite cuota IP. Su política explícita no certifica umbrales productivos; siguen pendientes su integración HTTP, las esperas/saturación y la procedencia del intermediario.
 
 La emisión exitosa con `ServicioCsrf`, su respuesta `csrfToken`/`expiresAt`, cookies y recuperación de contextos no está conectada. AUTH-06 conserva sus valores configurables provisionales: token 600 segundos, contexto anónimo 900 segundos y máximo de ocho tokens vigentes, sin expulsión. No son duraciones certificadas ni aprobación nueva. Los nombres/perfil operativo de cookies y la recuperación de una cookie de sesión vencida siguen pendientes. En esta fase toda cookie presentada, incluida una antigua o malformada, permanece sin modificar y nunca habilita emisión ni renueva actividad.
 
-Las pruebas nuevas acreditan controles HTTP y ausencia de efectos, también con PostgreSQL real; no acreditan una emisión HTTP exitosa ni un limitador de bootstrap operativo. El inventario de rutas de AUTH-07A se amplía solo con esta ruta, conservando las comprobaciones de salud/disponibilidad. No se implementan login, me o logout.
+Las pruebas de AUTH-07B.1 acreditan controles HTTP y ausencia de efectos, también con PostgreSQL real; no acreditan una emisión HTTP exitosa. SEC-01A añadió posteriormente el coordinador persistente interno, todavía sin conectar al handler. El inventario de rutas de AUTH-07A se amplía solo con esta ruta, conservando las comprobaciones de salud/disponibilidad. No se implementan login, me o logout.
+
+## SEC-01B: identidad de intermediario, IP HTTP todavía cerrada
+
+[ServicioIntermediario](../seguridad/intermediario.py) verifica un bearer de servicio
+exclusivo del entorno, independiente de cookies, usuarios y AUTH_HMAC_CLAVE.
+[obtener_intermediario](dependencias_auth.py) y `IntermediarioHttp` permiten exigirlo
+en rutas futuras. No son identidad de usuario ni autorización de recursos.
+
+La configuración explícita `AUTH_INTERMEDIARIO` contiene habilitación, entorno,
+transporte `tls_directo`, política IP `no_acreditada` y una o dos credenciales con
+identificador, digest oculto y vencimiento consciente de zona. Sin configuración,
+deshabilitada o de otro entorno, el control rechaza con el 503 existente; salud
+no depende de ella. Los digests usan dominio y entorno separados de sesiones/HMAC.
+Cada credencial requiere vencimiento; retirarla de la lista la revoca en los
+procesos que reciban la configuración actualizada. No hay recarga distribuida.
+
+Next.js debe descartar Authorization del navegador y construir un único
+`Authorization: Bearer <secreto>` en servidor. El secreto representa exactamente
+32 bytes CSPRNG en base64url canónico sin padding. El formato no acredita entropía.
+FastAPI compara todos los digests mediante `hmac.compare_digest`, sin revelar
+cuál coincidió. No registrar cabeceras, configuración serializada con entradas
+crudas ni excepciones de validación mediante `errors(include_input=True)`.
+
+El listener debe terminar TLS directamente y arrancar con `--no-proxy-headers`,
+sin middleware que reescriba `scope['scheme']`. La dependencia exige `https` y
+rechaza Forwarded, X-Real-IP y cualquier X-Forwarded-*. Esto impide usar esas
+cabeceras para aparentar TLS, incluso con la reescritura habitual de Uvicorn.
+El dato ASGI depende del servidor: no demuestra por sí solo el canal ni que el
+cliente haya verificado el certificado. Next.js debe verificar CA y hostname.
+No se habilita HTTP interno local ni un modo permisivo de desarrollo.
+
+`obtener_ip_verificada` verifica primero servicio y después rechaza siempre por
+IP no acreditada. No consume ninguna cabecera IP, Request.client ni UUID cliente.
+El único adaptador controlado está en fixtures; no hay adaptador HTTP local ni
+Render habilitable por configuración. La ruta CSRF conserva Origin antes del
+control del canal y su rechazo final incondicional; no inicia transacciones ni
+emite cookies. SEC-01A ya implementó cuotas internas, pero su integración HTTP
+de emisión no forma parte de SEC-01B.
+
+El [borrador de comunicación interna](../../../docs/contratos/comunicacion-interna-segura-v1.md)
+describe el comportamiento implementado y los gates pendientes. Las pruebas de
+[TLS real](../../pruebas/integracion/test_intermediario_tls.py) requieren OpenSSL
+(incluido con Git for Windows): generan y eliminan certificado/clave efímeros,
+usan conexiones HTTPS verificadas y rechazan CA/hostname incorrectos. Las pruebas
+[PostgreSQL](../../pruebas/integracion/test_intermediario_postgresql.py) registran
+rutas exclusivamente de ensayo con IP del fixture; no agregan rutas a la app.

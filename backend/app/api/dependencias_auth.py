@@ -9,6 +9,8 @@ from app.api.errores_auth import RechazoAntesDeEfectos
 from app.configuracion import Configuracion
 from app.persistencia.conexion import obtener_motor_bd
 from app.seguridad.origenes import ServicioOrigen
+from app.seguridad.intermediario import IdentidadIntermediario, ServicioIntermediario
+from app.seguridad.proxies import IpVerificada
 from app.seguridad.secretos import digest_secreto
 from app.seguridad.transacciones import CodigoSeguridad, ErrorSeguridad
 
@@ -43,13 +45,39 @@ def exigir_origin(request: Request, configuracion: ConfiguracionHttp) -> None:
         raise RechazoAntesDeEfectos(error.codigo) from None
 
 
-def obtener_ip_verificada(request: Request) -> None:
-    """Sin adaptador autenticado/aislado aprobado, no hay IP HTTP verificable.
+def obtener_intermediario(request: Request) -> IdentidadIntermediario:
+    """TLS directo, sin interpretación de X-Forwarded-Proto o del peer.
 
-    Ni loopback ni forwarded headers acreditan Next.js. No pasar request.client
-    a AUTH-06: Uvicorn podría haberlo reescrito. Pendiente de AUTH-07B.
+    Requiere listener TLS con proxy_headers=False, sin middleware que reescriba
+    scheme. ASGI/TestClient por sí solo no demuestra seguridad del transporte.
     """
+    reenviadas = any(
+        nombre.lower().startswith(b"x-forwarded-")
+        or nombre.lower() in {b"forwarded", b"x-real-ip"}
+        for nombre, _ in request.scope["headers"]
+    )
+    return ServicioIntermediario(obtener_configuracion(request)).verificar(
+        request.headers.getlist("authorization"),
+        esquema=request.scope.get("scheme", ""), cabeceras_reenviadas=reenviadas,
+    )
+
+
+IntermediarioHttp = Annotated[IdentidadIntermediario, Depends(obtener_intermediario)]
+
+
+def obtener_ip_verificada(request: Request) -> IpVerificada:
+    """Servicio autenticado no demuestra la IP original del navegador.
+
+    No hay adaptador HTTP de procedencia aprobado. No leer Request.client ni
+    cabeceras internas/reenviadas para construir IpVerificada. Las pruebas
+    internas pueden usar ServicioIpConfiable con evidencia sintética del fixture;
+    no existe configuración para habilitar ese adaptador en la aplicación.
+    """
+    obtener_intermediario(request)
     raise ErrorSeguridad(CodigoSeguridad.IP_NO_VERIFICABLE)
+
+
+IpVerificadaHttp = Annotated[IpVerificada, Depends(obtener_ip_verificada)]
 
 
 def obtener_token_csrf(request: Request) -> SecretStr:

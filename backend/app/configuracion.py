@@ -7,11 +7,14 @@ from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.seguridad.politica_bootstrap import PoliticaBootstrap
+from app.seguridad.intermediario import PoliticaIntermediario
 
 RAIZ_PROYECTO = Path(__file__).resolve().parents[2]
 
 
 class Configuracion(BaseSettings):
+    # Exclusivo de servidor; ausente no afecta salud ni habilita rutas protegidas.
+    auth_intermediario: PoliticaIntermediario | None = Field(default=None, repr=False)
     # JSON explícito AUTH_BOOTSTRAP; ausente mantiene el servicio cerrado.
     auth_bootstrap: PoliticaBootstrap | None = None
     app_env: Literal["development", "testing", "staging", "production"] = "development"
