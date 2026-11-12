@@ -6,10 +6,14 @@ from typing import Literal
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.seguridad.politica_bootstrap import PoliticaBootstrap
+
 RAIZ_PROYECTO = Path(__file__).resolve().parents[2]
 
 
 class Configuracion(BaseSettings):
+    # JSON explícito AUTH_BOOTSTRAP; ausente mantiene el servicio cerrado.
+    auth_bootstrap: PoliticaBootstrap | None = None
     app_env: Literal["development", "testing", "staging", "production"] = "development"
     backend_cors_origins: list[str] = Field(default_factory=list)
     postgres_host: str = Field(default="127.0.0.1", min_length=1)
