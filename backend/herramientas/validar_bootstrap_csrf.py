@@ -24,7 +24,7 @@ from app.persistencia.entornos import seleccionar_configuracion_bd
 
 
 def validar(*, nombre_reporte: str = "auth07-sec01a-validacion.json") -> int:
-    if not re.fullmatch(r"(?:auth07-sec01[ab]|auth07b2-login)-validacion\.json", nombre_reporte):
+    if not re.fullmatch(r"(?:auth07-sec01[ab]|auth07b2-login|auth07b3-sesiones)-validacion\.json", nombre_reporte):
         raise ValueError("Nombre de reporte de validación inválido.")
     config = seleccionar_configuracion_bd("testing")
     if config.postgres_host not in {"localhost", "127.0.0.1", "::1"} or config.postgres_port != 5433:
