@@ -443,6 +443,8 @@ Los roles iniciales son admin y agent. FastAPI comprobará usuario activo y rol 
 
 El [modelo de dominio](../arquitectura/modelo-dominio.md) describe responsabilidades generales de cada rol; no constituye una matriz completa de permisos por recurso. Esa matriz y el tratamiento operativo de cambios de rol o desactivación quedan pendientes. No se conceden permisos adicionales ni se crean endpoints administrativos en este contrato.
 
+**Actualización acotada AUTH-07C.2B:** el [contrato de creación administrativa](creacion-administrativa-usuarios-v1.md) formaliza P1–P15 ya aprobadas: admin activo con sesión vigente puede crear admin/agent activos y exige user_created atómico con actor SynapDesk. Sustituye el estado pendiente solo para esas altas internas y su política de credenciales/entrega externa. No aprueba el resto de la matriz, cambios posteriores de rol/estado, retención o rutas HTTP administrativas.
+
 ### Matriz para decisión del equipo — PROPOSAL_PENDING_TEAM_REVIEW
 
 Toda celda expresa una propuesta, no un permiso ya concedido ni una obligación de implementación. La política general es denegar por defecto operaciones sin autorización definida. El alcance deberá comprobarse también en listados, recomendaciones y conteos, sin confiar en el filtro que envíe el cliente; esta regla no aprueba ninguna celda de la matriz.

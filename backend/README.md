@@ -257,7 +257,7 @@ python -m alembic heads
 python -m alembic history
 ```
 
-La revisión actual es `0003_retirar_prioridad_critical`; `heads` debe mostrarla como `(head)`, con `0002_autenticacion_persistencia` como revisión anterior.
+La revisión actual es `0006_user_created`, posterior a `0005_actor_bootstrap`; `heads` debe mostrarla como `(head)`. La revisión de prioridades descrita a continuación es `0003_retirar_prioridad_critical`.
 
 Esta revisión convierte las prioridades `critical` existentes a `high` y
 restringe el catálogo a `low`, `medium`, `high`. No elimina tickets. Su
@@ -280,7 +280,7 @@ python -m alembic current
 python -m alembic check
 ```
 
-`current` debe mostrar `0005_actor_bootstrap (head)`. `check` debe informar que no se detectaron nuevas operaciones de actualización: compara modelos registrados y estructura de la base, sin generar revisiones.
+`current` debe mostrar `0006_user_created (head)`. `check` debe informar que no se detectaron nuevas operaciones de actualización: compara modelos registrados y estructura de la base, sin generar revisiones.
 
 Las revisiones no insertan usuarios ni tickets. La autenticación y las rutas de estos módulos siguen pendientes. Los campos y relaciones se documentan en [Persistencia relacional inicial](../docs/arquitectura/persistencia-inicial.md); los [modelos de persistencia](app/persistencia/modelos/) comparten la misma base declarativa y la [revisión de autenticación](migraciones/versiones/0002_autenticacion_persistencia.py) depende de la revisión inicial.
 
@@ -314,3 +314,4 @@ Consulta el [procedimiento de migraciones](migraciones/README.md) antes de incor
 - [Persistencia relacional inicial](../docs/arquitectura/persistencia-inicial.md)
 - [Infraestructura y PostgreSQL](../infra/README.md)
 - [Bootstrap administrativo explícito](../docs/arquitectura/bootstrap-administrador-interno-v1.md): alta inicial y auditoría atómicas; requiere destino, canal y principal de mantenimiento verificados. No se ejecuta al arrancar.
+- [Altas administrativas internas](../docs/arquitectura/creacion-usuarios-interna-v1.md): AUTH-07C.2B permite a admin vigente crear admin/agent activos con Argon2id y user_created atómico. Captura protegida y entrega privada externa son requisitos operativos; sin rutas HTTP o sesión automática.

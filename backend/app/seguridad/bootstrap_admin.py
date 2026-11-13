@@ -40,7 +40,7 @@ class ErrorBootstrap(Exception):
         super().__init__(f"Bootstrap rechazado: {codigo.value}.")
 
 
-REVISION_BOOTSTRAP = "0005_actor_bootstrap"
+REVISION_BOOTSTRAP = "0006_user_created"
 
 
 @dataclass(frozen=True)

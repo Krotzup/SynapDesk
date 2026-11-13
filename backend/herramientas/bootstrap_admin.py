@@ -60,7 +60,8 @@ def main(argumentos=None) -> int:
             acreditado = servicio.verificar_destino()
             esperado = acreditado.confirmacion
         print("Destino: " + esperado)
-        destino = input("Escribe el destino exacto para confirmar el ensayo: ")
+        accion = "el ensayo reversible" if args.ensayar else "la creación del administrador inicial"
+        destino = input(f"Escribe el destino exacto para confirmar {accion}: ")
         if destino != esperado:
             raise ErrorBootstrap(C.DESTINO)
         preparado = servicio.preparar(**leer_datos())

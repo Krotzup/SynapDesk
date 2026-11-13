@@ -18,9 +18,11 @@ Consultar el [contrato](../contratos/bootstrap-administrador-v1.md).
    Configurar AUTH_BOOTSTRAP_CLUSTER_ID con system_identifier obtenido por un
    canal administrativo ya confiable. No copiar el pin de un servidor desconocido
    para hacer pasar el control; no es un secreto ni sustituye TLS.
-4. Revisar/applicar Alembic explícitamente hasta 0005_actor_bootstrap. Las
+4. Revisar/aplicar Alembic explícitamente hasta 0006_user_created. Las
    migraciones y el arranque no crean usuarios. La CLI requiere versión exacta,
    tablas/columnas y restricciones críticas; no ejecuta upgrade automáticamente.
+   AUTH-07C.2B actualiza solo ese head requerido para compatibilidad de auditoría;
+   conserva las políticas P1–P10 y el evento de bootstrap aprobados.
 5. Confirmar ausencia de usuarios y de un bootstrap anterior, terminal protegido
    y acceso del principal a pg_control_system/ACL necesarios. Revisar lock_timeout
    de 3 s y statement_timeout de conexión de 5 s para el entorno; no son un SLA.
@@ -85,9 +87,12 @@ usa sslmode prefer, por lo que no sirve como configuración operativa de alta.
 [validar_bootstrap_admin.py](../../backend/herramientas/validar_bootstrap_admin.py)
 crea/migra una base temporal, verifica su identidad, ejecuta pip check, Alembic
 upgrade/current/heads/check y las suites unitarias/PostgreSQL/TLS, y elimina solo
-su propia base comprobando ausencia. Su nuevo informe es
-[auth07c1b-bootstrap-validacion.json](../auditorias/auth07c1b-bootstrap-validacion.json);
-no sobrescribe evidencia histórica de C.1 ni los seis auxiliares anteriores.
+su propia base comprobando ausencia. Genera un informe auxiliar JSON C.1B en el
+directorio local de auditorías; esa evidencia no forma parte del historial
+versionado y debe conservarse aparte. No sobrescribe evidencia histórica de C.1
+ni los seis auxiliares anteriores. El contrato aprobado aún contiene una referencia
+a un informe auxiliar local: su sustitución por evidencia distribuible se propone
+para revisión documental, sin modificar aquí ese contrato.
 
 Los fixtures persistentes acreditan datos SQL reales de su base aislada y construyen
 la evidencia interna de destino. No exponen ese mecanismo en CLI ni certifican

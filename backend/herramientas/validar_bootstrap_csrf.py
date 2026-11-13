@@ -24,7 +24,7 @@ from app.persistencia.entornos import seleccionar_configuracion_bd
 
 
 def validar(*, nombre_reporte: str = "auth07-sec01a-validacion.json") -> int:
-    if not re.fullmatch(r"(?:auth07-sec01[ab]|auth07b2-login|auth07b3-sesiones|auth07c1b?-bootstrap)-validacion\.json", nombre_reporte):
+    if not re.fullmatch(r"(?:auth07-sec01[ab]|auth07b2-login|auth07b3-sesiones|auth07c1b?-bootstrap|auth07c2b?-usuarios)-validacion\.json", nombre_reporte):
         raise ValueError("Nombre de reporte de validación inválido.")
     config = seleccionar_configuracion_bd("testing")
     if config.postgres_host not in {"localhost", "127.0.0.1", "::1"} or config.postgres_port != 5433:
@@ -90,6 +90,13 @@ def validar(*, nombre_reporte: str = "auth07-sec01a-validacion.json") -> int:
                 suites = ET.parse(xml).getroot().findall("testsuite")
                 reporte[etiqueta] = {campo: sum(int(s.attrib.get(campo, 0)) for s in suites)
                                     for campo in ("tests", "failures", "errors", "skipped")}
+                if etiqueta == "postgresql":
+                    tls = [t for s in suites for t in s.findall("testcase")
+                           if "test_intermediario_tls" in t.attrib.get("classname", "")]
+                    reporte["tls"] = dict(tests=len(tls),
+                        failures=sum(t.find("failure") is not None for t in tls),
+                        errors=sum(t.find("error") is not None for t in tls),
+                        skipped=sum(t.find("skipped") is not None for t in tls))
             if resultado.returncode and etiqueta not in {"unitarias", "postgresql"}:
                 break
     except Exception as error:
