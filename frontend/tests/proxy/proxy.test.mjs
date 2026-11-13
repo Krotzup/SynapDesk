@@ -1,6 +1,6 @@
 // Pruebas de regresión del proxy de mismo origen y del adaptador SSR (PR #30), con un backend
-// falso real (node:http). Ejecutar desde frontend/: npm run test:proxy (tarda unos 60 s por las
-// dos pruebas del tiempo de espera de 30 s). No necesitan Next, el backend real ni PostgreSQL.
+// falso real (node:http). Ejecutar desde frontend/: npm run test:proxy (tarda unos 2 min por las
+// cuatro pruebas del tiempo de espera de 30 s). No necesitan Next, el backend real ni PostgreSQL.
 import { after, before, beforeEach, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
@@ -35,6 +35,17 @@ const backend = http.createServer((req, res) => {
     res.writeHead(302, { Location: "http://evil.invalid/robar" }).end();
   } else if (path === "/api/v1/slow") {
     setTimeout(() => res.writeHead(200).end("{}"), 35_000).unref();
+  } else if (path === "/api/v1/slow-body") {
+    // Cabeceras de inmediato y cuerpo incompleto hasta después del plazo (revisión del 12-11).
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.flushHeaders();
+    res.write('{"parcial":');
+    setTimeout(() => res.end("true}"), 35_000).unref();
+  } else if (path === "/api/v1/cut-body") {
+    // Cabeceras de inmediato y conexión cortada a mitad del cuerpo.
+    res.writeHead(200, { "Content-Type": "application/json", "Content-Length": "100" });
+    res.write('{"parcial":');
+    setTimeout(() => res.destroy(), 50).unref();
   } else if (path === "/api/v1/not-json") {
     res.writeHead(500, { "Content-Type": "text/plain" }).end("fallo interno");
   } else if (path === "/api/v1/backend-error") {
@@ -283,6 +294,34 @@ describe("3. requestId en errores del proxy y del SSR", () => {
     const start = Date.now();
     await expectThrownContractError(api.get("/slow"));
     assert.ok(Date.now() - start >= 29_500);
+  });
+});
+
+// ── Revisión del 12-11: el plazo cubre también el cuerpo de la respuesta ──
+describe("4. Cuerpo demorado o cortado después de las cabeceras", () => {
+  test(
+    "proxy: cabeceras 200 y cuerpo demorado → 503 con requestId",
+    { timeout: 40_000 },
+    async () => {
+      const start = Date.now();
+      await expectContractError(await call("slow-body"), 503, "SERVICE_UNAVAILABLE");
+      assert.ok(Date.now() - start >= 29_500, "espera el plazo completo");
+    }
+  );
+  test(
+    "SSR: cabeceras 200 y cuerpo demorado → error con requestId",
+    { timeout: 40_000 },
+    async () => {
+      const start = Date.now();
+      await expectThrownContractError(api.get("/slow-body"));
+      assert.ok(Date.now() - start >= 29_500, "espera el plazo completo");
+    }
+  );
+  test("proxy: conexión cortada a mitad del cuerpo → 503 con requestId", async () => {
+    await expectContractError(await call("cut-body"), 503, "SERVICE_UNAVAILABLE");
+  });
+  test("SSR: conexión cortada a mitad del cuerpo → error con requestId", async () => {
+    await expectThrownContractError(api.get("/cut-body"));
   });
 });
 

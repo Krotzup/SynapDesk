@@ -30,7 +30,8 @@ const FORWARDED_REQUEST_HEADERS = [
 // Hacia el navegador. Set-Cookie se copia aparte, una cabecera por cookie y solo las del perfil.
 const FORWARDED_RESPONSE_HEADERS = ["content-type", "retry-after"] as const;
 
-const BODYLESS_STATUS = new Set([204, 205, 304]);
+// Estados que no llevan cuerpo; también los usa el adaptador SSR.
+export const BODYLESS_STATUS: ReadonlySet<number> = new Set([204, 205, 304]);
 
 /**
  * Cookies de sesión y de contexto CSRF según AUTH_COOKIE_PROFILE. Si la variable no existe se usa
@@ -157,6 +158,7 @@ export async function proxyToBackend(request: Request, segments: string[]): Prom
   }
 
   let response: Response;
+  let responseBody: ArrayBuffer | null;
   try {
     response = await fetch(target, {
       method: request.method,
@@ -165,15 +167,18 @@ export async function proxyToBackend(request: Request, segments: string[]): Prom
       // No seguir redirecciones: podrían llevar las cookies a otro host.
       redirect: "manual",
       cache: "no-store",
+      // Un solo plazo para la respuesta completa: cabeceras y cuerpo.
       signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
     });
+    if (response.status >= 300 && response.status < 400) {
+      await response.body?.cancel();
+      return unavailable();
+    }
+    // El cuerpo se lee completo antes de responder: si el plazo vence o la conexión se corta a
+    // mitad del cuerpo, el navegador recibe el 503 del contrato y no un estado 200 incompleto.
+    responseBody = BODYLESS_STATUS.has(response.status) ? null : await response.arrayBuffer();
   } catch {
-    // Backend apagado, sin red o tiempo de espera agotado.
-    return unavailable();
-  }
-
-  if (response.status >= 300 && response.status < 400) {
-    await response.body?.cancel();
+    // Backend apagado, sin red, conexión cortada o tiempo de espera agotado.
     return unavailable();
   }
 
@@ -195,7 +200,7 @@ export async function proxyToBackend(request: Request, segments: string[]): Prom
     console.warn(`[proxy] Set-Cookie no permitido descartado: ${dropped.join(", ")}.`);
   }
 
-  return new Response(BODYLESS_STATUS.has(response.status) ? null : response.body, {
+  return new Response(responseBody, {
     status: response.status,
     headers: responseHeaders,
   });
