@@ -164,15 +164,18 @@ class ServicioLogin:
                 resultado=R.RECHAZO, motivo=motivo, ip=ip, request_id=request_id)
 
     def validar_contexto(self, prueba: PruebaAnonimaLogin | PruebaSesionLogin, *,
-                         ip: IpVerificada) -> ContextoLoginValidado:
+                         ip: IpVerificada, request_id: UUID | None = None) -> ContextoLoginValidado:
+        if request_id is not None and not isinstance(request_id, UUID):
+            raise ErrorSeguridad(C.CONTEXTO_INVALIDO)
+        request_id = request_id or uuid4()
         if not isinstance(ip, IpVerificada):
-            self._auditar_rechazo(M.IP, None, uuid4())
+            self._auditar_rechazo(M.IP, None, request_id)
             raise ErrorSeguridad(C.IP_NO_VERIFICABLE)
         try:
             with self._transaccion() as db:
                 anterior = self._csrf(db, prueba)
         except ErrorSeguridad as error:
-            self._auditar_rechazo(self._motivo(error), ip, uuid4())
+            self._auditar_rechazo(self._motivo(error), ip, request_id)
             raise
         return ContextoLoginValidado(prueba, ip, anterior, self._emisor)
 
@@ -237,11 +240,14 @@ class ServicioLogin:
         return resultado
 
     def autenticar(self, credenciales: CredencialesLogin,
-                    contexto: ContextoLoginValidado) -> LoginConfirmado | LoginRechazado:
+                    contexto: ContextoLoginValidado, *,
+                    request_id: UUID | None = None) -> LoginConfirmado | LoginRechazado:
         if (type(credenciales) is not CredencialesLogin or type(contexto) is not ContextoLoginValidado
                 or contexto._emisor is not self._emisor or not isinstance(contexto._ip, IpVerificada)):
             raise ErrorSeguridad(C.CONTEXTO_INVALIDO)
-        request_id = uuid4()
+        if request_id is not None and not isinstance(request_id, UUID):
+            raise ErrorSeguridad(C.CONTEXTO_INVALIDO)
+        request_id = request_id or uuid4()
         if not self._plazas.acquire(blocking=False):
             self._auditar_rechazo(M.INFRAESTRUCTURA, contexto._ip, request_id)
             raise ErrorSeguridad(C.INFRAESTRUCTURA)

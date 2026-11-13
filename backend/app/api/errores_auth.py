@@ -16,6 +16,9 @@ from app.seguridad.transacciones import CodigoSeguridad as C, ErrorSeguridad
 
 
 class CodigoHttp(StrEnum):
+    # Candidato ya propuesto en autenticacion-v1, solo usado por el adaptador
+    # de login no registrado. No implica aprobación ni activación de ruta.
+    INVALID_CREDENTIALS = "INVALID_CREDENTIALS"
     AUTHENTICATION_REQUIRED = "AUTHENTICATION_REQUIRED"
     CSRF_INVALID = "CSRF_INVALID"
     ORIGIN_INVALID = "ORIGIN_INVALID"
@@ -26,6 +29,7 @@ class CodigoHttp(StrEnum):
 
 
 CATALOGO = {
+    CodigoHttp.INVALID_CREDENTIALS: (401, "Correo o contraseña incorrectos."),
     CodigoHttp.AUTHENTICATION_REQUIRED: (401, "Se requiere una sesión válida."),
     CodigoHttp.CSRF_INVALID: (403, "No se pudo validar la solicitud."),
     CodigoHttp.ORIGIN_INVALID: (403, "El origen de la solicitud no está permitido."),

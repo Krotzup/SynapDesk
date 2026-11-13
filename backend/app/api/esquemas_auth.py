@@ -26,6 +26,10 @@ class RespuestaUsuario(EsquemaHttp):
     user: AuthUser
 
 
+class SolicitudLogout(EsquemaHttp):
+    """Cuerpo {} candidato D.1; extra=forbid. No hay ruta registrada."""
+
+
 class SolicitudLogin(EsquemaHttp):
     email: StrictStr
     password: SecretStr = Field(repr=False)

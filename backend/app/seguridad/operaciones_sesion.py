@@ -91,12 +91,14 @@ class ServicioLogout:
                 request_id=request_id)
 
     def cerrar(self, referencia: ReferenciaSesion | None, *,
-               token: SecretStr | None = None) -> LogoutConfirmado:
+               token: SecretStr | None = None, request_id: UUID | None = None) -> LogoutConfirmado:
         # Origin siempre corresponde a la frontera HTTP, incluso en esta rama.
+        if request_id is not None and not isinstance(request_id, UUID):
+            raise ErrorSeguridad(C.CONTEXTO_INVALIDO)
         if referencia is None:
             return LogoutConfirmado(revocada=False)
         credencial = _referencia(referencia)
-        request_id = uuid4()
+        request_id = request_id or uuid4()
         try:
             with Session(self._motor) as db, transaccion_seguridad(db):
                 sesiones = ServicioSesiones(db, self._reloj)

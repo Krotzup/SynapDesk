@@ -1,5 +1,24 @@
 # Fundamentos HTTP de autenticación — AUTH-07A
 
+## Candidatos AUTH-07D.1
+
+[adaptadores_auth.py](adaptadores_auth.py) compone cookies, Origin, SEC-01B,
+pruebas tipadas y servicios internos. No tiene router ni se instancia desde la
+fábrica. Login/me/logout conservan 404 y CSRF real conserva rechazo seguro.
+La dependencia IP no tiene implementación HTTP ni opción de sustitución productiva.
+
+El [contrato candidato D.1](../../../docs/contratos/autenticacion-http-adaptadores-v1.md)
+conserva aprobaciones anteriores y enumera contradicciones/decisiones antes de
+activar tráfico. INVALID_CREDENTIALS y SolicitudLogout son candidatos ya descritos
+en autenticación V1; no se presentan como aprobados. El requestId generado por
+servidor se propaga a auditoría de login/logout mediante parámetros internos
+opcionales, sin cambiar la semántica de sesiones o aceptar el identificador cliente.
+
+Las respuestas se construyen tras resultados confirmados, con no-store y sin
+credenciales en JSON. Las pruebas PostgreSQL de D.1 verifican visibilidad antes
+de Set-Cookie y fallos diferidos de commit. No acreditan Node o Render.
+Las secciones siguientes documentan la preparación AUTH-07A original.
+
 AUTH-07A prepara utilidades sin emitir cookies desde endpoints ni crear seeds. Reutiliza [AUTH-06](../seguridad/README.md), sus modelos y sus transacciones. Salud y disponibilidad conservan su comportamiento. La adaptación parcial AUTH-07B1 se describe al final.
 
 ## Esquemas y errores
