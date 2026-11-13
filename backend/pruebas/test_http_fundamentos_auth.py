@@ -87,7 +87,9 @@ def test_csrf_rechaza_representaciones_invalidas(token, vence):
         RespuestaCsrf(csrfToken=token, expiresAt=vence)
 
 
-def test_validacion_http_sanea_valores_loc_y_mensajes(caplog):
+def test_validacion_http_sanea_valores_loc_y_mensajes(caplog, monkeypatch):
+    # Evitar que el UUID aleatorio contenga por azar el texto de prueba "123".
+    monkeypatch.setattr("app.api.respuestas_auth.uuid4", lambda: UUID("aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa"))
     app = aplicacion()
 
     @app.post("/prueba")

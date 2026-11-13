@@ -280,7 +280,7 @@ python -m alembic current
 python -m alembic check
 ```
 
-`current` debe mostrar `0003_retirar_prioridad_critical (head)`. `check` debe informar que no se detectaron nuevas operaciones de actualización: compara modelos registrados y estructura de la base, sin generar revisiones.
+`current` debe mostrar `0005_actor_bootstrap (head)`. `check` debe informar que no se detectaron nuevas operaciones de actualización: compara modelos registrados y estructura de la base, sin generar revisiones.
 
 Las revisiones no insertan usuarios ni tickets. La autenticación y las rutas de estos módulos siguen pendientes. Los campos y relaciones se documentan en [Persistencia relacional inicial](../docs/arquitectura/persistencia-inicial.md); los [modelos de persistencia](app/persistencia/modelos/) comparten la misma base declarativa y la [revisión de autenticación](migraciones/versiones/0002_autenticacion_persistencia.py) depende de la revisión inicial.
 
@@ -313,3 +313,4 @@ Consulta el [procedimiento de migraciones](migraciones/README.md) antes de incor
 - [Modelo inicial del dominio](../docs/arquitectura/modelo-dominio.md)
 - [Persistencia relacional inicial](../docs/arquitectura/persistencia-inicial.md)
 - [Infraestructura y PostgreSQL](../infra/README.md)
+- [Bootstrap administrativo explícito](../docs/arquitectura/bootstrap-administrador-interno-v1.md): alta inicial y auditoría atómicas; requiere destino, canal y principal de mantenimiento verificados. No se ejecuta al arrancar.

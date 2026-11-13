@@ -24,7 +24,12 @@ python -m alembic heads
 python -m alembic history
 ```
 
-Los comandos `heads` y `history` no requieren PostgreSQL. `heads` debe mostrar `0003_retirar_prioridad_critical (head)`.
+Los comandos `heads` y `history` no requieren PostgreSQL. `heads` debe mostrar `0005_actor_bootstrap (head)`.
+
+`0005_actor_bootstrap` añade actor externo opcional a auditoría y lo exige para
+admin_bootstrap. Conserva los eventos anteriores y no crea usuarios. Su downgrade
+rechaza retirar esos campos cuando existe auditoría administrativa, para no perder
+identidad del operador. No altera las revisiones anteriores.
 
 Para verificar primero contra `db_test`:
 

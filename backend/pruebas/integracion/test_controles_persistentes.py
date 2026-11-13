@@ -378,7 +378,8 @@ def test_auditoria_persiste_minimos_y_utc(entorno_c, tipo, resultado, motivo, ca
         assert fila.usuario_id is None and fila.sesion_id is None
         assert fila.ocurrido_en == e["ahora"] and fila.ocurrido_en.utcoffset() == timedelta(0)
         assert fila.ip_verificada_digest == e["ip"].digest
-        assert set(fila.__table__.columns.keys()) == {"id", "tipo_evento", "ocurrido_en", "usuario_id", "sesion_id", "resultado", "request_id", "motivo", "ip_verificada_digest"}
+    assert set(fila.__table__.columns.keys()) == {"id", "tipo_evento", "ocurrido_en", "usuario_id", "sesion_id", "resultado", "request_id", "motivo", "ip_verificada_digest", "actor_tipo", "actor_id"}
+    assert fila.actor_tipo is None and fila.actor_id is None
     assert not caplog.records
 
 

@@ -22,7 +22,7 @@ def test_migracion_se_revierte_se_aplica_y_coincide_con_modelos(
     revision = conexion_bd_test.execute(
         text("SELECT version_num FROM alembic_version")
     ).scalar_one()
-    assert revision == "0004_bootstrap_csrf"
+    assert revision == "0005_actor_bootstrap"
     assert inspect(conexion_bd_test).has_table("cuotas_bootstrap_csrf")
     command.check(configuracion)
 

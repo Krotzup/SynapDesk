@@ -12,6 +12,7 @@ from app.seguridad.transacciones import Reloj, instante, operacion_bd, reloj_pos
 
 
 class TipoEvento(StrEnum):
+    ADMIN_BOOTSTRAP = "admin_bootstrap"
     LOGIN = "login"
     BLOQUEO = "rate_limit"
     SESION_CREADA = "session_created"
@@ -25,6 +26,7 @@ class ResultadoEvento(StrEnum):
 
 
 class MotivoEvento(StrEnum):
+    ADMIN_INICIAL_CREADO = "initial_admin_created"
     CREDENCIALES_VALIDAS = "credentials_validated"
     CREDENCIALES_INVALIDAS = "credentials_rejected"
     LIMITE = "rate_limited"
@@ -36,6 +38,17 @@ class MotivoEvento(StrEnum):
     LOGOUT = "logout"
     REEMPLAZO = "session_replaced"
     INFRAESTRUCTURA = "security_unavailable"
+
+
+@dataclass(frozen=True)
+class ActorExterno:
+    """Principal PostgreSQL autenticado; no identifica necesariamente una persona."""
+
+    identificador: int
+
+    def __post_init__(self) -> None:
+        if type(self.identificador) is not int or not 0 < self.identificador < 2**32:
+            raise ValueError("Actor administrativo inválido.")
 
 
 @dataclass(frozen=True)
@@ -53,7 +66,8 @@ class ServicioAuditoria:
     def registrar(self, *, tipo: TipoEvento, resultado: ResultadoEvento,
                   motivo: MotivoEvento | None = None, request_id: UUID | None = None,
                   usuario_id: UUID | None = None, sesion_id: UUID | None = None,
-                  ip: IpVerificada | None = None) -> EventoPreparado:
+                  ip: IpVerificada | None = None,
+                  actor: ActorExterno | None = None) -> EventoPreparado:
         # Exigir enums reales: no aceptar cualquier str aunque StrEnum lo compare
         # igual. El request ID es un UUID del servidor, no un header sin filtrar.
         if (not isinstance(tipo, TipoEvento) or not isinstance(resultado, ResultadoEvento)
@@ -62,6 +76,12 @@ class ServicioAuditoria:
                        for valor in (request_id, usuario_id, sesion_id))
                 or (ip is not None and not isinstance(ip, IpVerificada))):
             raise ValueError("Evento de autenticación inválido.")
+        if ((tipo == TipoEvento.ADMIN_BOOTSTRAP and (
+                type(actor) is not ActorExterno or resultado != ResultadoEvento.EXITO
+                or motivo != MotivoEvento.ADMIN_INICIAL_CREADO or usuario_id is None
+                or sesion_id is not None or ip is not None))
+                or (tipo != TipoEvento.ADMIN_BOOTSTRAP and actor is not None)):
+            raise ValueError("Actor de autenticación inválido.")
         with operacion_bd(self.db):
             evento = EventoAutenticacion(
                 tipo_evento=tipo.value, resultado=resultado.value,
@@ -70,6 +90,8 @@ class ServicioAuditoria:
                 usuario_id=usuario_id, sesion_id=sesion_id,
                 ip_verificada_digest=ip.digest if ip is not None else None,
                 ocurrido_en=instante(self.db, self.reloj),
+                actor_tipo="postgresql_role" if actor is not None else None,
+                actor_id=str(actor.identificador) if actor is not None else None,
             )
             self.db.add(evento)
             self.db.flush()
