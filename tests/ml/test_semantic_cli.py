@@ -12,6 +12,15 @@ from ml.semantic_retrieval import cli
 
 
 class SemanticCLITests(unittest.TestCase):
+    def test_reused_evaluation_cases_are_rejected_before_loading_model(self):
+        path = Path(__file__).resolve().parents[2] / "ml/examples/relevancia/calibracion.json"
+        profile = {"schemaVersion": 2, "observations": [{"queryId": "C-01"}]}
+        with tempfile.TemporaryDirectory() as temporary, patch.object(cli, "LocalEmbedder") as model, \
+             patch.object(cli, "load_profile", return_value=profile):
+            self.invoke_invalid(["evaluate-relevance", "--cases", str(path), "--relevance-profile", "profile.json",
+                                 "--output", str(Path(temporary) / "new.json")], "consultas distintas")
+            model.assert_not_called()
+
     def invoke_invalid(self, arguments, expected):
         stderr = io.StringIO()
         with patch.dict(os.environ, {"SYNAPDESK_SEMANTIC_DATABASE_URL": "postgresql://unused.invalid/test"}), \
@@ -63,7 +72,7 @@ class SemanticCLITests(unittest.TestCase):
         private_details = "postgresql://private_user:private_password@private_host/private_database"
         operational_error = type("OperationalError", (Exception,), {})
         connect = Mock(side_effect=operational_error(private_details))
-        modules = {"psycopg": SimpleNamespace(connect=connect, OperationalError=operational_error),
+        modules = {"psycopg": SimpleNamespace(connect=connect, OperationalError=operational_error, ProgrammingError=type("ProgrammingError", (Exception,), {})),
                    "pgvector": SimpleNamespace(), "pgvector.psycopg": SimpleNamespace(register_vector=Mock())}
         stderr = io.StringIO()
         with patch.dict(os.environ, {"SYNAPDESK_SEMANTIC_DATABASE_URL": private_details}), \
@@ -81,8 +90,10 @@ class SemanticCLITests(unittest.TestCase):
     def test_statement_failure_is_not_reported_as_connection_failure(self):
         operational_error = type("OperationalError", (Exception,), {})
         statement_error = type("ProgrammingError", (Exception,), {})
-        modules = {"psycopg": SimpleNamespace(connect=MagicMock(), OperationalError=operational_error),
+        modules = {"psycopg": SimpleNamespace(connect=MagicMock(), OperationalError=operational_error, ProgrammingError=type("ProgrammingError", (Exception,), {})),
                    "pgvector": SimpleNamespace(), "pgvector.psycopg": SimpleNamespace(register_vector=Mock())}
+        modules["psycopg"].ProgrammingError = statement_error
+        modules["psycopg"].connect.return_value.__enter__.return_value.info.dbname = "synapdesk_semantic_test"
         with patch.dict(os.environ, {"SYNAPDESK_SEMANTIC_DATABASE_URL": "postgresql://unused.invalid/test"}), \
              patch("sys.argv", ["semantic", "init-db"]), patch.dict("sys.modules", modules), \
              patch.object(cli, "init_schema", side_effect=statement_error("invalid SQL")):
@@ -99,14 +110,15 @@ class SemanticCLITests(unittest.TestCase):
         connection = MagicMock()
         connect = MagicMock()
         connect.return_value.__enter__.return_value = connection
-        modules = {"psycopg": SimpleNamespace(connect=connect, OperationalError=type("OperationalError", (Exception,), {})),
+        connection.info.dbname = "synapdesk_semantic_test"
+        modules = {"psycopg": SimpleNamespace(connect=connect, OperationalError=type("OperationalError", (Exception,), {}), ProgrammingError=type("ProgrammingError", (Exception,), {})),
                    "pgvector": SimpleNamespace(), "pgvector.psycopg": SimpleNamespace(register_vector=Mock())}
         profile = {"minScore": 0.5, "corpusSha256": "a" * 64}
         output, errors = io.StringIO(), io.StringIO()
         with patch.dict(os.environ, {"SYNAPDESK_SEMANTIC_DATABASE_URL": "postgresql://unused.invalid/test"}), \
              patch("sys.argv", ["semantic", "search", "--query", "red", "--relevance-profile", "profile.json"]), \
              patch.dict("sys.modules", modules), patch.object(cli, "load_profile", return_value=profile), \
-             patch.object(cli, "corpus_fingerprint", return_value="a" * 64), \
+             patch.object(cli, "require_matching_profile"), \
              patch.object(cli, "LocalEmbedder") as model, patch.object(cli, "search", return_value=[]) as search, \
              contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors):
             model.return_value.encode.return_value = [[1.0]]
@@ -117,11 +129,12 @@ class SemanticCLITests(unittest.TestCase):
 
     def test_changed_corpus_rejects_profile_without_unfiltered_fallback(self):
         connect = MagicMock()
-        modules = {"psycopg": SimpleNamespace(connect=connect, OperationalError=type("OperationalError", (Exception,), {})),
+        connect.return_value.__enter__.return_value.info.dbname = "synapdesk_semantic_test"
+        modules = {"psycopg": SimpleNamespace(connect=connect, OperationalError=type("OperationalError", (Exception,), {}), ProgrammingError=type("ProgrammingError", (Exception,), {})),
                    "pgvector": SimpleNamespace(), "pgvector.psycopg": SimpleNamespace(register_vector=Mock())}
         with patch.dict("sys.modules", modules), patch.object(cli, "LocalEmbedder") as model, \
              patch.object(cli, "load_profile", return_value={"minScore": 0.5, "corpusSha256": "a" * 64}), \
-             patch.object(cli, "corpus_fingerprint", return_value="b" * 64), patch.object(cli, "search") as search:
+             patch.object(cli, "require_matching_profile", side_effect=ValueError("El corpus cambió")), patch.object(cli, "search") as search:
             model.return_value.encode.return_value = [[1.0]]
             self.invoke_invalid(["search", "--query", "red", "--relevance-profile", "profile.json"], "corpus cambió")
             search.assert_not_called()

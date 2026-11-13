@@ -26,4 +26,6 @@ Documentos iniciales:
 - [Estructura del frontend](arquitectura/estructura-frontend.md)
 - [Diseño visual del frontend](arquitectura/diseno-frontend.md)
 - [Contrato experimental de embeddings y recuperación](contratos/embeddings-recuperacion.md)
+- [Recuperación semántica V1 y estados de búsqueda](contratos/recuperacion-semantica-v1.md)
 - [Persistencia relacional inicial](arquitectura/persistencia-inicial.md)
+- [Alcance y validación de las mejoras semánticas](gestion/mejora-recuperacion-semantica.md)

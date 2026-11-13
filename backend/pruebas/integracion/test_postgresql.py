@@ -45,7 +45,7 @@ def test_ejemplo_directo_inicia_salud_y_disponibilidad_sin_servicios_auth(
     from app.seguridad.limites import ServicioLimites
 
     assert configuracion_bd_test.postgres_host in {"localhost", "127.0.0.1", "::1"}
-    assert configuracion_bd_test.postgres_port == 5433
+    assert configuracion_bd_test.postgres_port == int(os.getenv("POSTGRES_TEST_PORT", "5433"))
     archivo = tmp_path / ".env"
     archivo.write_text(
         (Path(__file__).resolve().parents[3] / ".env.example").read_text(encoding="utf-8"),

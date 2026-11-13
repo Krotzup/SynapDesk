@@ -11,6 +11,7 @@ interface RequestOptions<TBody = unknown> {
   method?: HttpMethod;
   body?: TBody;
   headers?: Record<string, string>;
+  sameOrigin?: boolean;
 }
 
 const MUTATING_METHODS: ReadonlySet<HttpMethod> = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -40,6 +41,20 @@ async function send<TResponse, TBody>(
   options: RequestOptions<TBody>,
   csrfToken?: string
 ): Promise<TResponse> {
+  if (options.sameOrigin) {
+    const response = await fetch(`${API_PREFIX}${endpoint}`, {
+      method: options.method ?? "GET",
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: {
+        "Content-Type": "application/json",
+        ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {}),
+        ...options.headers,
+      },
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    });
+    return readResponse<TResponse>(response);
+  }
   const { method = "GET", body, headers = {} } = options;
 
   const config: RequestInit = {
@@ -59,6 +74,10 @@ async function send<TResponse, TBody>(
 
   const response = await fetch(`${BASE_URL}${API_PREFIX}${endpoint}`, config);
 
+  return readResponse<TResponse>(response);
+}
+
+async function readResponse<TResponse>(response: Response): Promise<TResponse> {
   if (!response.ok) {
     const errorBody: ApiError = await response.json().catch(() => ({
       error: {
@@ -79,7 +98,8 @@ async function send<TResponse, TBody>(
   return response.json() as Promise<TResponse>;
 }
 
-const fetchCsrfToken = () => send<CsrfToken, never>("/auth/csrf", { method: "GET" });
+const fetchCsrfToken = (sameOrigin = false) =>
+  send<CsrfToken, never>("/auth/csrf", { method: "GET", sameOrigin });
 
 // Solo un 403 con código CSRF_INVALID permite el reintento: el mismo código con otro estado,
 // u otro código con 403, no se reintentan.
@@ -102,7 +122,7 @@ async function request<TResponse, TBody = unknown>(
     // La sesión no debe cambiar (ni login ni logout, tampoco en otra pestaña) entre que se pide
     // el token y se envía la mutación; si cambia, la mutación no se envía.
     const generation = getAuthGeneration();
-    const token = await getCsrfToken(fetchCsrfToken);
+    const token = await getCsrfToken(() => fetchCsrfToken(options.sameOrigin));
     if (getAuthGeneration() !== generation) throw sessionChangedError();
     try {
       return await send<TResponse, TBody>(endpoint, options, token);
@@ -111,7 +131,7 @@ async function request<TResponse, TBody = unknown>(
       // sesión no cambió. Si el reintento también falla, se devuelve ese error sin reintentar más.
       if (!isCsrfInvalid(error) || getAuthGeneration() !== generation) throw error;
       clearCsrfToken();
-      const freshToken = await getCsrfToken(fetchCsrfToken);
+      const freshToken = await getCsrfToken(() => fetchCsrfToken(options.sameOrigin));
       if (getAuthGeneration() !== generation) throw sessionChangedError();
       return await send<TResponse, TBody>(endpoint, options, freshToken);
     }
@@ -122,6 +142,8 @@ async function request<TResponse, TBody = unknown>(
 }
 
 export const api = {
+  postSameOrigin: <TResponse, TBody = unknown>(endpoint: string, body: TBody) =>
+    request<TResponse, TBody>(endpoint, { method: "POST", body, sameOrigin: true }),
   get: <TResponse>(endpoint: string, headers?: Record<string, string>) =>
     request<TResponse>(endpoint, { method: "GET", headers }),
 

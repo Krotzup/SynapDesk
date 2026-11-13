@@ -223,7 +223,7 @@ with patch.dict("os.environ", {
     from app.aplicacion import crear_aplicacion as fabrica
     assert crear_aplicacion is fabrica
     assert app.state.motor_bd is None
-    assert set(app.openapi()["paths"]) == {"/api/v1/health", "/api/v1/ready"}
+    assert set(app.openapi()["paths"]) == {"/api/v1/health", "/api/v1/ready", "/api/v1/search"}
     crear_motor.assert_not_called()
 """
     resultado = subprocess.run(

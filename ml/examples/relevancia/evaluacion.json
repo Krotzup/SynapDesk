@@ -1,0 +1,50 @@
+{
+  "annotationStatus": "synthetic_pending_human_review",
+  "purpose": "Prueba reproducible del mecanismo con los dos textos sintéticos; no estima calidad de producción.",
+  "queries": [
+    {
+      "queryId": "E-01",
+      "query": "Mi computador perdió el acceso a la red corporativa.",
+      "answerable": true,
+      "expectedDocumentId": "11111111-1111-4111-8111-111111111111"
+    },
+    {
+      "queryId": "E-02",
+      "query": "Envié un archivo a imprimir y la impresora no responde.",
+      "answerable": true,
+      "expectedDocumentId": "22222222-2222-4222-8222-222222222222"
+    },
+    {
+      "queryId": "E-03",
+      "query": "Necesito revisar el adaptador y la configuración IP de un equipo sin red.",
+      "answerable": true,
+      "expectedDocumentId": "11111111-1111-4111-8111-111111111111"
+    },
+    {
+      "queryId": "E-04",
+      "query": "¿Qué reviso en la cola y el controlador cuando falla la impresión?",
+      "answerable": true,
+      "expectedDocumentId": "22222222-2222-4222-8222-222222222222"
+    },
+    {
+      "queryId": "E-05",
+      "query": "¿Cómo hago pan de masa madre?",
+      "answerable": false
+    },
+    {
+      "queryId": "E-06",
+      "query": "Necesito una explicación de la fotosíntesis.",
+      "answerable": false
+    },
+    {
+      "queryId": "E-07",
+      "query": "¿Qué temperatura habrá mañana?",
+      "answerable": false
+    },
+    {
+      "queryId": "E-08",
+      "query": "¿Cuál es la órbita del planeta Marte?",
+      "answerable": false
+    }
+  ]
+}

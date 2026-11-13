@@ -11,13 +11,14 @@ API de SynapDesk basada en FastAPI y Pydantic, con prefijo `/api/v1`.
 - CORS con orígenes explícitos para el frontend local.
 - Conexión a PostgreSQL con SQLAlchemy y Psycopg 3.
 - Endpoint `GET /api/v1/ready` para comprobar acceso a PostgreSQL.
+- Endpoint optativo `POST /api/v1/search`, protegido con sesión, Origin y CSRF; deshabilitado por defecto.
 - Entorno Alembic preparado para versionar cambios de estructura.
 - Modelos de usuarios y tickets y revisiones `0001_usuarios_tickets` y `0002_autenticacion_persistencia`.
 - Persistencia V1 de sesiones opacas, contextos/tokens CSRF, límites de autenticación y eventos de auditoría; no agrega endpoints.
 - Pruebas unitarias de salud, CORS, configuración y disponibilidad.
 - Pruebas de integración optativas de conexión, persistencia y migraciones contra `db_test`.
 
-Las tablas de usuarios, tickets y persistencia de autenticación se crean al aplicar las migraciones. Sus endpoints, autenticación efectiva e integración ML siguen pendientes. Los secretos de sesión, contextos y CSRF no se almacenan en texto plano: las tablas guardan únicamente digests de 32 bytes. La migración no fija cuotas de rate limiting, retención de auditoría ni la política de emisión/rotación de tokens.
+Las tablas de usuarios, tickets y persistencia de autenticación se crean al aplicar las migraciones. Sus endpoints y el login/logout/CSRF HTTP siguen pendientes; la búsqueda optativa reutiliza los servicios de sesión existentes, sin sustituir esa orquestación. Los secretos de sesión, contextos y CSRF no se almacenan en texto plano: las tablas guardan únicamente digests de 32 bytes. La migración no fija cuotas de rate limiting, retención de auditoría ni la política de emisión/rotación de tokens.
 
 La sesión conserva creación, última actividad, expiración absoluta y revocación; el modelo permite aplicar posteriormente los límites aprobados de ocho horas y treinta minutos. Los contextos anónimos y autenticados son identidades separadas, y un contexto admite varios tokens CSRF vigentes. Los registros de límites usan claves seudonimizadas, ventana, contadores, reservas y bloqueo; el ORM incorpora versionado optimista para evitar pérdidas silenciosas en actualizaciones concurrentes. La auditoría conserva solo referencias y contexto mínimo seguro, sin contraseñas, cookies, tokens, secretos ni cabeceras completas.
 
@@ -285,6 +286,54 @@ Las revisiones no insertan usuarios ni tickets. La autenticación y las rutas de
 Las credenciales se obtienen del `.env` y no se almacenan en `alembic.ini`. `APP_ENV=testing` no sustituye la selección explícita `-x base=testing`. FastAPI no aplica migraciones ni crea tablas automáticamente al iniciar.
 
 Consulta el [procedimiento de migraciones](migraciones/README.md) antes de incorporar modelos y generar revisiones.
+
+## Búsqueda semántica protegida optativa
+
+Desde la raíz, preparar un entorno virtual y las dependencias compatibles del
+monolito con recuperación; psycopg queda unificado en 3.3.6:
+
+```powershell
+python -m pip install -r backend/requirements-dev.txt -r backend/requirements-semantic.txt
+```
+
+Preparar una base semántica propia y un perfil V2 mediante [ml/README.md](../ml/README.md).
+No ejecutar el indexador contra `synapdesk_test`, desarrollo ni la base del
+backend: CLI y API rechazan esos destinos. `init-db` solo prepara el esquema
+experimental y sus revisiones; no ejecuta Alembic ni borra documentos previos.
+
+Configurar en el proceso o `.env` privado:
+
+- `SEARCH_ENABLED=true`.
+- `SYNAPDESK_SEMANTIC_DATABASE_URL` para la base semántica propia.
+- `SEARCH_RELEVANCE_PROFILE` para el perfil V2 existente, en ruta absoluta o
+  relativa a la raíz del repositorio.
+- `AUTH_COOKIE_PROFILE` explícito (`local` o `production`) compartido con Next.js.
+  En ensayos sin perfil se puede configurar `SEARCH_SESSION_COOKIE_NAME` en
+  ambos procesos. Los valores incompatibles impiden autorizar la búsqueda.
+- `AUTH_ORIGENES_PERMITIDOS` con los orígenes públicos autorizados.
+- Las variables PostgreSQL habituales para validar sesiones en la base del backend.
+
+Arrancar desde la raíz para que el monolito encuentre ambos módulos:
+
+```powershell
+python -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000
+```
+
+El modelo se carga una vez por proceso. En modo sin red debe estar previamente
+en caché; su carga inicial puede descargar la revisión fijada si se permite red.
+Un perfil inválido o un modelo no disponible mantienen la búsqueda cerrada con
+503. La autorización valida sesión y CSRF reales antes de buscar; la API no
+genera sesiones, no recibe identidades del frontend ni renueva actividad.
+
+La disponibilidad para usuarios finales depende de las rutas HTTP de
+autenticación y su transporte aprobado. No basta desactivar los mocks para
+obtener un login completo: esa orquestación sigue fuera de esta implementación.
+Las pruebas E2E usan un actor ficticio persistido y un doble explícito del
+bootstrap HTTP; eso no certifica un login de producción.
+
+El [contrato V1](../docs/contratos/recuperacion-semantica-v1.md) define estados,
+errores, límites y metadatos. Las pruebas de búsqueda viven en
+`pruebas/test_busqueda.py` y `pruebas/integracion/test_busqueda_semantica.py`.
 
 ## Organización
 

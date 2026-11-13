@@ -15,7 +15,8 @@ from ml.semantic_retrieval.chunking import chunk_text
 from ml.semantic_retrieval.cli import read_document
 from ml.semantic_retrieval.config import MODEL_ID
 from ml.semantic_retrieval.embeddings import LocalEmbedder
-from ml.semantic_retrieval.repository import corpus_fingerprint, init_schema, replace_document, search
+from ml.semantic_retrieval.repository import (corpus_fingerprint, corpus_state, init_schema, replace_document,
+                                             require_matching_profile, search)
 
 
 @unittest.skipUnless(os.getenv("SYNAPDESK_RUN_SEMANTIC_MODEL_TESTS") == "1", "Requiere modelo real; activación explícita.")
@@ -68,11 +69,16 @@ class RealSemanticDatabaseTests(unittest.TestCase):
                     ).fetchall()
 
                 before = stored()
+                corpus_version = corpus_state(connection, model_id=MODEL_ID)
                 fingerprint = corpus_fingerprint(connection, model_id=MODEL_ID)
                 identifier, title, chunks = prepared[0]
                 replace_document(connection, document_id=identifier, title=title, chunks=chunks,
                                  embeddings=vectors[0], model_id=MODEL_ID)
                 self.assertEqual(stored(), before)
+                self.assertGreater(corpus_state(connection, model_id=MODEL_ID)["revision"], corpus_version["revision"])
+                with self.assertRaisesRegex(ValueError, "corpus cambió"):
+                    require_matching_profile(connection, {"schemaVersion": 2, "modelId": MODEL_ID,
+                        "corpusId": corpus_version["corpusId"], "corpusRevision": corpus_version["revision"]})
                 self.assertEqual(corpus_fingerprint(connection, model_id=MODEL_ID), fingerprint)
                 with self.assertRaises(psycopg.Error):
                     replace_document(connection, document_id=identifier, title=title,
@@ -102,6 +108,14 @@ class RealSemanticDatabaseTests(unittest.TestCase):
                     self.assertEqual(search(connection, embedding=query_vector, model_id=MODEL_ID, limit=5,
                                             min_score=math.nextafter(minimum, 1.0)), [])
                     outputs.append({"query": query, "items": items})
+                prior = corpus_state(connection, model_id=MODEL_ID)
+                connection.execute("UPDATE semantic_prototype_chunks SET content=content || ' prueba' WHERE model_id=%s", (MODEL_ID,))
+                self.assertGreater(corpus_state(connection, model_id=MODEL_ID)["revision"], prior["revision"])
+                prior = corpus_state(connection, model_id=MODEL_ID)
+                connection.execute("TRUNCATE semantic_prototype_chunks")
+                after = corpus_state(connection, model_id=MODEL_ID)
+                self.assertGreater(after["revision"], prior["revision"])
+                self.assertFalse(after["hasDocuments"])
                 evidence = {
                     "executed_at": datetime.now(timezone.utc).isoformat(), "modelId": MODEL_ID,
                     "dimensions": len(vectors[0][0]), "postgresql_version": connection.info.server_version,
@@ -109,6 +123,7 @@ class RealSemanticDatabaseTests(unittest.TestCase):
                     "runtime": {name: version(name) for name in ("sentence-transformers", "transformers", "torch", "psycopg", "pgvector")},
                     "reindex_stable": True, "failed_insert_rolled_back": True, "model_filter_verified": True,
                     "threshold_filter_verified": True, "corpus_fingerprint_verified": True,
+                    "corpus_version_invalidations_verified": True,
                     "outputs": outputs,
                 }
             finally:
