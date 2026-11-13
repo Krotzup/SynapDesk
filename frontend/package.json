@@ -5,13 +5,20 @@
   "engines": {
     "node": ">=20.9.0"
   },
+  "imports": {
+    "#transport": {
+      "react-server": "./src/lib/transport/server.ts",
+      "default": "./src/lib/transport/client.ts"
+    }
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "test:proxy": "node --conditions=react-server --import ./tests/proxy/register.mjs --test tests/proxy/proxy.test.mjs"
   },
   "dependencies": {
     "next": "16.3.4",
