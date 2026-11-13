@@ -1,9 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { FormEvent, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { buildQuery } from "@/lib/params";
 import { Role } from "@/types";
+
+// Límite provisional del texto de búsqueda; el contrato aún no define uno para GET /tickets.
+const SEARCH_MAX_LENGTH = 200;
 
 const roleLabels: Record<Role, string> = {
   admin: "Administrador",
@@ -42,6 +47,9 @@ export function Header() {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState(mockNotifications);
 
+  const router = useRouter();
+  const [search, setSearch] = useState("");
+
   const { user, signOut } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
@@ -60,14 +68,29 @@ export function Header() {
     }
   };
 
+  // Búsqueda general: empieza en la página 1 y sin otros filtros. El campo se vacía porque la
+  // búsqueda queda a la vista en el campo de búsqueda del listado ("Limpiar filtros" la quita).
+  // Vacío no hace nada, para no perder los filtros que ya estén aplicados.
+  const handleSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const term = search.trim();
+    if (!term) return;
+    router.push(`/tickets${buildQuery({ search: term })}`);
+    setSearch("");
+  };
+
   const markAllAsRead = () => {
     setNotifications(notifications.map((n) => ({ ...n, unread: false })));
   };
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-[#E2E8F0] bg-white px-8 relative z-50 shrink-0">
-      {/* Buscador */}
-      <div className="flex items-center gap-2 rounded-full bg-[#F1F5F9] px-4 py-2 w-full max-w-md border border-[#E2E8F0]/60">
+      {/* Buscador: lleva al listado de tickets con la búsqueda textual */}
+      <form
+        role="search"
+        onSubmit={handleSearch}
+        className="flex items-center gap-2 rounded-full bg-[#F1F5F9] px-4 py-2 w-full max-w-md border border-[#E2E8F0]/60 focus-within:border-[#2563EB] focus-within:ring-2 focus-within:ring-[#2563EB]/20"
+      >
         <svg
           className="h-4 w-4 text-[#94A3B8] shrink-0"
           fill="none"
@@ -84,11 +107,15 @@ export function Header() {
         </svg>
         <input
           type="search"
-          placeholder="Buscar tickets, usuarios, etc..."
+          name="search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          maxLength={SEARCH_MAX_LENGTH}
+          placeholder="Buscar tickets por título, área, usuario o ID..."
           className="w-full bg-transparent text-sm text-[#0F172A] placeholder-[#94A3B8] outline-none"
-          aria-label="Buscar"
+          aria-label="Buscar tickets"
         />
-      </div>
+      </form>
 
       {/* Acciones y perfil */}
       <div className="flex items-center gap-3 relative">
