@@ -110,6 +110,10 @@ Las etiquetas tecnicas se conservan para mantener el contrato del sistema:
 
 ## Entrenamiento
 
+Por defecto, el clasificador de prioridad combina TF-IDF de palabras y
+n-gramas de caracteres. Tipo y cola usan solo palabras. Para reproducir el
+baseline de palabras en los tres objetivos, agregar `--words-only`.
+
 Desde la raiz del repositorio:
 
 ```bash
@@ -417,7 +421,7 @@ de aprobar sus criterios funcionales.
 ## Documentacion relacionada
 
 - [Procedencia, transformaciones y licencia del dataset](DATASET_PROVENANCE.md).
-- [Evaluación cruzada por grupos, candidatos, grilla y umbral experimental](CLASSIFIER_EVALUATION.md).
+- [Evaluación cruzada por grupos, candidatos y grilla de hiperparámetros](CLASSIFIER_EVALUATION.md).
 - [CSV de entrenamiento reproducible y manifiesto de procedencia](CORRECCIONES_PRIORIDAD.md#csv-derivado-para-entrenamiento).
 
 - [Pipeline de dataset y modelo](DATASET_ML_PIPELINE.md)

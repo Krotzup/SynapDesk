@@ -134,14 +134,14 @@ class PredictTicketTest(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             predict(Path("nonexistent.joblib"), "Consulta", "Revisar acceso")
 
-    def test_character_variant_trains_and_preserves_inference_contract_and_provenance(self):
+    def test_default_priority_characters_preserve_inference_contract_and_provenance(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory)
             config = TrainingConfig(
                 input_csv=str(ROOT / "ml/samples/tickets_esp_sintetico.csv"),
                 output_dir=str(output), language="es", test_size=0.2, random_state=17,
                 min_target_count=1, max_features=200, ngram_min=1, ngram_max=2,
-                business_rules_enabled=False, character_ngram_targets=("priority",),
+                business_rules_enabled=False,
             )
             with redirect_stdout(StringIO()):
                 train(config)

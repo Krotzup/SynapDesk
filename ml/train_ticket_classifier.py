@@ -36,6 +36,7 @@ TARGETS = {
     "priority": "prioridad_estimada",
     "queue": "area_responsable",
 }
+DEFAULT_CHARACTER_NGRAM_TARGETS = ("priority",)
 
 
 @dataclass(frozen=True)
@@ -52,7 +53,7 @@ class TrainingConfig:
     business_rules_enabled: bool
     corrections_csv: str | None = None
     corrections_manifest: str | None = None
-    character_ngram_targets: tuple[str, ...] = ()
+    character_ngram_targets: tuple[str, ...] = DEFAULT_CHARACTER_NGRAM_TARGETS
 
 
 def validate_columns(df: pd.DataFrame) -> None:
@@ -369,9 +370,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-features", type=int, default=120000)
     parser.add_argument("--ngram-min", type=int, default=1)
     parser.add_argument("--ngram-max", type=int, default=2)
-    parser.add_argument(
-        "--character-ngram-targets", choices=tuple(TARGETS), nargs="+", default=(),
-        help="Objetivos que añaden char_wb 3–5 a las palabras; variante experimental optativa.",
+    feature_group = parser.add_mutually_exclusive_group()
+    feature_group.add_argument(
+        "--character-ngram-targets", choices=tuple(TARGETS), nargs="+",
+        default=DEFAULT_CHARACTER_NGRAM_TARGETS,
+        help="Objetivos que añaden char_wb 3–5 a las palabras (por defecto: priority).",
+    )
+    feature_group.add_argument(
+        "--words-only", dest="character_ngram_targets", action="store_const", const=(),
+        help="Entrena todos los objetivos solo con palabras para reproducir el baseline.",
     )
     rules_group = parser.add_mutually_exclusive_group()
     rules_group.add_argument(

@@ -59,16 +59,15 @@ La vectorización se ajusta dentro de cada entrenamiento: no aprende vocabulario
 ni IDF de la prueba. `max_features` limita cada vectorizador; la variante con
 caracteres puede utilizar hasta dos veces ese número de características.
 
-El entrenamiento existente admite `--character-ngram-targets` para generar un
-artefacto experimental con la unión de palabras y caracteres únicamente en los
-objetivos indicados (`type`, `priority`, `queue`). Se registra en configuración
-y en un nombre de modelo diferenciado; conserva el formato de inferencia. Sin
-esa opción se conserva el baseline en los tres objetivos. Evaluar cada objetivo
-antes de adoptar la variante, ya que una mejora de prioridad no garantiza
-mejorar tipo o área. Usar un destino nuevo para conservar el modelo anterior:
+El entrenamiento usa palabras y caracteres para `priority` por defecto, y solo
+palabras para `type` y `queue`. `--character-ngram-targets` reemplaza la selección
+predeterminada por los objetivos indicados. La variante se distingue por la
+configuración del artefacto y el nombre del modelo, y conserva el formato de
+inferencia. Para reproducir el baseline histórico de palabras en los tres
+objetivos, usar `--words-only` y un destino nuevo:
 
 ```text
-python ml/train_ticket_classifier.py --input-csv ml/data/raw/tickets_esp.csv --character-ngram-targets priority --output-dir ml/artifacts/ticket_classifier_priority_chars
+python ml/train_ticket_classifier.py --input-csv ml/data/raw/tickets_esp.csv --words-only --output-dir ml/artifacts/ticket_classifier_words_only
 ```
 
 Ejemplo de una línea, válido en PowerShell, CMD y Git Bash:
@@ -131,13 +130,21 @@ Cada celda muestra Macro F1 medio ± desviación poblacional / Weighted F1 medio
 
 Para prioridad, los caracteres detectaron 741 de los 980 casos `high`, con
 214 falsas alarmas. El baseline detectó 733 con 212 falsas alarmas. El
-incremento observado es de 8 detecciones y 2 falsas alarmas. Los resultados
-reproducen los Macro F1 medios de ambos SGD ya documentados para prioridad.
+incremento es de 8 detecciones (+0,8 puntos porcentuales de recall) y 2 falsas
+alarmas. La diferencia de Macro F1 (0,0021) es menor que la desviación entre
+pliegues de ambos candidatos (aproximadamente 0,023–0,027). La comparación es
+descriptiva.
 
-El equipo acordó dar más peso a detectar tickets de prioridad `high` que
-a evitar que un ticket `low` o `medium` se sugiera como `high`. El agente
-conserva la decisión final sobre la prioridad. Se aprobó usar SGD de palabras
-y caracteres para sugerir prioridad. Tipo y cola usan SGD de palabras.
+El [PR #35, abierto el 12 de noviembre de 2026](https://github.com/Krotzup/SynapDesk/pull/35),
+registra el acuerdo del equipo de dar más peso a detectar tickets `high` y de usar
+SGD con palabras y caracteres para sugerir prioridad. Tipo y cola usan SGD de
+palabras. El agente conserva la decisión final sobre la prioridad.
+
+El reporte local histórico `prioridad_recall_high.json` usó el mismo V2 y la misma
+huella de particiones. Con palabras y caracteres, el umbral experimental de
+promoción elevó la detección a 820 de 980, pero también elevó las falsas alarmas de
+214 a 388 y redujo el Macro F1 medio de 0,6598 a 0,6336. Ese costo respalda retirar
+el umbral del evaluador y conservar la salida directa del clasificador.
 SGD obtuvo el mayor Macro F1 en cola. LinearSVC obtuvo el mayor Macro F1
 observado en tipo, por 0,0034 sobre SGD, y requeriría resolver la ausencia de
 probabilidades antes de considerarlo para la salida actual. Las diferencias
