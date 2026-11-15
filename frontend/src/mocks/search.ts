@@ -10,6 +10,7 @@ const documents = {
   vpn: {
     documentId: "3f6b2c1e-8a47-4d2b-9c5e-1a7f0d3e6b21",
     title: "Guía de acceso remoto por VPN",
+    language: "es",
   },
   password: {
     documentId: "a91d4e72-5b3c-4f8a-b6e1-2c9d7f04a358",
@@ -26,6 +27,12 @@ const documents = {
   wifi: {
     documentId: "58c3a7d1-9e2b-4f60-bc84-d1e6a2079f3c",
     title: "Conectividad Wi-Fi en las oficinas",
+    language: "es",
+  },
+  wireless: {
+    documentId: "01f24030-d6dc-4008-9689-2ad85ccf41f5",
+    title: "Wi-Fi connection troubleshooting",
+    language: "en",
   },
   software: {
     documentId: "7d0e5f94-3b8c-4a17-9f26-8c4b1e3d05a2",
@@ -34,6 +41,11 @@ const documents = {
 };
 
 const chunks: Chunk[] = [
+  {
+    ...documents.wireless,
+    documentChunkId: "8ebcd977-eaca-48e3-bc40-c76dab619676",
+    excerpt: "If WiFi disconnects, check the wireless adapter and reconnect to the network.",
+  },
   {
     ...documents.vpn,
     documentChunkId: "0b8e4c2a-6f13-4d9e-a7b5-3c1f9e08d264",
@@ -86,7 +98,7 @@ const chunks: Chunk[] = [
     ...documents.wifi,
     documentChunkId: "a3c6e9f2-4b7d-4e18-b2a5-8f1c6d3e9b74",
     excerpt:
-      "La red Wi-Fi corporativa requiere el certificado instalado por TI. Si el equipo no se conecta, olvide la red, reinicie el adaptador y vuelva a conectarse con su usuario.",
+      "La red WiFi corporativa requiere el certificado instalado por TI. Si el equipo no se conecta, olvide la red, reinicie el adaptador y vuelva a conectarse con su usuario.",
   },
   {
     ...documents.software,

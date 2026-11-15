@@ -159,6 +159,12 @@ en dos de los cuatro casos con guía asignada. Las etiquetas quedan pendientes
 de revisión independiente con la
 [hoja de revisión ciega](revision-ciega-relevancia-pr32.md).
 
+Antes de habilitar la búsqueda para usuarios, completa la revisión
+independiente y mide el perfil con consultas reales anonimizadas. Si se
+decide recalibrar, reserva otro conjunto para comprobar si baja el número de
+respuestas fuera de cobertura y cuánto cambia la abstención con cobertura.
+El perfil del piloto conserva el umbral de la calibración original.
+
 El ensayo adicional envió 124 solicitudes locales a FastAPI con el modelo y
 PostgreSQL reales y sesiones de prueba emitidas por los servicios internos.
 Todas devolvieron HTTP 200. El p95 se calculó por rango más cercano.
@@ -175,6 +181,27 @@ Se observaron hasta ocho conexiones de autenticación simultáneas. La espera
 del modelo aumentó con sesiones independientes. La causa de la mayor latencia
 con sesión compartida queda por medir, incluida la posible espera por bloqueos
 SQL. Los valores corresponden a un entorno local y una sola consulta.
+
+Para repetir el ensayo, restaura o indexa el corpus en una base local
+desechable `synapdesk_semantic_*_test` y comprueba que el perfil V2 corresponde
+a ese índice. Prepara otra base local desechable `synapdesk_backend_*_test`
+con las migraciones de backend. Consulta las instrucciones de
+[backend](../../backend/README.md) y
+[reconstrucción del corpus](../../ml/sources/README.md).
+
+Configura las DSN de estas dos bases mediante
+`SYNAPDESK_SEMANTIC_DATABASE_URL` y `SYNAPDESK_BENCH_AUTH_URL`, respectivamente.
+Con las dependencias de backend, pruebas y recuperación instaladas, ejecuta
+desde la raíz en PowerShell:
+
+```powershell
+$env:PYTHONPATH = (Resolve-Path backend).Path
+python -m ml.tools.benchmark_search --profile ml/artifacts/piloto_perfil_v2.json --output ml/artifacts/concurrencia.json
+```
+
+El ensayo crea ocho usuarios y sesiones ficticios en la base de autenticación.
+Elimina esa base desechable al terminar. El informe registra estados HTTP,
+medianas, p95, máximos y el máximo de conexiones ocupadas por escenario.
 
 ## Referencias
 

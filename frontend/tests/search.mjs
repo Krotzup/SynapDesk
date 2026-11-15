@@ -129,6 +129,7 @@ test("opaque cookie values reach FastAPI without requiring a particular token fo
 test("rate limiting preserves only valid Retry-After values and sanitizes the body", async () => {
   for (const [retryAfter, expected] of [
     ["30", "30"],
+    ["0", "0"],
     ["Wed, 21 Oct 2037 07:28:00 GMT", "Wed, 21 Oct 2037 07:28:00 GMT"],
     ["Invalid Date", null],
     ["private-credentials", null],
@@ -145,6 +146,9 @@ test("rate limiting preserves only valid Retry-After values and sanitizes the bo
     assert.equal(response.headers.get("set-cookie"), null);
     const body = await response.json();
     assert.equal(body.error.code, "RATE_LIMITED");
+    if (retryAfter === "30") assert.match(body.error.message, /30 segundos/);
+    else if (retryAfter === "0" || expected === null)
+      assert.doesNotMatch(body.error.message, /segundos?/);
     assert.ok(!JSON.stringify(body).includes("private-credentials"));
   }
 });

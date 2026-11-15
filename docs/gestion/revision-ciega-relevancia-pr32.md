@@ -1,6 +1,8 @@
 # Revisión ciega de relevancia del PR #32
 
-Revisa las consultas contra las guías del corpus antes de abrir el informe de evaluación.
+Completa y guarda la hoja antes de consultar `soporte_evaluacion.json` o los
+informes de evaluación. Para una revisión independiente, comparte esta hoja
+por separado con la persona revisora.
 Marca cada caso como **cubierta**, **fuera de cobertura** o **ambigua**.
 Si una guía ayuda a resolver o diagnosticar la consulta, anota su código.
 Si varias son pertinentes, anota todas. Si falta contexto, registra cuál.

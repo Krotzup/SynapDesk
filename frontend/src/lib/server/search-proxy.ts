@@ -25,12 +25,17 @@ const messages: Record<string, string> = {
   RATE_LIMITED: "Se alcanzó el límite de solicitudes. Espera antes de volver a buscar.",
 };
 
-function failure(status: number, code: string, requestId: string = crypto.randomUUID()) {
+function failure(
+  status: number,
+  code: string,
+  requestId: string = crypto.randomUUID(),
+  message = messages[code] ?? messages.SEARCH_UNAVAILABLE
+) {
   return Response.json(
     {
       error: {
         code,
-        message: messages[code] ?? messages.SEARCH_UNAVAILABLE,
+        message,
         details: null,
         requestId,
       },
@@ -40,7 +45,6 @@ function failure(status: number, code: string, requestId: string = crypto.random
 }
 
 function rateLimited(response: Response, requestId: string | undefined) {
-  const result = failure(429, "RATE_LIMITED", requestId);
   const retryAfter = response.headers.get("retry-after");
   if (
     retryAfter &&
@@ -48,9 +52,18 @@ function rateLimited(response: Response, requestId: string | undefined) {
       (Number.isFinite(Date.parse(retryAfter)) &&
         new Date(retryAfter).toUTCString() === retryAfter))
   ) {
+    const seconds = /^[0-9]+$/.test(retryAfter)
+      ? Number(retryAfter)
+      : Math.max(0, Math.ceil((Date.parse(retryAfter) - Date.now()) / 1000));
+    const message =
+      seconds > 0
+        ? `Se alcanzó el límite de solicitudes. Vuelve a buscar en ${seconds} ${seconds === 1 ? "segundo" : "segundos"}.`
+        : messages.RATE_LIMITED;
+    const result = failure(429, "RATE_LIMITED", requestId, message);
     result.headers.set("Retry-After", retryAfter);
+    return result;
   }
-  return result;
+  return failure(429, "RATE_LIMITED", requestId);
 }
 
 function sessionCookieName(config: SearchProxyConfig): string {

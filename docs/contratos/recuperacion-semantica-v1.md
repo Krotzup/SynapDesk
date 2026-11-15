@@ -88,6 +88,10 @@ Solo 403 + `CSRF_INVALID` admite el reintento ya aprobado por autenticación V1,
 tras renovar su prueba y confirmar que la sesión no cambió. No se agregan
 reintentos para otros errores.
 
+El backend de búsqueda aún no emite `429 RATE_LIMITED`. Si recibe ese estado
+y código, el proxy los conserva y reenvía `Retry-After` cuando es válido.
+La pantalla muestra la espera indicada cuando es positiva. El reintento es manual.
+
 ## Perfiles V2 y costo de consulta
 
 El perfil guarda identidad UUID y revisión del corpus por modelo, además de su

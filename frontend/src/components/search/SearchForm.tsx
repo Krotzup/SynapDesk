@@ -54,7 +54,7 @@ export function SearchForm({ query, limit }: SearchFormProps) {
       />
 
       <label htmlFor="semantic-limit" className="sr-only">
-        Cantidad de resultados
+        Cantidad de fragmentos
       </label>
       <select
         id="semantic-limit"
@@ -65,7 +65,7 @@ export function SearchForm({ query, limit }: SearchFormProps) {
       >
         {SEARCH_LIMITS.map((option) => (
           <option key={option} value={option}>
-            {option} resultados
+            {option} fragmentos
           </option>
         ))}
       </select>
