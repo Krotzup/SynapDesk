@@ -21,9 +21,11 @@ asistencia para el agente; la decision final permanece bajo supervision humana.
   o el dataset sintetico versionado en `ml/samples/tickets_esp_sintetico.csv`
   para verificar el pipeline.
 
-El dataset de tickets y los artefactos generados no se versionan en Git. Debe
-confirmarse la licencia, procedencia y ausencia de informacion sensible antes
-de compartir el CSV fuera del entorno local.
+El dataset de tickets y los artefactos generados no se versionan en Git. Su
+[fuente, cadena de transformación y licencia](DATASET_PROVENANCE.md) están
+documentadas por separado. La fuente externa usa CC BY-NC 4.0: cualquier
+distribución debe atribuirla, enlazar la licencia, indicar los cambios, limitarse
+a usos no comerciales y revisar antes la presencia de información sensible.
 
 El lector exige CSV con comas, comillas válidas y UTF-8 (admite BOM). Rechaza
 filas con campos desalineados sin omitirlas ni sustituir caracteres. Renombrar
@@ -84,6 +86,12 @@ versiona porque puede contener datos externos o sensibles. Para verificar el
 pipeline sin exponer datos reales se incluye
 `ml/samples/tickets_esp_sintetico.csv`.
 
+El original local es una selección/adaptación del archivo externo
+[`aa_dataset-tickets-multi-lang-5-2-50-version.csv`](https://huggingface.co/datasets/Tobi-Bueck/customer-support-tickets/blob/main/aa_dataset-tickets-multi-lang-5-2-50-version.csv).
+La [procedencia detallada](DATASET_PROVENANCE.md) distingue su hash del archivo
+externo y de la V2 corregida, y registra las limitaciones de reproducción de la
+selección y traducción.
+
 - El CSV completo utilizado en la evaluacion local contiene 2.239 registros
   en espanol; 2.237 quedan despues del filtrado y la eliminacion de duplicados.
   Su SHA-256 es
@@ -97,7 +105,7 @@ pipeline sin exponer datos reales se incluye
 Las etiquetas tecnicas se conservan para mantener el contrato del sistema:
 
 - Tipo: `incident`, `request`, `problem`, `change`.
-- Prioridad: `low`, `medium`, `high`, `critical`.
+- Prioridad: `low`, `medium`, `high`.
 - Area: nombres tecnicos como `technical_support` o `it_support`.
 
 ## Entrenamiento
@@ -133,8 +141,7 @@ python ml/train_ticket_classifier.py \
 python ml/predict_ticket.py \
   --model ml/artifacts/ticket_classifier_es/ticket_classifier.joblib \
   --subject "URGENTE: no puedo entrar al correo" \
-  --body "Necesito recuperar el acceso inmediatamente para trabajar." \
-  --enable-business-rules
+  --body "Necesito recuperar el acceso inmediatamente para trabajar."
 ```
 
 La respuesta entrega:
@@ -155,7 +162,7 @@ integracion debe tratar esta salida como un adaptador interno hacia
 | Salida ML | Campo sugerido en dominio | Nota |
 | --- | --- | --- |
 | `predictions.clasificacion_sugerida.label` | `predictedCategory` | Mapeo pendiente: tipo no equivale automáticamente a categoría temática. |
-| `predictions.prioridad_estimada.label` | `predictedPriority` | Puede venir del modelo o de una regla aprobada. |
+| `predictions.prioridad_estimada.label` | `predictedPriority` | Resultado del modelo dentro de `low`, `medium`, `high`. |
 | `predictions.area_responsable.label` | `predictedArea` | Correspondencia de cola con área pendiente de aprobación. |
 | `predictions.*.confidence` | `confidence` o detalle por salida | Confianza estadistica solo cuando `confidence_source = model`. |
 | `modelName` | `modelName` | Nombre del artefacto cargado. |
@@ -163,10 +170,6 @@ integracion debe tratar esta salida como un adaptador interno hacia
 | `predictions.*.top3` | metadata adicional | Ranking estadístico, también en la muestra generada durante entrenamiento. |
 | `decision`, `decision_source`, `rule`, `trigger` | metadata adicional | Trazabilidad de reglas y procedencia. |
 | `model_label`, `model_confidence` | metadata adicional | Resultado estadistico original cuando hubo regla. |
-
-Si `decision_source = business_rule`, la prioridad final no debe interpretarse
-como una prediccion estadistica con certeza total. En ese caso `confidence`
-queda en `null` y la confianza del clasificador queda en `model_confidence`.
 
 Cada objetivo devuelve siempre estas diez claves internas: `label`,
 `confidence`, `top3`, `decision`, `decision_source`, `confidence_source`,
@@ -179,50 +182,27 @@ Se conservan los nombres internos existentes para evitar una migración
 innecesaria. El futuro adaptador traducirá a camelCase según el acuerdo del
 PR #14. No se agregan DTO ni se aprueba el mapeo de confianza pública en este PR.
 
-## Reglas de negocio
+## Prioridad sin regla de urgencia
 
-Las reglas de negocio estan desactivadas por defecto hasta que el equipo
-apruebe sus criterios funcionales. La regla `urgent_priority`, cuando se activa
-explicitamente, fuerza `priority = critical` cuando el asunto o cuerpo
-contiene señales fuertes de urgencia, por ejemplo:
+El catálogo vigente contiene únicamente `low`, `medium` y `high`. Se retiró
+`critical` y la regla `urgent_priority`: escribir «urgente» no fuerza una
+prioridad. El texto sigue siendo una entrada del modelo; no se promete que
+las palabras carezcan de influencia estadística.
 
-- `urgente`;
-- `urgencia`;
-- `emergencia`;
-- `crítico`/`crítica` con contexto, como `falla crítica` o `es crítico`;
-- `inmediatamente`;
-- `alta prioridad`;
-- `caida total` o `caída total`;
-- `interrupcion total` o `interrupción total`.
+La detección léxica se conserva exclusivamente en la auditoría del dataset
+para localizar candidatos a revisión por contexto e impacto. No interviene
+en entrenamiento, métricas ni inferencia como regla de asignación.
 
-Negaciones explicitas cercanas a la señal, como `no es urgente`, `sin urgencia`
-o `no es una emergencia`, así como `no es nada urgente`, `no urgente` y
-`no creo que sea urgente`, no activan la regla. Una `revisión crítica` del
-manual tampoco es un disparador. La deteccion es lexical y no
-resuelve todos los matices del lenguaje; sus criterios requieren validacion
-funcional antes de activar la regla por defecto.
+`--enable-business-rules` produce un error explícito. Se conserva
+`--disable-business-rules` como opción compatible con los comandos anteriores.
+Un artefacto con prioridades fuera del catálogo se rechaza y debe
+reentrenarse. Si un artefacto antiguo habilita la regla retirada, la inferencia
+predeterminada lo rechaza; `--disable-business-rules` permite usar solo sus
+modelos si sus clases pertenecen al catálogo vigente.
 
-La palabra `urgente` sola no es un criterio suficiente para corregir etiquetas
-del dataset ni una política aprobada de prioridad. La regla sigue siendo un
-experimento opcional; las correcciones humanas se basan en impacto y no la
-habilitan. En inferencia sin opción explícita se hereda la configuración del
-artefacto; usa `--disable-business-rules` para asegurar su desactivación.
-
-Cuando se aplica la regla, la respuesta incluye `decision = business_rule`
-(o `model_and_business_rule` si el modelo ya predijo `critical`),
-`decision_source`, `rule`, `trigger`, `model_label`, `model_confidence` y
-`confidence_source`. En decisiones por regla, `confidence` queda en `null`
-porque la confianza estadistica corresponde al modelo y se conserva en
-`model_confidence`.
-
-Para comparar únicamente el resultado estadistico del modelo:
-
-```bash
-python ml/predict_ticket.py \
-  --model ml/artifacts/ticket_classifier_es/ticket_classifier.joblib \
-  --subject "URGENTE: no puedo entrar al correo" \
-  --body "Necesito recuperar el acceso inmediatamente para trabajar."
-```
+La salida conserva sus diez claves internas. `businessRulesEnabled` es
+`false`; `decision` y `decision_source` son `model`, y `rule` y `trigger` son
+`null`. No cambia el contrato público ni se incorpora un adaptador FastAPI.
 
 ## Artefactos generados
 
@@ -232,6 +212,7 @@ El entrenamiento genera localmente:
 ml/artifacts/ticket_classifier_es/
 ├── prepared_tickets.csv
 ├── ticket_classifier.joblib
+├── artifact_manifest.json
 ├── metrics.json
 └── sample_prediction.json
 ```
@@ -246,12 +227,89 @@ con `git add -f`.
 | `python ml/train_ticket_classifier.py` | Prepara el CSV y entrena el modelo. |
 | `python ml/predict_ticket.py` | Ejecuta una prediccion local. |
 | `python ml/compare_priority_corrections.py --help` | Compara original y correcciones sobre la misma población, partición y referencia. |
+| `python ml/export_training_dataset.py --help` | Exporta el CSV corregido y su manifiesto sin alterar el original. |
+| `python ml/evaluate_ticket_classifier.py --help` | Evalúa candidatos mediante particiones agrupadas y ajustes internos optativos. |
 | `python ml/audit_ticket_dataset.py --input-csv <ruta>` | Genera una lista local de prioridades para revision humana, sin corregir etiquetas. |
 | `python -m py_compile ml/*.py` | Comprueba la sintaxis de los scripts. |
 | `python -m unittest discover -s tests -t . -v` | Ejecuta las pruebas sin colisión entre `tests.ml` y el módulo `ml`. |
-| `python ml/train_ticket_classifier.py --enable-business-rules` | Evalua con reglas deterministas aprobadas. |
+| `--disable-business-rules` | Opción compatible; no hay reglas automáticas de prioridad. |
 
-## Evaluación reproducida desde el original intacto
+## Entrega V2 confirmada y evaluación del 5 de noviembre de 2026
+
+La versión vigente es `tickets_esp_entrenamiento_v2.csv` junto a su
+`tickets_esp_entrenamiento_v2.manifest.json`. América Figueroa confirmó las
+80 decisiones adicionales; sumadas a las 63 anteriores, son 143 decisiones
+confirmadas. Se conservan 2.239 registros y todos los textos: 62 prioridades
+cambian respecto al original y 59 casos dudosos mantienen su etiqueta. La
+preparación conserva 2.237 registros tras eliminar dos duplicados exactos.
+
+- Original SHA-256: `ade38dba719f54bfd06d3fcd12a4c6ff031887eca5545a98c74fac97b10db11a`.
+- Correcciones V2 SHA-256: `4886b5a67b3f6ef1c1d38e572537f006c3f00c1af87b82de32b307d758dfbb72`.
+- CSV V2 SHA-256: `a3792862678c009ca66dad41aeb3e1fbc0a55d4213fd3c39e5cd2e6586e6740a`.
+
+La fecha de validación registra la confirmación de las decisiones; no se
+inventa una fecha histórica para la revisión anterior. Los archivos de
+anotaciones y manifiestos están versionados en `ml/annotations/`; datasets,
+modelos y reportes completos permanecen locales y excluidos de Git.
+
+### Validación cruzada de prioridad
+
+Cinco particiones por texto con `GroupKFold`, semilla 42, sin textos compartidos.
+Los dos entrenamientos se evalúan contra las mismas etiquetas V2 de los mismos
+2.237 tickets, con 980 casos `high`. Los candidatos comparten las particiones.
+Las confianzas no se calibran y no se activan reglas ni umbrales adicionales.
+
+| Etiquetas de entrenamiento | Candidato | Macro F1 media ± desviación | Weighted F1 media | Recall `high` | Falsas alarmas `high` |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Originales | SGD palabras | 0,6470 ± 0,0277 | 0,6747 | 0,7143 | 205 |
+| Originales | SGD palabras + caracteres | 0,6482 ± 0,0212 | 0,6763 | 0,7224 | 204 |
+| V2 | SGD palabras | 0,6577 ± 0,0266 | 0,6865 | 0,7480 | 212 |
+| V2 | SGD palabras + caracteres | 0,6598 ± 0,0231 | 0,6883 | 0,7561 | 214 |
+
+Media y desviación poblacional corresponden a los pliegues; recall y falsas
+alarmas usan todas las predicciones fuera de pliegue. La mejora de recall tiene
+un costo de falsas alarmas. No se afirma significancia estadística ni se
+presenta la validación cruzada como prueba externa independiente. Los valores
+de la V1 se conservan como antecedente y no se comparan directamente con esta
+tabla, cuya referencia es V2.
+
+```text
+python ml/evaluate_ticket_classifier.py --input-csv ml/data/raw/tickets_esp.csv --corrections-csv ml/annotations/correcciones_prioridad_v2.csv --corrections-manifest ml/annotations/correcciones_prioridad_v2.json --candidates sgd_words sgd_words_chars --output ml/artifacts/evaluacion_v2.json
+```
+
+### Artefacto de la entrega V2
+
+Se entrenó el artefacto `20261105184927` con caracteres únicamente para
+`priority`; tipo y cola mantienen el baseline. Cada objetivo utiliza 1.789
+registros para entrenar y 448 para prueba, sin textos compartidos. Estas
+métricas pertenecen a esa partición, no al promedio de validación cruzada:
+
+| Objetivo | Macro F1 | Weighted F1 |
+| --- | ---: | ---: |
+| Tipo | 0,6835 | 0,6899 |
+| Prioridad V2 con caracteres | 0,6451 | 0,6670 |
+| Área/cola | 0,6500 | 0,5992 |
+
+SHA-256 del artefacto generado en esta ejecución:
+`92c8ea256c3b2330ecd7aa4d0e9b22ce774c1b2692bfcd3423c92f7d8c8cfabe`.
+Python 3.12.4 y las seis versiones de `requirements.txt` constan en
+`artifact_manifest.json` y `metrics.json`, junto a la procedencia y validación
+de las 143 decisiones. El checksum identifica esa entrega, no garantiza un
+hash idéntico para un nuevo entrenamiento con otra marca temporal.
+
+```text
+python ml/train_ticket_classifier.py --input-csv ml/data/raw/tickets_esp_entrenamiento_v2.csv --character-ngram-targets priority --disable-business-rules --output-dir ml/artifacts/ticket_classifier_training_v2
+```
+
+Los datos y pesos no se publican en Git. La integración FastAPI queda fuera
+de este cambio. América Figueroa confirmó el 10 de noviembre de 2026 que se
+retiren `critical` y su regla en ML, frontend y catálogo de persistencia. La
+migración nueva `0003_retirar_prioridad_critical` convierte registros existentes a `high` y
+restringe el catálogo; no se reescribe la migración inicial ni se ejecuta la
+migración automáticamente. El downgrade restaura el catálogo anterior, pero
+no reconstruye qué tickets eran `critical`.
+
+## Antecedente: evaluación del original y V1 del 1 de noviembre
 
 Ejecución del 1 de noviembre de 2026 con el SHA-256 del original identificado
 arriba, Python 3.12.4 y las dependencias exactas de `requirements.txt`.
@@ -264,8 +322,9 @@ cambia `priority`; se conservaron los textos y demás campos del original.
 El archivo separado contiene 63 decisiones según `prioridad-impacto-v1`:
 38 cambios (37 de `medium` a `high` y uno de `low` a `medium`) y 25 casos
 `dudoso:` que conservan su etiqueta original. La revisión fue asistida,
-previa al entrenamiento y sin consultar predicciones; requiere validación de
-la responsable de datos. El manifiesto vincula las decisiones al SHA-256 del
+previa al entrenamiento y sin consultar predicciones. América Figueroa confirmó
+esas 63 decisiones el 5 de noviembre; los números de esta sección corresponden
+al experimento anterior del 1 de noviembre. El manifiesto vincula las decisiones al SHA-256 del
 original. No se utilizan motivos de importación manual como justificación.
 
 Para reproducir ambos experimentos y la comparación, seguir
@@ -319,16 +378,16 @@ se recuperó el original completo, sin excluir los 19 registros dañados por esa
 exportación y sin aplicar sus cambios de texto o eliminación de etiquetas.
 Las copias anteriores permanecen preservadas localmente.
 
-El original solo contiene prioridades `low`, `medium` y `high`. El modelo
-entrenado no aprende `critical`; la regla experimental puede imponerla si se
-habilita. Estas métricas no evalúan esa regla ni son umbrales de aceptación
-aprobados. Las probabilidades no están calibradas; la prioridad final requiere
+El original solo contiene prioridades `low`, `medium` y `high`. Las métricas
+históricas de esta sección no evalúan reglas ni son umbrales de aceptación
+aprobados. En la implementación vigente se retiraron `critical` y su regla. Las probabilidades no están calibradas; la prioridad final requiere
 revisión del contexto por el agente humano.
 
 ## Verificacion reproducible con la muestra sintetica
 
-Resultados reproducidos el 1 de noviembre de 2026 con los cambios locales de
-esta revisión, 12 tickets sintéticos y el comando de verificación de arriba.
+Antecedente del 1 de noviembre de 2026, anterior a la retirada de `critical`
+de la muestra sintética. Sus resultados no representan el catálogo actual.
+Se usaron 12 tickets sintéticos y el comando de verificación de arriba.
 Entorno: Python 3.12.4, pandas 2.3.3, scikit-learn 1.9.1, joblib 1.6.0,
 NumPy 2.3.4, SciPy 1.18.1 y threadpoolctl 3.7.0. Reglas desactivadas;
 intersección de textos entre particiones: cero en los tres objetivos.
@@ -356,6 +415,10 @@ de aprobar sus criterios funcionales.
 - [ ] Montaje del modelo dentro de un servicio Docker.
 
 ## Documentacion relacionada
+
+- [Procedencia, transformaciones y licencia del dataset](DATASET_PROVENANCE.md).
+- [Evaluación cruzada por grupos, candidatos, grilla y umbral experimental](CLASSIFIER_EVALUATION.md).
+- [CSV de entrenamiento reproducible y manifiesto de procedencia](CORRECCIONES_PRIORIDAD.md#csv-derivado-para-entrenamiento).
 
 - [Pipeline de dataset y modelo](DATASET_ML_PIPELINE.md)
 - [Estrategia de entornos](../docs/arquitectura/entornos.md)

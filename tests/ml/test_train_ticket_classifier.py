@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -65,13 +66,49 @@ class TrainTicketClassifierTest(unittest.TestCase):
         self.assertEqual(set(prepared["type"]), {"incident", "request"})
         self.assertIn("it_support", set(prepared["queue"]))
 
+    def test_removed_priority_is_rejected_before_rare_class_filtering(self) -> None:
+        for priority in ("critical", "Critical", "urgent"):
+            with self.subTest(priority=priority), tempfile.TemporaryDirectory() as directory:
+                source = Path(directory) / "tickets.csv"
+                pd.DataFrame([valid_row(priority=priority), valid_row(priority="low")]).to_csv(source, index=False)
+                with self.assertRaisesRegex(ValueError, "catálogo vigente"):
+                    load_and_prepare_dataset(source, "es", 2)
+
+    def test_cli_rejects_removed_priority_without_traceback(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "tickets.csv"
+            output = Path(directory) / "artifacts"
+            pd.DataFrame(
+                [valid_row(priority="critical"), valid_row(priority="low")]
+            ).to_csv(source, index=False)
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "ml/train_ticket_classifier.py"),
+                    "--input-csv",
+                    str(source),
+                    "--output-dir",
+                    str(output),
+                    "--min-target-count",
+                    "1",
+                ],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+            )
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("Prioridad no admitida", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+
     def test_safe_train_test_split_keeps_duplicate_texts_together(self) -> None:
         df = pd.DataFrame(
             [
                 {"text": "texto repetido", "priority": "low"},
                 {"text": "texto repetido", "priority": "medium"},
                 {"text": "texto unico a", "priority": "high"},
-                {"text": "texto unico b", "priority": "critical"},
+                {"text": "texto unico b", "priority": "high"},
                 {"text": "texto unico c", "priority": "low"},
                 {"text": "texto unico d", "priority": "medium"},
             ]

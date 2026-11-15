@@ -22,7 +22,7 @@ def test_migracion_se_revierte_se_aplica_y_coincide_con_modelos(
     revision = conexion_bd_test.execute(
         text("SELECT version_num FROM alembic_version")
     ).scalar_one()
-    assert revision == "0002_autenticacion_persistencia"
+    assert revision == "0003_retirar_prioridad_critical"
     command.check(configuracion)
 
     vector = conexion_bd_test.execute(

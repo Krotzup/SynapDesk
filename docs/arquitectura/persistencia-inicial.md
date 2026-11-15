@@ -29,7 +29,7 @@ El ORM normaliza el correo antes de persistir. La base exige esa normalización 
 | `titulo` | `title` | Sí | Texto con contenido |
 | `descripcion` | `description` | Sí | Texto con contenido |
 | `estado` | `status` | Sí | `open`, `in_progress`, `resolved`, `closed`; defecto `open` |
-| `prioridad` | `priority` | Sí | `low`, `medium`, `high`, `critical`; defecto `medium` |
+| `prioridad` | `priority` | Sí | `low`, `medium`, `high`; defecto `medium` |
 | `categoria` | `category` | No | Texto opcional; sin taxonomía definitiva |
 | `area` | `area` | No | Texto opcional; sin mapeo automático desde ML |
 | `creado_por_id` | `createdById`; API resumida `createdBy` | Sí | Referencia a `usuarios.id` |
@@ -57,7 +57,7 @@ Los [modelos](../../backend/app/persistencia/modelos/) almacenan UUID internos, 
 - Los UUID se generan con `gen_random_uuid()`, disponible en PostgreSQL 17.
 - Las fechas utilizan `timestamp with time zone`. Las conexiones del backend trabajan en UTC.
 - Los roles, estados y prioridades se almacenan como texto con restricciones `CHECK`; no se crean tipos ENUM nativos en PostgreSQL.
-- Categoría y área permanecen opcionales. No se equipara la salida `type` del baseline ML a categoría ni se elimina `critical` del dominio.
+- Categoría y área permanecen opcionales. No se equipara la salida `type` del baseline ML a categoría temática.
 - Las claves foráneas usan `RESTRICT` para conservar los vínculos históricos si se intenta eliminar físicamente un usuario referenciado. La desactivación mediante `activo=false` conserva los tickets.
 - Hay índices para creador, agente asignado y estado/fecha de creación.
 - Las fechas de actualización se gestionan mediante `onupdate` del ORM. Una actualización SQL directa debe establecer `actualizado_en` explícitamente.
@@ -80,3 +80,12 @@ La migración no inserta usuarios, contraseñas ni tickets de demostración. Se 
 - [Procedimiento de migraciones](../../backend/migraciones/README.md)
 - [UUID en PostgreSQL 17](https://www.postgresql.org/docs/17/functions-uuid.html)
 - [Fechas y zonas horarias](https://www.postgresql.org/docs/17/datatype-datetime.html)
+
+## Retirada de prioridad critical
+
+La revisión `0003_retirar_prioridad_critical` mantiene los tickets existentes y
+convierte `critical` a `high`, actualizando `actualizado_en`, antes de restringir
+el catálogo a `low`, `medium`, `high`. El cambio se ejecuta en una transacción
+con bloqueo de escrituras. No se reescribe `0001`. El downgrade restaura los
+valores admitidos anteriores, sin recuperar las prioridades originales
+convertidas. La aplicación requiere ejecutar Alembic explícitamente.

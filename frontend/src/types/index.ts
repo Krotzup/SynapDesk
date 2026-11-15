@@ -34,7 +34,7 @@ export interface CsrfToken {
 // ─── Tickets ─────────────────────────────────────────────────────────────────
 
 export type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
-export type TicketPriority = "low" | "medium" | "high" | "critical";
+export type TicketPriority = "low" | "medium" | "high";
 
 export interface Ticket {
   id: string;

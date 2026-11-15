@@ -1,6 +1,6 @@
 import type { RecommendationsService } from "@/services/recommendations";
 import { Recommendation, RecommendationStatus, ReviewDecision } from "@/types";
-import { rejectWithApiError, simulateLatency } from "./utils";
+import { MOCK_ERROR_QUERY, rejectWithApiError, simulateLatency } from "./utils";
 
 // Recomendaciones ficticias. El score es similitud coseno (rango -1 a 1), no un porcentaje.
 const recommendations: Recommendation[] = [
@@ -55,6 +55,21 @@ export function getMockRecommendations(): readonly Recommendation[] {
   return recommendations;
 }
 
+/**
+ * Revisión humana registrada por el mock, separada de la recomendación (modelo de dominio:
+ * `reviewerId` lo pondrá el backend desde la sesión). No es parte de la API pública.
+ */
+interface MockReview {
+  id: string;
+  recommendationId: string;
+  decision: ReviewDecision;
+  modifiedContent: string | null;
+  feedback: string | null;
+  reviewedAt: string;
+}
+
+const reviews: MockReview[] = [];
+
 const statusByDecision: Record<ReviewDecision, RecommendationStatus> = {
   accepted: "accepted",
   modified: "modified",
@@ -65,15 +80,27 @@ function notFound() {
   return rejectWithApiError("RECOMMENDATION_NOT_FOUND", "La recomendación solicitada no existe.");
 }
 
+function includesMockError(...values: (string | undefined)[]): boolean {
+  return values.some((value) => value?.toLowerCase().includes(MOCK_ERROR_QUERY));
+}
+
 export const recommendationsMock: RecommendationsService = {
   generate: (ticketId) => {
     const recommendation: Recommendation = {
       id: crypto.randomUUID(),
       ticketId,
       content:
-        "Recomendación de ejemplo generada sin LLM. Se reemplazará por la respuesta real del backend.",
+        "Recomendación de ejemplo generada sin LLM. Se reemplazará por la respuesta real del backend, que incluirá las fuentes recuperadas para este ticket.",
       status: "pending",
-      sources: [],
+      sources: [
+        {
+          documentId: crypto.randomUUID(),
+          documentChunkId: crypto.randomUUID(),
+          title: "Documento de ejemplo",
+          excerpt: "Fragmento ficticio: la similitud y el texto no provienen de una búsqueda real.",
+          score: 0.5,
+        },
+      ],
       createdAt: new Date().toISOString(),
     };
     recommendations.push(recommendation);
@@ -96,10 +123,38 @@ export const recommendationsMock: RecommendationsService = {
     const recommendation = recommendations.find((item) => item.id === id);
     if (!recommendation) return notFound();
 
-    recommendation.status = statusByDecision[data.decision];
-    if (data.decision === "modified" && data.modifiedContent) {
-      recommendation.content = data.modifiedContent;
+    // Código propuesto al backend: una recomendación se revisa una sola vez.
+    if (recommendation.status !== "pending") {
+      return rejectWithApiError(
+        "RECOMMENDATION_ALREADY_REVIEWED",
+        "La recomendación ya tiene una revisión registrada."
+      );
     }
+    if (includesMockError(data.modifiedContent, data.feedback)) {
+      return rejectWithApiError(
+        "SERVICE_UNAVAILABLE",
+        "El servicio no está disponible en este momento."
+      );
+    }
+    const modifiedContent = data.modifiedContent?.trim();
+    if (data.decision === "modified" && !modifiedContent) {
+      return rejectWithApiError("VALIDATION_ERROR", "Los datos enviados no son válidos.", [
+        { field: "modifiedContent", message: "Escribe el texto de la recomendación." },
+      ]);
+    }
+
+    // El contenido generado no se toca: la versión editada y el comentario quedan en la
+    // revisión, como indica el modelo de dominio.
+    const feedback = data.feedback?.trim();
+    reviews.push({
+      id: crypto.randomUUID(),
+      recommendationId: recommendation.id,
+      decision: data.decision,
+      modifiedContent: data.decision === "modified" ? (modifiedContent ?? null) : null,
+      feedback: feedback || null,
+      reviewedAt: new Date().toISOString(),
+    });
+    recommendation.status = statusByDecision[data.decision];
     return simulateLatency(undefined);
   },
 };
