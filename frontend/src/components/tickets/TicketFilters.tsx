@@ -39,6 +39,8 @@ export function TicketFilters(filters: TicketListParams) {
   return (
     <form
       role="search"
+      // Nombre propio para distinguirlo del buscador de la cabecera con un lector de pantalla.
+      aria-label="Filtros del listado"
       aria-busy={isPending}
       onSubmit={(event) => {
         event.preventDefault();

@@ -88,6 +88,8 @@ export function Header() {
       {/* Buscador: lleva al listado de tickets con la búsqueda textual */}
       <form
         role="search"
+        // Nombre propio para distinguirlo de otras búsquedas de la página (p. ej. los filtros).
+        aria-label="Búsqueda de la cabecera"
         onSubmit={handleSearch}
         className="flex items-center gap-2 rounded-full bg-[#F1F5F9] px-4 py-2 w-full max-w-md border border-[#E2E8F0]/60 focus-within:border-[#2563EB] focus-within:ring-2 focus-within:ring-[#2563EB]/20"
       >
