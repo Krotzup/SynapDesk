@@ -1,4 +1,20 @@
-# Matriz de decisiones y preparación de AUTH-07D.2
+# Antecedente histórico: matriz de decisiones y preparación de AUTH-07D.2
+
+> **ARCHIVO HISTÓRICO, NO NORMATIVO PARA LA INTEGRACIÓN ACTUAL.** Conserva la
+> revisión D.1 anterior al arnés D.2 y a la aprobación expresa P1–P10 de D.3.
+> Sus estados y frases «no ejecutado/no iniciado» describen aquella revisión.
+> Aplicar la [matriz vigente D.3](auth07d3-compatibilidad-y-plan-integracion.md),
+> el [HTTP V1 formalizado](autenticacion-http-adaptadores-v1.md) y las
+> [especificaciones actuales PR30/PR32](integracion-http-pr30-pr32-v1.md).
+> D02: mecanismo/arquitectura aprobados ahora, operación por acreditar.
+> D04–D05: atributos/rechazo estricto aprobados, nombres/clasificación pendientes.
+> D06: P2 prohíbe recuperación automática. D07: P3 fija /me sin actividad.
+> D08/D09: controles independientes y cierre sin cuotas productivas P5/P7/P10.
+> D11: P4 permite solo revocación verificable de cuenta inactiva, aún sin código.
+> D14: P8 sustituye el reenvío automático de escrituras; conserva renovación preventiva.
+> IP Render, cifras, catálogo/DTO adicionales y operación no quedan aprobados
+> por estas actualizaciones. La [guía versionable D.2](../../backend/herramientas/arnes_http_seguro/README.md)
+> conserva el resumen histórico, los casos y las instrucciones reproducibles del arnés.
 
 **DRAFT / REVIEW_REQUIRED para habilitar tráfico.** Entregable documental de
 SYNAPDESK-AUTH07D1-REVIEW-CHECKPOINT-AND-INTEGRATION-READINESS. Las recomendaciones

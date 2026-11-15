@@ -1,10 +1,15 @@
-# Comunicación interna segura V1 — borrador SEC-01B
+# Comunicación interna segura V1 — SEC-01B
 
-**Estado: DRAFT / REVIEW_REQUIRED.** Fecha: 2026-11-12. Describe implementación
-backend para revisión y requisitos de integración pendientes. No modifica los
-acuerdos de [autenticación](autenticacion-v1.md) ni de
-[frontend/backend](frontend-backend.md). No acredita infraestructura Render,
-aprueba cuotas productivas ni habilita emisión CSRF.
+**Mecanismo y responsabilidades APPROVED en AUTH-07D.3 (13-11-2026).**
+Credencial opaca dedicada por entorno, solo servidor, SEC-01B en FastAPI, TLS
+verificando CA/hostname, backend privado, rotación controlada, configuración
+cerrada y separación de servicio/usuario/IP están aprobados expresamente.
+La implementación existente se describe por separado de operación y evidencia.
+No acredita Render, aprueba cifras de cuotas/tiempos ni habilita CSRF/rutas.
+Conciliado con [autenticación](autenticacion-v1.md),
+[frontend/backend](frontend-backend.md) y
+[HTTP V1](autenticacion-http-adaptadores-v1.md). Detalles adicionales pendientes
+C01–C09 en la [matriz D.3](auth07d3-compatibilidad-y-plan-integracion.md).
 
 ## 1. Alcance y arquitectura B
 
@@ -12,17 +17,16 @@ Navegador → ingreso público Render → Next.js público → FastAPI privado �
 PostgreSQL/pgvector. Es la arquitectura objetivo autorizada por el encargo;
 no representa recursos desplegados. No se contrató ni configuró producción.
 La autenticidad del intermediario no sustituye usuario, sesión, rol, Origin,
-CSRF ni cuotas. No se implementan login, /me, logout o alta administrativa.
+CSRF ni cuotas. Los servicios internos existen; login, /me, logout y administración HTTP no están registrados.
 
 ### Relación con los contratos vigentes y decisiones A–G
 
-Los documentos vigentes todavía describen Next.js en Vercel y un ejemplo de
-salto local HTTP a FastAPI. Este encargo autoriza expresamente la arquitectura B
-en Render y TLS verificado para la credencial de servicio, también localmente.
-Esas referencias anteriores no habilitan enviar el nuevo bearer sobre HTTP.
-No se reescriben los contratos aprobados ni se adapta el frontend en esta tarea;
-su actualización formal y la compatibilidad de despliegue quedan para revisión.
-No se implementa ninguna parte que requiera acreditar IP de Render.
+AUTH-07D.3 formaliza el objetivo B en Render y TLS verificado para la
+credencial de servicio, también localmente. La anterior referencia a Next.js
+en Vercel y salto local HTTP queda sustituida para autenticación: no permite
+bearer en claro. La política aprobada no certifica la topología real, la fuente
+IP ni las condiciones operativas de Render. No se cambia frontend o backend
+en esta formalización.
 
 | Decisión | Contrato de esta implementación |
 | --- | --- |
@@ -114,8 +118,9 @@ configuración del servidor ni permite comprobar la validación TLS del cliente.
 
 El bearer es reutilizable, sin firma de cuerpo, nonce ni protección antirreplay
 de aplicación. TLS protege el tránsito; quien robe el secreto puede impersonar
-al servicio. No se afirma mTLS ni identidad de plataforma. Estos riesgos y el
-procedimiento de revocación necesitan revisión operativa.
+al servicio. No se afirma mTLS ni identidad de plataforma. Estos riesgos se mantienen explícitos bajo el mecanismo aprobado; el procedimiento
+operativo de revocación/retirada y las vigencias concretas requieren definición
+y pruebas, sin prometer antirreplay o identidad de plataforma.
 
 ## 6. IP acreditada
 
@@ -151,9 +156,12 @@ SEC-01A, su límite de tokens y sus reservas confirmadas antes de la emisión.
 No se cambian parámetros ni cuotas de login. No se activa el perfil de ensayo
 en producción, no se expulsan tokens válidos ni se crean contextos de reemplazo.
 
-Las cookies y sus perfiles siguen sujetos a acuerdos vigentes. El proxy deberá
-conservar filtros de petición/respuesta y Set-Cookie separados, Origin real,
-X-CSRF-Token, timeout, no-store y ausencia de reintentos de mutaciones inciertas.
+P1/P2 formalizan rechazo de cookies malformadas/duplicadas/perfiles mezclados y
+sin recuperación automática. Los atributos estrictos están en HTTP V1; nombres
+C02 pendientes. El proxy no debe ocultar una cookie inválida antes del rechazo,
+aunque conserve la lista permitida. Set-Cookie separados, Origin real,
+X-CSRF-Token, no-store y P8 sin reintentos automáticos de escrituras. Las cifras
+de timeout y cuotas siguen pendientes; no adoptar valores de ensayo en producción.
 
 ## 8. Errores implementados
 
@@ -199,10 +207,14 @@ CA y hostname verificados; rechazo de CA/hostname incorrectos, HTTP directo,
 loopback, X-Forwarded-Proto incluso con proxy_headers=True y duplicados crudos.
 Los listeners de ensayo no se registran en la aplicación principal.
 
-PostgreSQL real: base temporal exclusiva en localhost:5433, migración 0004,
+PostgreSQL real: bases temporales exclusivas en localhost:5433; D.2 verifica migración 0006,
 rechazo sin efectos, servicio más IP del fixture, cuotas concurrentes y fallo
 real de conexión. La suite previa conserva rollback/commit, constraints y locks.
 La prueba controlada de IP no acredita la procedencia en Next.js ni Render.
+El [arnés D.2 reproducible](../../backend/herramientas/arnes_http_seguro/README.md)
+añade Node/Next reales y TLS CA/hostname;
+el éxito de servicio en Next usa sustituto identificado porque PR30 aún no inyecta bearer.
+Las pruebas locales no certifican navegador/build productivo o infraestructura.
 
 ## 12. Requisitos pendientes de Render y activación CSRF
 
@@ -217,17 +229,24 @@ proxies. Mantener deshabilitado el adaptador hasta aprobar y probar la frontera.
 
 Para emitir CSRF: aprobar procedencia, integrar proxy/TLS, configurar política
 bootstrap explícita, conectar coordinador SEC-01A con commit antes de respuesta,
-resolver perfiles de cookies, recuperación de contexto y saturación/esperas,
+resolver nombres de cookies y clasificación de rechazo (P1/P2 ya aprobadas), admisión autenticada y saturación/esperas,
 y superar pruebas de extremo a extremo. Esta tarea no realiza esos pasos.
 
-## 13. Decisiones y riesgos pendientes
+## 13. Aprobación, decisiones y riesgos operativos pendientes
 
-Autorizado por este encargo: implementar candidato bearer por entorno + TLS,
-configuración cerrada, identidad separada de IP y conservación del cierre CSRF.
-Implementado no equivale a contrato aprobado ni despliegue acreditado.
+Mecanismo SEC-01B y arquitectura B aprobados expresamente en AUTH-07D.3.
+El formato y las restricciones de esta implementación son la interfaz técnica
+existente; no significan despliegue acreditado. Bearer reutilizable no prueba
+IP original ni usuario, no firma cuerpo y no proporciona antirreplay de aplicación.
 
-Revisar con Product Owner/equipo: operación de secretos/certificados y retiro,
-riesgo de robo/replay/intermediario comprometido, fuente IP local/Render,
-infraestructura y costes futuros, errores/esperas de saturación, perfiles de
-cookies, cuotas medidas y secuencia de integración de PR #30/#32. La elección
-de perfiles de sesión/cookies y permisos no se aprueba mediante este borrador.
+Pendientes C07/C08: variable privada Next (nombre todavía por acordar), custodia,
+distribución, vigencias/retirada de rotación y reinicios, CA/hostname y
+terminación efectiva, red privada/ACL/caminos alternativos y evidencia de fuente
+IP Render. Credenciales nuevas por entorno/destino, sin valores reales en Git.
+No sustituir esas pruebas por diagramas, red privada o cabeceras arbitrarias.
+Cuotas/cifras/esperas y representaciones adicionales conservan sus decisiones
+C01–C06/C09; no se reabren P1–P10 o las políticas administrativas.
+
+La [matriz IP](auth07d3-compatibilidad-y-plan-integracion.md#6-matriz-de-acreditación-ip)
+y las [especificaciones PR30/PR32](integracion-http-pr30-pr32-v1.md) definen
+responsables, aceptación y límites sin modificar los PR ni iniciar integración.

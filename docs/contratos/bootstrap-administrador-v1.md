@@ -106,8 +106,8 @@ bootstrap ni convertirlo en recuperación.
 
 ## B. Verificación local
 
-Ver [informe AUTH-07C.1B](../auditorias/auth07c1b-bootstrap.md) y evidencia. Las
-pruebas PostgreSQL comprueban alta realmente confirmada, lectura en otra conexión,
+Las [pruebas PostgreSQL reproducibles](../../backend/pruebas/integracion/test_bootstrap_admin_persistente.py)
+comprueban alta realmente confirmada, lectura en otra conexión,
 auditoría y actor, login interno del admin con CSRF e IP de fixture, me/logout,
 rollback de fallos, restricción diferida de commit, carreras de procesos, INSERT
 externo, timeout y deadlock aislado. No se ejecuta la CLI contra instalaciones
