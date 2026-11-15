@@ -263,7 +263,7 @@ Se inventariaron 9 archivos rastreados modificados y 13 nuevos: 22 en total. Est
 | [backend/pruebas/test_configuracion.py](../../backend/pruebas/test_configuracion.py) | `C6D1C6E26236DF8F014C6DD4E71D9C090FA7453A4A31A9BD3E55A954266C1682` |
 | [backend/pruebas/test_http_fundamentos_auth.py](../../backend/pruebas/test_http_fundamentos_auth.py) | `BB0CB61DC7DA697AC65F43D1522537A52A9008B1CC6E9801D6FEF14E33162197` |
 
-Se registraron asimismo hashes privados para [configuración local](../../.env), [entorno local del frontend](../../frontend/.env.local) y [ajustes del editor](../../.vscode/settings.json), sin copiar sus contenidos al informe ni prepararlos para commit. Su conservación se comprueba antes y después de los commits. Los 20 archivos restantes del inventario mantienen sus hashes iniciales: no se modificaron código, tests, migraciones ni ejemplos durante esta tarea. Solo se actualizan el informe y la evidencia de validación.
+Se registraron asimismo hashes privados para la configuración local del backend, el entorno local del frontend y los ajustes del editor, sin copiar sus contenidos al informe ni prepararlos para commit. Estos tres recursos privados están excluidos de Git y no forman parte de la evidencia publicada. Su conservación se comprueba antes y después de los commits. Los 20 archivos restantes del inventario mantienen sus hashes iniciales: no se modificaron código, tests, migraciones ni ejemplos durante esta tarea. Solo se actualizan el informe y la evidencia de validación.
 
 ### Separación revisada
 

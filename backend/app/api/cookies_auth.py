@@ -104,7 +104,10 @@ def leer_cookie(request: Request, perfil: PerfilCookies,
     # Request.cookies elige silenciosamente entre duplicados: leer originales.
     for cabecera in request.headers.getlist("cookie"):
         for parte in cabecera.split(";"):
-            clave, separador, valor = parte.strip().partition("=")
+            # Solo SP/HTAB anteriores al par son separadores. Nunca recortar el
+            # valor: h11 ya retiró el OWS exterior del campo HTTP y cualquier
+            # whitespace restante pertenece a la representación presentada.
+            clave, separador, valor = parte.lstrip(" \t").partition("=")
             if clave.strip() == nombre:
                 if clave != nombre or not separador or not re.fullmatch(r"[A-Za-z0-9_-]+", valor):
                     raise CookieAmbigua("La cookie de autenticación no es inequívoca.")
