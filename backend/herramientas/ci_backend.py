@@ -90,8 +90,15 @@ def ejecutar(modo):
                 env = os.environ.copy()
                 env.update(POSTGRES_TEST_DB=nombre, POSTGRES_TEST_PORT="5433",
                            EJECUTAR_PRUEBAS_BD="1", PYTHONDONTWRITEBYTECODE="1")
-                evidencia["passed"] = ejecutar_pytest(
-                    ["pruebas/integracion", "--ignore=" + TLS], carpeta, env)
+                # Pytest crea enlaces *current: son propios de su temporal,
+                # no de los recursos sujetos a la guarda estricta del arnés.
+                with TemporaryDirectory(prefix="synapdesk-ci-postgresql-") as ruta:
+                    temporal_pytest = Path(ruta)
+                    evidencia["passed"] = ejecutar_pytest(
+                        ["pruebas/integracion", "--ignore=" + TLS], temporal_pytest, env)
+                evidencia["pytest_temporary_deleted"] = not temporal_pytest.exists()
+                if not evidencia["pytest_temporary_deleted"]:
+                    raise RuntimeError("No se eliminó el temporal propio de pytest.")
                 evidencia["skipped"] = 0
     finally:
         borrar_temporal(carpeta)

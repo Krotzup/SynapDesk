@@ -60,6 +60,14 @@ El servicio completo desaparece con el job. No se ejecuta Docker local ni se
 detienen contenedores compartidos. La suite PostgreSQL excluye únicamente el
 archivo TLS, ejecutado por separado.
 
+Los temporales y el XML de pytest usan un `TemporaryDirectory` separado de los
+recursos del arnés: pytest puede crear enlaces `*current` en Linux. Se elimina
+ese árbol propio sin seguir sus enlaces y se comprueba su ausencia antes de
+declarar `pytest_temporary_deleted`. La guarda del arnés conserva el rechazo de
+cualquier symlink/junction en sus recursos, incluso si se llama `*current`.
+Un error de borrado o un temporal residual hace fallar el job; también se
+ejecutan el cierre de la base y la limpieza de recursos por sus bloques finales.
+
 ## Autenticación y TLS
 
 Las suites existentes cubren Argon2id, sesiones, expiraciones, CSRF, Origin,

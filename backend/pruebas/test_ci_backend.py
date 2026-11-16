@@ -1,6 +1,8 @@
 """Regresiones de las guardas de CI; no duplican pruebas de autenticación."""
 
 from copy import deepcopy
+from contextlib import contextmanager
+import os
 from types import SimpleNamespace
 
 import pytest
@@ -155,3 +157,177 @@ def test_cli_fallido_devuelve_uno_sin_exponer_excepciones(monkeypatch, capsys):
     monkeypatch.setattr(ci_backend.sys, "argv", ["ci_backend", "unitarias"])
     assert ci_backend.main() == 1
     assert "contenido privado" not in capsys.readouterr().err
+
+
+def crear_enlace_de_ensayo(enlace, destino):
+    try:
+        enlace.symlink_to(destino, target_is_directory=True)
+    except OSError as error:
+        if os.name != "nt" or error.winerror != 1314:
+            raise
+        # Windows sin privilegio de symlinks: la misma guarda rechaza junctions.
+        from _winapi import CreateJunction
+        CreateJunction(str(destino), str(enlace))
+
+
+@pytest.fixture
+def infraestructura_ci_aislada(tmp_path, monkeypatch):
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+    from app.persistencia import entornos
+    from herramientas.arnes_http_seguro import infraestructura
+
+    scripts = ScriptDirectory.from_config(Config(str(ci_backend.BACKEND / "alembic.ini")))
+    backend = tmp_path / "backend"
+    backend.mkdir()
+    observado = {}
+    monkeypatch.setattr(ci_backend, "BACKEND", backend)
+    monkeypatch.setattr(infraestructura, "BACKEND", backend)
+    monkeypatch.setattr(ScriptDirectory, "from_config", lambda _: scripts)
+    monkeypatch.setattr(entornos, "seleccionar_configuracion_bd", lambda _: SimpleNamespace(
+        app_env="testing", postgres_host="127.0.0.1", postgres_port=5433))
+
+    @contextmanager
+    def base_simulada(carpeta, evidencia):
+        observado["recursos"] = carpeta
+        try:
+            yield None, "synapdesk_base_simulada"
+        finally:
+            observado["base_cerrada"] = True
+
+    # Solo sustituye PostgreSQL; directorios y guarda de borrado son reales.
+    monkeypatch.setattr(infraestructura, "base_propia", base_simulada)
+    return observado
+
+
+def test_postgresql_pytest_real_con_current_limpia_sin_relajar_guarda(
+    infraestructura_ci_aislada, tmp_path, monkeypatch,
+):
+    script = tmp_path / "test_temporal_aislado.py"
+    script.write_text(
+        "import os\n"
+        "def test_temporal(tmp_path):\n"
+        "    (tmp_path / 'inesperado.tmp').write_text('ensayo')\n"
+        "    if os.name == 'nt':\n"
+        "        from _winapi import CreateJunction\n"
+        "        CreateJunction(str(tmp_path), str(tmp_path.parent / 'ensayocurrent'))\n",
+        encoding="utf-8",
+    )
+    ejecutar_real = ci_backend.ejecutar_pytest
+    observado = infraestructura_ci_aislada
+
+    def ejecutar_ensayo(argumentos, temporal, env):
+        observado["pytest"] = temporal
+        assert argumentos == ["pruebas/integracion", "--ignore=" + ci_backend.TLS]
+        assert env["EJECUTAR_PRUEBAS_BD"] == "1"
+        assert env["POSTGRES_TEST_DB"] == "synapdesk_base_simulada"
+        return ejecutar_real([str(script)], temporal, env)
+
+    monkeypatch.setattr(ci_backend, "ejecutar_pytest", ejecutar_ensayo)
+    resultado = ci_backend.ejecutar("postgresql")
+    assert resultado["passed"] == 1 and resultado["skipped"] == 0
+    assert resultado["temporary_deleted"] and resultado["pytest_temporary_deleted"]
+    assert observado["base_cerrada"]
+    assert not observado["pytest"].exists() and not observado["recursos"].exists()
+    assert not observado["pytest"].is_relative_to(observado["recursos"])
+    assert not observado["recursos"].is_relative_to(observado["pytest"])
+
+
+def test_postgresql_limpia_archivos_propios_inesperados_sin_tocar_ajenos(
+    infraestructura_ci_aislada, tmp_path, monkeypatch,
+):
+    observado = infraestructura_ci_aislada
+    destino_ajeno = tmp_path / "ajeno"
+    destino_ajeno.mkdir()
+    ajeno = destino_ajeno / "inesperado.tmp"
+    ajeno.write_text("conservar")
+
+    def ejecutar_ensayo(_, temporal, env):
+        observado["pytest"] = temporal
+        (temporal / "subdirectorio").mkdir()
+        (temporal / "subdirectorio/inesperado.tmp").write_text("propio")
+        crear_enlace_de_ensayo(temporal / "inesperadocurrent", destino_ajeno)
+        return 1
+
+    monkeypatch.setattr(ci_backend, "ejecutar_pytest", ejecutar_ensayo)
+    assert ci_backend.ejecutar("postgresql")["temporary_deleted"]
+    assert not observado["pytest"].exists() and not observado["recursos"].exists()
+    assert ajeno.read_text() == "conservar"
+
+
+@pytest.mark.parametrize("nombre", ["ensayocurrent", "enlace_inesperado"])
+@pytest.mark.parametrize("externo", [False, True])
+def test_postgresql_rechaza_enlaces_en_recursos_aunque_se_llamen_current(
+    infraestructura_ci_aislada, tmp_path, monkeypatch, nombre, externo,
+):
+    observado = infraestructura_ci_aislada
+    ajeno = tmp_path / "ajeno"
+    ajeno.mkdir()
+    marcador = ajeno / "conservar.txt"
+    marcador.write_text("conservar")
+
+    def ejecutar_ensayo(_, temporal, env):
+        observado["pytest"] = temporal
+        recursos = observado["recursos"]
+        destino = ajeno if externo else recursos / "interno"
+        if not externo:
+            destino.mkdir()
+        crear_enlace_de_ensayo(recursos / nombre, destino)
+        return 1
+
+    monkeypatch.setattr(ci_backend, "ejecutar_pytest", ejecutar_ensayo)
+    with pytest.raises(AssertionError):
+        ci_backend.ejecutar("postgresql")
+    assert observado["recursos"].exists()  # Rechazo antes de borrar recursos.
+    assert not observado["pytest"].exists()
+    assert marcador.read_text() == "conservar"
+
+
+@pytest.mark.parametrize("fallo", ["excepcion", "residuo"])
+def test_postgresql_limpieza_pytest_fallida_no_se_presenta_como_exito(
+    infraestructura_ci_aislada, tmp_path, monkeypatch, capsys, fallo,
+):
+    observado = infraestructura_ci_aislada
+    temporal = tmp_path / "pytest_no_eliminado"
+
+    @contextmanager
+    def temporal_fallido(**kwargs):
+        temporal.mkdir()
+        yield str(temporal)
+        if fallo == "excepcion":
+            raise PermissionError("detalle privado de limpieza")
+
+    monkeypatch.setattr(ci_backend, "TemporaryDirectory", temporal_fallido)
+    monkeypatch.setattr(ci_backend, "ejecutar_pytest", lambda *args: 1)
+    monkeypatch.setattr(ci_backend.sys, "argv", ["ci_backend", "postgresql"])
+    assert ci_backend.main() == 1
+    salida = capsys.readouterr()
+    error = "PermissionError" if fallo == "excepcion" else "RuntimeError"
+    assert "CI_BACKEND_FAILED: " + error in salida.err
+    assert "detalle privado" not in salida.err and not salida.out
+    assert observado["base_cerrada"] and not observado["recursos"].exists()
+    assert temporal.exists()
+
+
+def test_postgresql_error_de_borrado_de_recursos_tambien_falla_el_job(
+    infraestructura_ci_aislada, monkeypatch, capsys,
+):
+    from herramientas.arnes_http_seguro import infraestructura
+    observado = infraestructura_ci_aislada
+
+    def ejecutar_ensayo(_, temporal, env):
+        observado["pytest"] = temporal
+        return 1
+
+    def borrar_fallido(carpeta):
+        raise PermissionError("detalle privado de recursos")
+
+    monkeypatch.setattr(ci_backend, "ejecutar_pytest", ejecutar_ensayo)
+    monkeypatch.setattr(infraestructura, "borrar_temporal", borrar_fallido)
+    monkeypatch.setattr(ci_backend.sys, "argv", ["ci_backend", "postgresql"])
+    assert ci_backend.main() == 1
+    salida = capsys.readouterr()
+    assert "CI_BACKEND_FAILED: PermissionError" in salida.err
+    assert "detalle privado" not in salida.err and not salida.out
+    assert observado["base_cerrada"] and observado["recursos"].exists()
+    assert not observado["pytest"].exists()
