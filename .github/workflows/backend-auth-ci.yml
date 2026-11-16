@@ -1,0 +1,184 @@
+name: Backend Auth CI
+
+# Sin filtros de rutas: también cubre cambios exclusivos de auth y diffs grandes.
+"on":
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-auth-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  APP_ENV: testing
+  PYTHONDONTWRITEBYTECODE: "1"
+  CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+
+defaults:
+  run:
+    shell: bash
+    working-directory: backend
+
+jobs:
+  unitarias:
+    name: Backend Auth / Unitarias
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - name: Instalar y comprobar dependencias
+        run: |
+          python -m pip install -r requirements-dev.txt
+          python -m pip check
+      - name: Importaciones, configuración y unitarias
+        run: python -m herramientas.ci_backend unitarias
+
+  postgresql:
+    name: Backend Auth / PostgreSQL
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.6-pg17-bookworm
+        env:
+          POSTGRES_USER: synapdesk_ci
+          POSTGRES_DB: synapdesk_ci_control
+          POSTGRES_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}-backend-tests
+        ports:
+          - "127.0.0.1:5433:5432"
+        options: >-
+          --health-cmd "pg_isready -U synapdesk_ci -d synapdesk_ci_control"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      POSTGRES_DB: principal_no_utilizada
+      POSTGRES_TEST_HOST: 127.0.0.1
+      POSTGRES_TEST_PORT: "5433"
+      POSTGRES_TEST_DB: synapdesk_ci_control
+      POSTGRES_TEST_USER: synapdesk_ci
+    steps:
+      - name: Preparar contraseña efímera del servicio de pruebas
+        working-directory: ${{ runner.temp }}
+        run: |
+          ci_password="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-backend-tests"
+          echo "::add-mask::$ci_password"
+          printf 'POSTGRES_TEST_PASSWORD=%s\n' "$ci_password" >> "$GITHUB_ENV"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - name: Instalar y comprobar dependencias
+        run: |
+          python -m pip install -r requirements-dev.txt
+          python -m pip check
+      - name: Integración en base propia temporal
+        run: python -m herramientas.ci_backend postgresql
+
+  tls:
+    name: Backend Auth / TLS
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - name: Instalar y comprobar dependencias
+        run: |
+          python -m pip install -r requirements-dev.txt
+          python -m pip check
+      - name: TLS real, CA, hostname y rechazo de HTTP
+        run: |
+          openssl version
+          python -m herramientas.ci_backend tls
+
+  alembic:
+    name: Backend Auth / Alembic
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.6-pg17-bookworm
+        env:
+          POSTGRES_USER: synapdesk_ci
+          POSTGRES_DB: synapdesk_ci_control
+          POSTGRES_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}-backend-tests
+        ports:
+          - "127.0.0.1:5433:5432"
+        options: >-
+          --health-cmd "pg_isready -U synapdesk_ci -d synapdesk_ci_control"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      POSTGRES_DB: principal_no_utilizada
+      POSTGRES_TEST_HOST: 127.0.0.1
+      POSTGRES_TEST_PORT: "5433"
+      POSTGRES_TEST_DB: synapdesk_ci_control
+      POSTGRES_TEST_USER: synapdesk_ci
+    steps:
+      - name: Preparar contraseña efímera del servicio de pruebas
+        working-directory: ${{ runner.temp }}
+        run: |
+          ci_password="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-backend-tests"
+          echo "::add-mask::$ci_password"
+          printf 'POSTGRES_TEST_PASSWORD=%s\n' "$ci_password" >> "$GITHUB_ENV"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - name: Instalar y comprobar dependencias
+        run: |
+          python -m pip install -r requirements-dev.txt
+          python -m pip check
+      - name: Esquema vacío, upgrade, current, head único y check
+        run: python -m herramientas.ci_backend migraciones
+
+  documentacion:
+    name: Backend Auth / Documentación y contratos
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - name: Instalar y comprobar dependencias
+        run: |
+          python -m pip install -r requirements-dev.txt
+          python -m pip check
+      - name: Validar esquema y expresiones de Actions con actionlint fijo
+        run: |
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.11/actionlint_1.7.11_linux_amd64.tar.gz \
+            --output "$RUNNER_TEMP/actionlint.tar.gz"
+          printf '900919a84f2229bac68ca9cd4103ea297abc35e9689ebb842c6e34a3d1b01b0a  %s\n' \
+            "$RUNNER_TEMP/actionlint.tar.gz" | sha256sum --check --status
+          tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP" actionlint
+          "$RUNNER_TEMP/actionlint" ../.github/workflows/backend-auth-ci.yml
+      - name: Enlaces versionados, anclas, JSON y contratos
+        run: python -m herramientas.validar_ci documentacion
+      - name: Secretos del árbol y del intervalo de commits
+        run: python -m herramientas.validar_ci secretos
+      - name: Activación y controles obligatorios del workflow
+        run: python -m herramientas.validar_ci workflow
