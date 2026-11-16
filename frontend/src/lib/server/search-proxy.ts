@@ -9,6 +9,13 @@ export interface SearchProxyConfig {
 }
 
 const noStore = { "Cache-Control": "no-store" };
+const cookieProfiles = {
+  local: { session: "synapdesk_session_dev", context: "synapdesk_csrf_context_dev" },
+  production: { session: "__Host-synapdesk_session", context: "__Host-synapdesk_csrf_context" },
+};
+const authCookieNames = new Set<string>(
+  Object.values(cookieProfiles).flatMap(({ session, context }) => [session, context])
+);
 const messages: Record<string, string> = {
   SERVICE_UNAVAILABLE: "El servicio no está disponible en este momento.",
   AUTHENTICATION_REQUIRED: "Debes iniciar sesión para buscar en los documentos.",
@@ -68,8 +75,8 @@ function rateLimited(response: Response, requestId: string | undefined) {
 
 function sessionCookieName(config: SearchProxyConfig): string {
   let profileName: string | undefined;
-  if (config.cookieProfile === "local") profileName = "synapdesk_session_dev";
-  else if (config.cookieProfile === "production") profileName = "__Host-synapdesk_session";
+  if (config.cookieProfile === "local") profileName = cookieProfiles.local.session;
+  else if (config.cookieProfile === "production") profileName = cookieProfiles.production.session;
   else if (config.cookieProfile !== undefined) throw new Error("Perfil de cookies inválido.");
   const name = profileName ?? config.sessionCookieName;
   if (
@@ -79,6 +86,35 @@ function sessionCookieName(config: SearchProxyConfig): string {
   )
     throw new Error("Configuración de cookie incompatible.");
   return name;
+}
+
+function readSessionCookie(header: string, sessionName: string): string | undefined {
+  const contextName = Object.values(cookieProfiles).find(
+    ({ session }) => session === sessionName
+  )?.context;
+  const seen = new Set<string>();
+  let sessionCookie: string | undefined;
+  for (const segment of header.split(";")) {
+    // Solo SP/HTAB antes del par separan cookies. No recortar el valor.
+    const pair = segment.replace(/^[ \t]+/, "");
+    const separator = pair.indexOf("=");
+    const rawName = separator < 0 ? pair : pair.slice(0, separator);
+    const name = rawName.trim();
+    if (name !== sessionName && !authCookieNames.has(name)) continue;
+    if (
+      (name !== sessionName && name !== contextName) ||
+      name !== rawName ||
+      separator < 0 ||
+      seen.has(name)
+    ) {
+      return undefined;
+    }
+    const value = pair.slice(separator + 1);
+    if (!value || value.length > 4096 || /[^A-Za-z0-9_-]/.test(value)) return undefined;
+    seen.add(name);
+    if (name === sessionName) sessionCookie = pair;
+  }
+  return sessionCookie;
 }
 
 function destination(config: SearchProxyConfig): string {
@@ -141,17 +177,8 @@ export async function forwardSemanticSearch(
   }
   if (request.method !== "POST") return failure(405, "VALIDATION_ERROR");
   if (request.headers.get("origin") !== config.publicOrigin) return failure(403, "ORIGIN_INVALID");
-  const cookies = (request.headers.get("cookie") ?? "")
-    .split(";")
-    .map((part) => part.trim())
-    .filter((part) => part.indexOf("=") > 0 && part.slice(0, part.indexOf("=")) === cookieName);
-  // Cookie-octet excluye espacios, comillas, comas, punto y coma y barras inversas.
-  // FastAPI valida el formato de la credencial y la sesión.
-  const cookieValue = cookies[0]?.slice(cookies[0].indexOf("=") + 1) ?? "";
-  if (
-    cookies.length !== 1 ||
-    !/^[\x21\x23-\x2b\x2d-\x3a\x3c-\x5b\x5d-\x7e]{1,4096}$/.test(cookieValue)
-  ) {
+  const cookie = readSessionCookie(request.headers.get("cookie") ?? "", cookieName);
+  if (!cookie) {
     return failure(401, "AUTHENTICATION_REQUIRED");
   }
   const csrf = request.headers.get("x-csrf-token");
@@ -178,7 +205,7 @@ export async function forwardSemanticSearch(
   }
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    Cookie: cookies[0],
+    Cookie: cookie,
     Origin: request.headers.get("origin")!,
     "X-CSRF-Token": csrf,
   };

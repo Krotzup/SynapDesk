@@ -9,6 +9,6 @@
     "outDir": "artifacts/search-tests",
     "plugins": []
   },
-  "include": ["src/lib/search-contract.ts", "src/lib/server/search-proxy.ts"],
+  "include": ["src/lib/api.ts", "src/lib/search-contract.ts", "src/lib/server/search-proxy.ts"],
   "exclude": ["node_modules", "artifacts"]
 }

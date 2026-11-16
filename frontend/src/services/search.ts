@@ -14,7 +14,11 @@ const searchApi = {
   // Fragmentos de la base de conocimientos más cercanos a la consulta
   semantic: (query: string, limit = 5): Promise<SearchResponse> =>
     api
-      .postSameOrigin<SearchResponse, SearchRequest>("/search", { query, limit })
+      .postSameOrigin<SearchResponse, SearchRequest>(
+        "/search",
+        { query, limit },
+        { retryOnCsrfInvalid: false }
+      )
       .then(parseSearchResponse),
 };
 

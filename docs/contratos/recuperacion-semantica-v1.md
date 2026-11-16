@@ -25,7 +25,9 @@ real de tokens; no se trunca ni divide silenciosamente la consulta.
 
 La petición requiere una única cookie de sesión del nombre configurado, Origin
 público explícitamente permitido y un único `X-CSRF-Token` válido ligado a esa
-sesión. Las cookies duplicadas no conceden identidad. Se reutilizan las
+sesión. Las cookies de autenticación duplicadas, malformadas o de perfiles
+mezclados se rechazan con 401 en la búsqueda. El proxy solo reenvía la cookie
+de sesión y FastAPI valida la credencial. Se reutilizan las
 verificaciones de usuario activo, rol admitido, revocación y vencimientos de los
 servicios existentes. La consulta no renueva actividad de sesión; su política
 general sigue pendiente. La transacción de autorización termina antes de emitir
@@ -84,9 +86,10 @@ del driver ni contenido de la consulta original en los errores.
 | 503 | `DEPENDENCY_UNAVAILABLE` | No se pudo verificar la sesión o confirmar su transacción. |
 | 503 | `SERVICE_UNAVAILABLE` | El proxy no pudo comunicarse con el backend o recibió una respuesta incompatible. |
 
-Solo 403 + `CSRF_INVALID` admite el reintento ya aprobado por autenticación V1,
-tras renovar su prueba y confirmar que la sesión no cambió. No se agregan
-reintentos para otros errores.
+El cliente de búsqueda no reenvía el POST automáticamente. Ante 403 +
+`CSRF_INVALID`, descarta el token en memoria si la sesión sigue siendo la
+misma y muestra el rechazo. Una nueva búsqueda iniciada por el usuario
+obtiene un token vigente antes de enviar el POST.
 
 El backend de búsqueda aún no emite `429 RATE_LIMITED`. Si recibe ese estado
 y código, el proxy los conserva y reenvía `Retry-After` cuando es válido.

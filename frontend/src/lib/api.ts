@@ -12,6 +12,7 @@ interface RequestOptions<TBody = unknown> {
   body?: TBody;
   headers?: Record<string, string>;
   sameOrigin?: boolean;
+  retryOnCsrfInvalid?: boolean;
 }
 
 const MUTATING_METHODS: ReadonlySet<HttpMethod> = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -127,10 +128,9 @@ async function request<TResponse, TBody = unknown>(
     try {
       return await send<TResponse, TBody>(endpoint, options, token);
     } catch (error) {
-      // Único reintento permitido por el contrato: solo ante HTTP 403 + CSRF_INVALID y si la
-      // sesión no cambió. Si el reintento también falla, se devuelve ese error sin reintentar más.
       if (!isCsrfInvalid(error) || getAuthGeneration() !== generation) throw error;
       clearCsrfToken();
+      if (options.retryOnCsrfInvalid === false) throw error;
       const freshToken = await getCsrfToken(() => fetchCsrfToken(options.sameOrigin));
       if (getAuthGeneration() !== generation) throw sessionChangedError();
       return await send<TResponse, TBody>(endpoint, options, freshToken);
@@ -142,8 +142,11 @@ async function request<TResponse, TBody = unknown>(
 }
 
 export const api = {
-  postSameOrigin: <TResponse, TBody = unknown>(endpoint: string, body: TBody) =>
-    request<TResponse, TBody>(endpoint, { method: "POST", body, sameOrigin: true }),
+  postSameOrigin: <TResponse, TBody = unknown>(
+    endpoint: string,
+    body: TBody,
+    options: Pick<RequestOptions, "retryOnCsrfInvalid"> = {}
+  ) => request<TResponse, TBody>(endpoint, { method: "POST", body, sameOrigin: true, ...options }),
   get: <TResponse>(endpoint: string, headers?: Record<string, string>) =>
     request<TResponse>(endpoint, { method: "GET", headers }),
 

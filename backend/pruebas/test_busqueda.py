@@ -74,6 +74,27 @@ def test_missing_or_duplicated_session_never_runs_model(client):
     service.buscar.assert_not_called()
 
 
+@pytest.mark.parametrize("cookie", [
+    "synapdesk_session_dev=valid ; analytics=ignored",
+    "synapdesk_session_dev=valid; synapdesk_session_dev =other",
+    "synapdesk_session_dev=valid; synapdesk_session_dev",
+    "synapdesk_session_dev=valid; __Host-synapdesk_csrf_context=other",
+    "synapdesk_session_dev=valid; synapdesk_csrf_context_dev=",
+])
+def test_malformed_or_mixed_auth_cookies_are_rejected_before_database(client, cookie):
+    client.app.state.configuracion = client.app.state.configuracion.model_copy(update={
+        "auth_cookie_profile": "local", "search_session_cookie_name": None,
+    })
+    service = Mock()
+    client.app.state.recuperacion = service
+    response = client.post("/api/v1/search", json={"query": "red"}, headers={
+        "Cookie": cookie, "Origin": "http://testserver", "X-CSRF-Token": "test-token",
+    })
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "AUTHENTICATION_REQUIRED"
+    service.buscar.assert_not_called()
+
+
 def test_origin_and_csrf_are_required_before_retrieval(client):
     service = Mock()
     client.app.state.recuperacion = service

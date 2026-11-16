@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import client from "../artifacts/search-tests/lib/api.js";
 import proxy from "../artifacts/search-tests/lib/server/search-proxy.js";
 import contract from "../artifacts/search-tests/lib/search-contract.js";
 const { forwardSemanticSearch } = proxy;
@@ -113,10 +114,10 @@ test("ambiguous cookies, invalid origin and missing CSRF are rejected before con
   assert.equal(calls, 0);
 });
 
-test("opaque cookie values reach FastAPI without requiring a particular token format", async () => {
-  const cookie = "test_session=v2.opaque=credential";
+test("valid cookie pairs preserve the credential without forwarding unrelated cookies", async () => {
+  const cookie = `test_session=${sid}`;
   const response = await forwardSemanticSearch(
-    request(undefined, { Cookie: `analytics=ignored; ${cookie}` }),
+    request(undefined, { Cookie: `analytics=ignored; \t${cookie}; unrelated=value` }),
     config,
     async (_, init) => {
       assert.equal(init.headers.Cookie, cookie);
@@ -124,6 +125,68 @@ test("opaque cookie values reach FastAPI without requiring a particular token fo
     }
   );
   assert.equal(response.status, 200);
+});
+
+test("malformed auth cookies are rejected without normalizing or dropping them", async () => {
+  for (const cookie of [
+    `test_session=${sid} ; analytics=ignored`,
+    `test_session=${sid}; test_session =${sid}`,
+    `test_session=${sid}; test_session`,
+    `test_session="${sid}"`,
+    `test_session=${sid}=`,
+  ]) {
+    const response = await forwardSemanticSearch(
+      request(undefined, { Cookie: cookie }),
+      config,
+      async () => assert.fail("Una cookie malformada no debe reenviarse")
+    );
+    assert.equal(response.status, 401);
+    assert.equal((await response.json()).error.code, "AUTHENTICATION_REQUIRED");
+  }
+});
+
+test("a rejected search POST stays rejected and a manual retry gets a fresh CSRF token", async (t) => {
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  Object.defineProperty(globalThis, "window", { configurable: true, value: {} });
+  t.after(() => {
+    if (originalWindow) Object.defineProperty(globalThis, "window", originalWindow);
+    else delete globalThis.window;
+  });
+  t.mock.method(globalThis, "BroadcastChannel", function () {
+    return {};
+  });
+  const attempts = [];
+  let tokenRequests = 0;
+  const error = {
+    error: { code: "CSRF_INVALID", message: "Token rechazado.", details: null, requestId: "" },
+  };
+  t.mock.method(globalThis, "fetch", async (url, options) => {
+    attempts.push([options.method, url, options.headers["X-CSRF-Token"]]);
+    if (url === "/api/v1/auth/csrf") {
+      return Response.json({
+        csrfToken: `token-${++tokenRequests}`,
+        expiresAt: new Date(Date.now() + 600_000).toISOString(),
+      });
+    }
+    return attempts.length === 2
+      ? Response.json(error, { status: 403 })
+      : Response.json({ status: "no_documents", items: [] });
+  });
+  const search = () =>
+    client.api.postSameOrigin("/search", { query: "DNS" }, { retryOnCsrfInvalid: false });
+  await assert.rejects(search(), (actual) => {
+    assert.deepEqual(actual, error);
+    return true;
+  });
+  assert.deepEqual(attempts, [
+    ["GET", "/api/v1/auth/csrf", undefined],
+    ["POST", "/api/v1/search", "token-1"],
+  ]);
+  assert.deepEqual(await search(), { status: "no_documents", items: [] });
+  assert.deepEqual(attempts.slice(2), [
+    ["GET", "/api/v1/auth/csrf", undefined],
+    ["POST", "/api/v1/search", "token-2"],
+  ]);
 });
 
 test("rate limiting preserves only valid Retry-After values and sanitizes the body", async () => {
@@ -247,13 +310,13 @@ test("upstream errors and network failures never expose provider messages or pri
 });
 
 test("cookie profiles match the shared proxy and reject conflicting settings", async () => {
-  for (const [cookieProfile, name] of [
-    ["local", "synapdesk_session_dev"],
-    ["production", "__Host-synapdesk_session"],
+  for (const [cookieProfile, name, context, otherContext] of [
+    ["local", "synapdesk_session_dev", "synapdesk_csrf_context_dev", "__Host-synapdesk_csrf_context"],
+    ["production", "__Host-synapdesk_session", "__Host-synapdesk_csrf_context", "synapdesk_csrf_context_dev"],
   ]) {
     const cookie = `${name}=${sid}`;
     const profiledRequest = () =>
-      request(undefined, { Cookie: `${cookie}; synapdesk_csrf_context_dev=ignored` });
+      request(undefined, { Cookie: `${cookie}; ${context}=${sid}` });
     const profileConfig = { ...config, sessionCookieName: undefined, cookieProfile };
     const result = await forwardSemanticSearch(
       profiledRequest(),
@@ -264,6 +327,12 @@ test("cookie profiles match the shared proxy and reject conflicting settings", a
       }
     );
     assert.equal(result.status, 200);
+    const mixed = await forwardSemanticSearch(
+      request(undefined, { Cookie: `${cookie}; ${otherContext}=${sid}` }),
+      profileConfig,
+      async () => assert.fail("No debe reenviar perfiles mezclados")
+    );
+    assert.equal(mixed.status, 401);
     const incompatible = await forwardSemanticSearch(
       profiledRequest(),
       { ...profileConfig, sessionCookieName: "different_session" },

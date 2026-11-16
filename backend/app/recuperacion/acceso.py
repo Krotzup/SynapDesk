@@ -1,5 +1,6 @@
 """Sesión y CSRF existentes; no implementa login ni emite nuevas cookies."""
 
+import re
 from contextlib import contextmanager
 
 from sqlalchemy.orm import Session
@@ -10,21 +11,38 @@ from app.seguridad.sesiones import ServicioSesiones
 from app.seguridad.transacciones import CodigoSeguridad as C, ErrorSeguridad, transaccion_seguridad
 from .servicio import ErrorRecuperacion
 
+CONTEXTOS_POR_SESION = {
+    "synapdesk_session_dev": "synapdesk_csrf_context_dev",
+    "__Host-synapdesk_session": "__Host-synapdesk_csrf_context",
+}
+NOMBRES_AUTH = frozenset(CONTEXTOS_POR_SESION) | frozenset(CONTEXTOS_POR_SESION.values())
+
 
 def header_values(request, name: bytes) -> list[str]:
     return [value.decode("latin-1") for key, value in request.scope["headers"] if key.lower() == name]
 
 
 def session_credential(request, name: str) -> str:
-    values = []
+    context_name = CONTEXTOS_POR_SESION.get(name)
+    seen: dict[str, str] = {}
     for header in header_values(request, b"cookie"):
         for part in header.split(";"):
-            key, separator, value = part.strip().partition("=")
-            if separator and key == name:
-                values.append(value)
-    if len(values) != 1 or not values[0]:
-        raise ErrorRecuperacion("AUTHENTICATION_REQUIRED", "Debes iniciar sesión para buscar en los documentos.", 401)
-    return values[0]
+            # Solo SP/HTAB antes del par separan cookies. No recortar el valor.
+            raw_key, separator, value = part.lstrip(" \t").partition("=")
+            key = raw_key.strip()
+            if key != name and key not in NOMBRES_AUTH:
+                continue
+            if (key not in (name, context_name) or key != raw_key or not separator
+                    or key in seen or not re.fullmatch(r"[A-Za-z0-9_-]{1,4096}", value)):
+                raise ErrorRecuperacion(
+                    "AUTHENTICATION_REQUIRED", "Debes iniciar sesión para buscar en los documentos.", 401
+                )
+            seen[key] = value
+    if name not in seen:
+        raise ErrorRecuperacion(
+            "AUTHENTICATION_REQUIRED", "Debes iniciar sesión para buscar en los documentos.", 401
+        )
+    return seen[name]
 
 
 @contextmanager
