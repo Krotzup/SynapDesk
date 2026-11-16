@@ -93,11 +93,12 @@ export function Header() {
         onSubmit={handleSearch}
         className="flex items-center gap-2 rounded-full bg-[#F1F5F9] px-4 py-2 w-full max-w-md border border-[#E2E8F0]/60 focus-within:border-[#2563EB] focus-within:ring-2 focus-within:ring-[#2563EB]/20"
       >
-        {/* La lupa también envía la búsqueda, para quien usa clic o toque en vez de Enter. */}
+        {/* La lupa también envía la búsqueda, para quien usa clic o toque en vez de Enter. Gris
+            #64748B: contraste 4,34:1 sobre el fondo (WCAG 2.2, contraste no textual ≥ 3:1). */}
         <button
           type="submit"
           aria-label="Buscar tickets"
-          className="-m-1 shrink-0 rounded-full p-1 text-[#94A3B8] transition-colors hover:text-[#2563EB] focus-visible:text-[#2563EB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB]"
+          className="-m-1 shrink-0 rounded-full p-1 text-[#64748B] transition-colors hover:text-[#2563EB] focus-visible:text-[#2563EB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB]"
         >
           <svg
             className="h-4 w-4"
