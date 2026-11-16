@@ -1,9 +1,13 @@
-// Pruebas de regresión del proxy de mismo origen y del adaptador SSR (PR #30), con un backend
-// falso real (node:http). Ejecutar desde frontend/: npm run test:proxy (tarda unos 2 min por las
-// cuatro pruebas del tiempo de espera de 30 s). No necesitan Next, el backend real ni PostgreSQL.
+// Pruebas del canal de servidor hacia FastAPI: proxy de mismo origen y adaptador SSR (PR #30),
+// con SEC-01B (credencial de servicio y HTTPS verificado) y un backend falso real (node:https).
+// Ejecutar desde frontend/: npm run test:proxy (tests/proxy/run.mjs genera la CA de prueba; tarda
+// unos 2,5 min por las pruebas del plazo de 30 s). No necesitan Next, el backend real ni PostgreSQL.
 import { after, before, beforeEach, describe, test } from "node:test";
 import assert from "node:assert/strict";
-import http from "node:http";
+import { randomBytes } from "node:crypto";
+import { readFileSync } from "node:fs";
+import https from "node:https";
+import path from "node:path";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SESSION =
@@ -13,10 +17,24 @@ const DELETE = "synapdesk_session_dev=; HttpOnly; Path=/; SameSite=Lax; Max-Age=
 const PROD_SESSION = "__Host-synapdesk_session=s3cr3t-prod; HttpOnly; Secure; Path=/; SameSite=Lax";
 const PROD_CONTEXT = "__Host-synapdesk_csrf_context=s3cr3t-prod-ctx; HttpOnly; Secure; Path=/";
 const OTHER = "tracker=s3cr3t-ajeno; Path=/";
+const MIB = 1024 * 1024;
+
+// Credencial de servicio de prueba: 32 bytes aleatorios en base64url (43 caracteres).
+const CREDENTIAL = randomBytes(32).toString("base64url");
+
+// ── Certificados generados por run.mjs (CA agregada solo a este proceso) ──
+const tlsDir = process.env.PROXY_TEST_TLS_DIR;
+if (!tlsDir) throw new Error("Ejecutar con npm run test:proxy (tests/proxy/run.mjs).");
+const tls = (name) => ({
+  key: readFileSync(path.join(tlsDir, `${name}.key`)),
+  cert: readFileSync(path.join(tlsDir, `${name}.crt`)),
+});
 
 // ── Backend falso ──
 let hits = 0;
 let lastHeaders = {};
+let lastRawHeaders = [];
+let lastBodyLength = 0;
 const responses = {
   "/api/v1/one": [SESSION],
   "/api/v1/two": [SESSION, CONTEXT],
@@ -27,49 +45,70 @@ const responses = {
   "/api/v1/duplicate": [SESSION, "synapdesk_session_dev=otro; Path=/"],
   "/api/v1/prod": [PROD_SESSION, SESSION, PROD_CONTEXT],
 };
-const backend = http.createServer((req, res) => {
+function handle(req, res) {
   hits += 1;
   lastHeaders = req.headers;
+  lastRawHeaders = req.rawHeaders;
   const path = req.url.split("?")[0];
-  if (path === "/api/v1/redirect") {
-    res.writeHead(302, { Location: "http://evil.invalid/robar" }).end();
-  } else if (path === "/api/v1/slow") {
-    setTimeout(() => res.writeHead(200).end("{}"), 35_000).unref();
-  } else if (path === "/api/v1/slow-body") {
-    // Cabeceras de inmediato y cuerpo incompleto hasta después del plazo (revisión del 12-11).
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.flushHeaders();
-    res.write('{"parcial":');
-    setTimeout(() => res.end("true}"), 35_000).unref();
-  } else if (path === "/api/v1/cut-body") {
-    // Cabeceras de inmediato y conexión cortada a mitad del cuerpo.
-    res.writeHead(200, { "Content-Type": "application/json", "Content-Length": "100" });
-    res.write('{"parcial":');
-    setTimeout(() => res.destroy(), 50).unref();
-  } else if (path === "/api/v1/not-json") {
-    res.writeHead(500, { "Content-Type": "text/plain" }).end("fallo interno");
-  } else if (path === "/api/v1/backend-error") {
-    res.writeHead(403, { "Content-Type": "application/json" }).end(
-      JSON.stringify({
-        error: {
-          code: "FORBIDDEN",
-          message: "x",
-          details: null,
-          requestId: "11111111-1111-4111-8111-111111111111",
-        },
-      })
-    );
-  } else if (path === "/api/v1/echo") {
-    res.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify(req.headers));
-  } else {
-    res.writeHead(200, { "Content-Type": "application/json", "Set-Cookie": responses[path] ?? [] });
-    res.end("{}");
-  }
-});
+  let received = 0;
+  req.on("data", (chunk) => (received += chunk.length));
+  req.on("end", () => {
+    lastBodyLength = received;
+    if (path === "/api/v1/redirect") {
+      res.writeHead(302, { Location: "https://evil.invalid/robar" }).end();
+    } else if (path === "/api/v1/slow") {
+      setTimeout(() => res.writeHead(200).end("{}"), 35_000).unref();
+    } else if (path === "/api/v1/slow-body") {
+      // Cabeceras de inmediato y cuerpo incompleto hasta después del plazo.
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.flushHeaders();
+      res.write('{"parcial":');
+      setTimeout(() => res.end("true}"), 35_000).unref();
+    } else if (path === "/api/v1/cut-body") {
+      res.writeHead(200, { "Content-Type": "application/json", "Content-Length": "100" });
+      res.write('{"parcial":');
+      setTimeout(() => res.destroy(), 50).unref();
+    } else if (path === "/api/v1/huge") {
+      // Respuesta mayor que el tope de 5 MiB.
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(Buffer.alloc(6 * MIB, 0x20));
+    } else if (path === "/api/v1/not-json") {
+      res.writeHead(500, { "Content-Type": "text/plain" }).end("fallo interno");
+    } else if (path === "/api/v1/backend-error") {
+      res.writeHead(403, { "Content-Type": "application/json" }).end(
+        JSON.stringify({
+          error: {
+            code: "FORBIDDEN",
+            message: "x",
+            details: null,
+            requestId: "11111111-1111-4111-8111-111111111111",
+          },
+        })
+      );
+    } else if (path === "/api/v1/echo") {
+      res.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify(req.headers));
+    } else {
+      res.writeHead(200, {
+        "Content-Type": "application/json",
+        "Set-Cookie": responses[path] ?? [],
+      });
+      res.end("{}");
+    }
+  });
+}
+const servers = [];
+async function listen(name, handler = handle) {
+  const server = https.createServer(tls(name), handler);
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  servers.push(server);
+  return `https://127.0.0.1:${server.address().port}`;
+}
 let backendUrl;
+let otherNameUrl;
+let foreignCaUrl;
 let closedUrl;
 
-// ── Registros: ningún valor de cookie debe aparecer ──
+// ── Registros: ningún valor de cookie ni la credencial deben aparecer ──
 const logs = [];
 const original = { error: console.error, warn: console.warn };
 
@@ -78,11 +117,12 @@ let ssr;
 let api;
 
 before(async () => {
-  await new Promise((r) => backend.listen(0, "127.0.0.1", r));
-  backendUrl = `http://127.0.0.1:${backend.address().port}`;
-  const closed = http.createServer();
+  backendUrl = await listen("servidor");
+  otherNameUrl = await listen("servidor-otro-nombre");
+  foreignCaUrl = await listen("servidor-ca-ajena");
+  const closed = https.createServer(tls("servidor"));
   await new Promise((r) => closed.listen(0, "127.0.0.1", r));
-  closedUrl = `http://127.0.0.1:${closed.address().port}`;
+  closedUrl = `https://127.0.0.1:${closed.address().port}`;
   await new Promise((r) => closed.close(r));
   console.error = (...a) => logs.push(a.join(" "));
   console.warn = (...a) => logs.push(a.join(" "));
@@ -92,11 +132,13 @@ before(async () => {
 });
 after(() => {
   Object.assign(console, original);
-  backend.close();
+  for (const server of servers) server.close();
+  assert.ok(!logs.join("\n").includes(CREDENTIAL), "la credencial nunca aparece en los registros");
 });
 beforeEach(() => {
   process.env.BACKEND_INTERNAL_URL = backendUrl;
   process.env.AUTH_COOKIE_PROFILE = "local";
+  process.env.BACKEND_SERVICE_CREDENTIAL = CREDENTIAL;
   globalThis.__requestCookie = undefined;
 });
 
@@ -109,7 +151,10 @@ const call = (path, init = {}) =>
 async function expectContractError(response, status, code) {
   assert.equal(response.status, status);
   assert.equal(response.headers.get("cache-control"), "no-store");
-  const body = await response.json();
+  const text = await response.text();
+  assert.ok(!text.includes(CREDENTIAL), "sin la credencial en la respuesta");
+  assert.ok(!text.includes("127.0.0.1"), "sin direcciones internas");
+  const body = JSON.parse(text);
   assert.equal(body.error.code, code);
   assert.match(body.error.requestId, UUID, "requestId no vacío y válido");
   assert.equal(body.error.details, null);
@@ -122,69 +167,197 @@ async function expectThrownContractError(promise, code = "SERVICE_UNAVAILABLE") 
   } catch (error) {
     assert.equal(error?.error?.code, code);
     assert.match(error.error.requestId, UUID, "requestId no vacío y válido");
-    assert.ok(!JSON.stringify(error).includes("127.0.0.1"), "sin direcciones internas");
+    const text = JSON.stringify(error);
+    assert.ok(!text.includes("127.0.0.1"), "sin direcciones internas");
+    assert.ok(!text.includes(CREDENTIAL), "sin la credencial");
     return error.error.requestId;
   }
   assert.fail("se esperaba un error");
 }
 
-// ── Hallazgo 1: AUTH_COOKIE_PROFILE estricto ──
-describe("1. AUTH_COOKIE_PROFILE", () => {
-  test("local selecciona solo las cookies de desarrollo", () => {
+// Cuántas veces llegó una cabecera al backend (rawHeaders conserva las repeticiones).
+const rawCount = (name) =>
+  lastRawHeaders.filter((value, index) => index % 2 === 0 && value.toLowerCase() === name).length;
+
+// ── SEC-01B: credencial de servicio ──
+describe("1. Credencial de servicio (SEC-01B)", () => {
+  test("proxy: exactamente una Authorization con la credencial del servidor", async () => {
+    await call("echo", { headers: { authorization: "Bearer del-navegador" } });
+    assert.equal(rawCount("authorization"), 1);
+    assert.equal(lastHeaders.authorization, `Bearer ${CREDENTIAL}`);
+  });
+  test("SSR: exactamente una Authorization con la credencial del servidor", async () => {
+    await api.get("/echo", { Authorization: "Bearer inyectada" });
+    assert.equal(rawCount("authorization"), 1);
+    assert.equal(lastHeaders.authorization, `Bearer ${CREDENTIAL}`);
+  });
+  test("la credencial no vuelve al navegador", async () => {
+    const response = await call("one");
+    const raw = [...response.headers].map(([k, v]) => `${k}: ${v}`).join("\n");
+    assert.ok(!raw.includes(CREDENTIAL) && !(await response.text()).includes(CREDENTIAL));
+  });
+  const invalid = {
+    ausente: undefined,
+    vacía: "",
+    "42 caracteres": CREDENTIAL.slice(0, 42),
+    "44 caracteres": `${CREDENTIAL}A`,
+    "con relleno =": `${CREDENTIAL.slice(0, 42)}=`,
+    "base64 estándar (+ y /)": `${"+/".repeat(21)}A`,
+    "no canónica (último carácter)": `${CREDENTIAL.slice(0, 42)}${CREDENTIAL.at(-1) === "B" ? "C" : "B"}`,
+    "con espacios": ` ${CREDENTIAL}`,
+  };
+  for (const [name, value] of Object.entries(invalid)) {
+    test(`credencial ${name}: 503 sin contactar al backend`, async () => {
+      if (value === undefined) delete process.env.BACKEND_SERVICE_CREDENTIAL;
+      else process.env.BACKEND_SERVICE_CREDENTIAL = value;
+      logs.length = 0;
+      const before = hits;
+      await expectContractError(await call("one"), 503, "SERVICE_UNAVAILABLE");
+      await expectThrownContractError(api.get("/one"));
+      assert.equal(hits, before);
+      assert.ok(logs.some((l) => l.includes("BACKEND_SERVICE_CREDENTIAL")));
+      if (value) assert.ok(!logs.join("\n").includes(value), "sin el valor en el registro");
+    });
+  }
+});
+
+// ── Destino: BACKEND_INTERNAL_URL estricta y HTTPS verificado ──
+describe("2. Destino y TLS", () => {
+  const port = () => new URL(backendUrl).port;
+  const hostile = () => ({
+    "http en claro": `http://127.0.0.1:${port()}`,
+    "con usuario y contraseña": `https://u:p@127.0.0.1:${port()}`,
+    "con ruta": `https://127.0.0.1:${port()}/api`,
+    "con query": `https://127.0.0.1:${port()}?x=1`,
+    "con #": `https://127.0.0.1:${port()}#a`,
+    "otro esquema": `ftp://127.0.0.1:${port()}`,
+    "no es URL": "127.0.0.1:8000",
+  });
+  test("origen https exacto, con o sin / final", () => {
+    process.env.BACKEND_INTERNAL_URL = `${backendUrl}/`;
+    assert.equal(proxy.getBackendOrigin(), backendUrl);
+  });
+  // Los nombres se fijan aquí; las URL se calculan dentro de cada prueba, cuando ya existe el
+  // servidor de prueba.
+  const hostileNames = [
+    "http en claro",
+    "con usuario y contraseña",
+    "con ruta",
+    "con query",
+    "con #",
+    "otro esquema",
+    "no es URL",
+  ];
+  for (const name of hostileNames) {
+    test(`URL ${name}: 503 sin contactar al backend`, async () => {
+      process.env.BACKEND_INTERNAL_URL = hostile()[name];
+      const before = hits;
+      await expectContractError(await call("one"), 503, "SERVICE_UNAVAILABLE");
+      await expectThrownContractError(api.get("/one"));
+      assert.equal(hits, before);
+    });
+  }
+  test("CA no confiada: 503 en proxy y SSR", async () => {
+    process.env.BACKEND_INTERNAL_URL = foreignCaUrl;
+    await expectContractError(await call("echo"), 503, "SERVICE_UNAVAILABLE");
+    await expectThrownContractError(api.get("/echo"));
+  });
+  test("certificado con otro nombre: 503 en proxy y SSR", async () => {
+    process.env.BACKEND_INTERNAL_URL = otherNameUrl;
+    await expectContractError(await call("echo"), 503, "SERVICE_UNAVAILABLE");
+    await expectThrownContractError(api.get("/echo"));
+  });
+  test("con CA y nombre válidos responde el backend", async () => {
+    assert.equal((await call("one")).status, 200);
+  });
+});
+
+// ── AUTH_COOKIE_PROFILE obligatoria ──
+describe("3. AUTH_COOKIE_PROFILE", () => {
+  test("local: Set-Cookie de desarrollo", () => {
     assert.deepEqual(
       [...proxy.allowedCookieNames()],
       ["synapdesk_session_dev", "synapdesk_csrf_context_dev"]
     );
   });
-  test("production selecciona solo las cookies __Host-", () => {
+  test("production: Set-Cookie __Host-", () => {
     process.env.AUTH_COOKIE_PROFILE = "production";
     assert.deepEqual(
       [...proxy.allowedCookieNames()],
       ["__Host-synapdesk_session", "__Host-synapdesk_csrf_context"]
     );
   });
-  test("variable ausente: local por defecto", () => {
-    delete process.env.AUTH_COOKIE_PROFILE;
-    assert.deepEqual(
-      [...proxy.allowedCookieNames()],
-      ["synapdesk_session_dev", "synapdesk_csrf_context_dev"]
-    );
-  });
-  for (const value of ["productionn", "", "Production", " local", "dev"]) {
-    test(`valor inválido ${JSON.stringify(value)}: sin perfil (no se elige local en silencio)`, () => {
-      process.env.AUTH_COOKIE_PROFILE = value;
+  for (const value of [undefined, "productionn", "", "Production", " local", "dev"]) {
+    test(`valor ${value === undefined ? "ausente" : JSON.stringify(value)}: sin perfil`, () => {
+      if (value === undefined) delete process.env.AUTH_COOKIE_PROFILE;
+      else process.env.AUTH_COOKIE_PROFILE = value;
       assert.equal(proxy.allowedCookieNames(), null);
     });
   }
-  test("proxy con perfil inválido: 503 con requestId y no llama al backend", async () => {
-    process.env.AUTH_COOKIE_PROFILE = "productionn";
+  test("perfil ausente: 503 en proxy y SSR, sin contactar al backend", async () => {
+    delete process.env.AUTH_COOKIE_PROFILE;
     const before = hits;
-    await expectContractError(
-      await call("one", { headers: { cookie: "synapdesk_session_dev=x" } }),
-      503,
-      "SERVICE_UNAVAILABLE"
-    );
+    logs.length = 0;
+    await expectContractError(await call("one"), 503, "SERVICE_UNAVAILABLE");
+    await expectThrownContractError(ssr.getTransport());
     assert.equal(hits, before);
     assert.ok(logs.some((l) => l.includes("AUTH_COOKIE_PROFILE")));
   });
-  test("SSR con perfil inválido: error del contrato con requestId", async () => {
-    process.env.AUTH_COOKIE_PROFILE = "productionn";
-    await expectThrownContractError(ssr.getTransport());
+});
+
+// ── Cookies hacia FastAPI: sin ocultar ni reparar (A04–A06) ──
+describe("4. Cookies hacia el backend", () => {
+  const sent = async (cookie) => {
+    await call("echo", { headers: { cookie } });
+    return lastHeaders.cookie;
+  };
+  test("A04: sesión sin '=' junto a contexto válido llega tal cual", async () => {
+    assert.equal(
+      await sent("synapdesk_session_dev; synapdesk_csrf_context_dev=ctx"),
+      "synapdesk_session_dev; synapdesk_csrf_context_dev=ctx"
+    );
   });
-  test("production reenvía hacia FastAPI solo las cookies __Host-", async () => {
+  test("A05: perfiles mezclados llegan los dos (el backend rechaza la mezcla)", async () => {
+    assert.equal(
+      await sent("synapdesk_session_dev=a; otra=1; __Host-synapdesk_csrf_context=b"),
+      "synapdesk_session_dev=a; __Host-synapdesk_csrf_context=b"
+    );
+  });
+  test("A05: también con el perfil production activo", async () => {
     process.env.AUTH_COOKIE_PROFILE = "production";
-    await call("echo", {
-      headers: {
-        cookie:
-          "synapdesk_session_dev=dev; __Host-synapdesk_session=p; otra=1; __Host-synapdesk_csrf_context=c",
-      },
+    assert.equal(
+      await sent("__Host-synapdesk_session=p; synapdesk_session_dev=d"),
+      "__Host-synapdesk_session=p; synapdesk_session_dev=d"
+    );
+  });
+  const unchanged = {
+    "repetida idéntica": "synapdesk_session_dev=a; synapdesk_session_dev=a",
+    "repetida distinta": "synapdesk_session_dev=a; synapdesk_session_dev=b",
+    vacía: "synapdesk_session_dev=",
+    "con comillas": 'synapdesk_session_dev="a"',
+    "con %codificación": "synapdesk_session_dev=%ZZ",
+  };
+  for (const [name, cookie] of Object.entries(unchanged)) {
+    test(`A06: ${name} llega sin cambios`, async () => {
+      assert.equal(await sent(cookie), cookie);
     });
-    assert.equal(lastHeaders.cookie, "__Host-synapdesk_session=p; __Host-synapdesk_csrf_context=c");
+  }
+  test("las cookies no reservadas no se reenvían", async () => {
+    assert.equal(await sent("otra=1; tracker=2"), undefined);
+  });
+  test("SSR reenvía las cookies reservadas de la petición, también las ambiguas", async () => {
+    globalThis.__requestCookie =
+      "synapdesk_session_dev; otra=b; __Host-synapdesk_session=c; synapdesk_session_dev=d";
+    await api.get("/echo");
+    assert.equal(
+      lastHeaders.cookie,
+      "synapdesk_session_dev; __Host-synapdesk_session=c; synapdesk_session_dev=d"
+    );
   });
 });
 
-// ── Hallazgo 2: Set-Cookie filtrado ──
-describe("2. Set-Cookie del backend", () => {
+// ── Set-Cookie hacia el navegador ──
+describe("5. Set-Cookie del backend", () => {
   const cookiesOf = (response) => response.headers.getSetCookie();
   test("una cookie autorizada pasa intacta", async () => {
     assert.deepEqual(cookiesOf(await call("one")), [SESSION]);
@@ -213,7 +386,7 @@ describe("2. Set-Cookie del backend", () => {
   test("cookie autorizada repetida: pasan ambas, sin normalizar", async () => {
     assert.equal(cookiesOf(await call("duplicate")).length, 2);
   });
-  test("las no autorizadas no llegan al navegador y el registro no tiene valores", async () => {
+  test("las descartadas solo se cuentan en el registro: sin nombres ni valores", async () => {
     logs.length = 0;
     const response = await call("many");
     const raw = [...response.headers].map(([k, v]) => `${k}: ${v}`).join("\n");
@@ -221,13 +394,13 @@ describe("2. Set-Cookie del backend", () => {
       !raw.includes("tracker") && !raw.includes("__Host-") && !raw.includes("sin-signo-igual")
     );
     const log = logs.join("\n");
-    assert.match(log, /tracker/);
-    assert.ok(!log.includes("s3cr3t"), "ningún valor de cookie en los registros");
+    assert.match(log, /Se descartaron 3 Set-Cookie/);
+    assert.ok(!log.includes("tracker") && !log.includes("s3cr3t"));
   });
 });
 
-// ── Hallazgo 3: requestId en los errores propios ──
-describe("3. requestId en errores del proxy y del SSR", () => {
+// ── Errores, correlación y no-store ──
+describe("6. Errores del proxy y del SSR", () => {
   test("proxy sin BACKEND_INTERNAL_URL", async () => {
     delete process.env.BACKEND_INTERNAL_URL;
     await expectContractError(await call("one"), 503, "SERVICE_UNAVAILABLE");
@@ -280,47 +453,93 @@ describe("3. requestId en errores del proxy y del SSR", () => {
   test("SSR con respuesta que no es JSON: error con requestId propio", async () => {
     await expectThrownContractError(api.get("/not-json"), "UNKNOWN_ERROR");
   });
-  test("SSR reenvía solo las cookies del perfil", async () => {
-    globalThis.__requestCookie = "synapdesk_session_dev=a; otra=b; __Host-synapdesk_session=c";
+  test("SSR no envía Origin", async () => {
     await api.get("/echo");
-    assert.equal(lastHeaders.cookie, "synapdesk_session_dev=a");
+    assert.equal(lastHeaders.origin, undefined);
   });
-  test("proxy: tiempo de espera de 30 s → 503 con requestId", { timeout: 40_000 }, async () => {
+});
+
+// ── Tamaños: petición y respuesta acotadas (A13) ──
+describe("7. Límites de tamaño", () => {
+  test("petición de más de 1 MiB: 413 sin contactar al backend", async () => {
+    const before = hits;
+    await expectContractError(
+      await call("echo", { method: "POST", body: Buffer.alloc(MIB + 1, 0x61) }),
+      413,
+      "VALIDATION_ERROR"
+    );
+    assert.equal(hits, before);
+  });
+  test("Content-Length declarado mayor que el límite: 413 sin leer el cuerpo", async () => {
+    const before = hits;
+    await expectContractError(
+      await call("echo", {
+        method: "POST",
+        body: "{}",
+        headers: { "content-length": String(MIB + 1) },
+      }),
+      413,
+      "VALIDATION_ERROR"
+    );
+    assert.equal(hits, before);
+  });
+  test("petición de exactamente 1 MiB: llega completa", async () => {
+    const response = await call("size", { method: "POST", body: Buffer.alloc(MIB, 0x61) });
+    assert.equal(response.status, 200);
+    assert.equal(lastBodyLength, MIB);
+  });
+  test("respuesta de más de 5 MiB: 503 en proxy y SSR", async () => {
+    await expectContractError(await call("huge"), 503, "SERVICE_UNAVAILABLE");
+    await expectThrownContractError(api.get("/huge"));
+  });
+  test(
+    "cuerpo de la petición que no termina: 503 al vencer el plazo, sin contactar al backend",
+    { timeout: 40_000 },
+    async () => {
+      const before = hits;
+      const start = Date.now();
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('{"parcial":'));
+        },
+      });
+      await expectContractError(
+        await call("echo", { method: "POST", body: stream, duplex: "half" }),
+        503,
+        "SERVICE_UNAVAILABLE"
+      );
+      assert.ok(Date.now() - start >= 29_500, "espera el plazo completo");
+      assert.equal(hits, before);
+    }
+  );
+});
+
+// ── Plazo de 30 s: cabeceras y cuerpo de la respuesta ──
+describe("8. Plazo de 30 s", () => {
+  test("proxy: sin respuesta → 503 con requestId", { timeout: 40_000 }, async () => {
     const start = Date.now();
     await expectContractError(await call("slow"), 503, "SERVICE_UNAVAILABLE");
     assert.ok(Date.now() - start >= 29_500);
   });
-  test("SSR: tiempo de espera de 30 s → error con requestId", { timeout: 40_000 }, async () => {
+  test("SSR: sin respuesta → error con requestId", { timeout: 40_000 }, async () => {
     const start = Date.now();
     await expectThrownContractError(api.get("/slow"));
     assert.ok(Date.now() - start >= 29_500);
   });
-});
-
-// ── Revisión del 12-11: el plazo cubre también el cuerpo de la respuesta ──
-describe("4. Cuerpo demorado o cortado después de las cabeceras", () => {
-  test(
-    "proxy: cabeceras 200 y cuerpo demorado → 503 con requestId",
-    { timeout: 40_000 },
-    async () => {
-      const start = Date.now();
-      await expectContractError(await call("slow-body"), 503, "SERVICE_UNAVAILABLE");
-      assert.ok(Date.now() - start >= 29_500, "espera el plazo completo");
-    }
-  );
-  test(
-    "SSR: cabeceras 200 y cuerpo demorado → error con requestId",
-    { timeout: 40_000 },
-    async () => {
-      const start = Date.now();
-      await expectThrownContractError(api.get("/slow-body"));
-      assert.ok(Date.now() - start >= 29_500, "espera el plazo completo");
-    }
-  );
-  test("proxy: conexión cortada a mitad del cuerpo → 503 con requestId", async () => {
+  test("proxy: cabeceras 200 y cuerpo demorado → 503", { timeout: 40_000 }, async () => {
+    const start = Date.now();
+    await expectContractError(await call("slow-body"), 503, "SERVICE_UNAVAILABLE");
+    assert.ok(Date.now() - start >= 29_500, "espera el plazo completo");
+  });
+  test("SSR: cabeceras 200 y cuerpo demorado → error", { timeout: 40_000 }, async () => {
+    const start = Date.now();
+    await expectThrownContractError(api.get("/slow-body"));
+    assert.ok(Date.now() - start >= 29_500, "espera el plazo completo");
+  });
+  test("proxy: conexión cortada a mitad del cuerpo → 503", async () => {
     await expectContractError(await call("cut-body"), 503, "SERVICE_UNAVAILABLE");
   });
-  test("SSR: conexión cortada a mitad del cuerpo → error con requestId", async () => {
+  test("SSR: conexión cortada a mitad del cuerpo → error", async () => {
     await expectThrownContractError(api.get("/cut-body"));
   });
 });
@@ -339,7 +558,7 @@ describe("Regresión", () => {
         "x-real-ip": "203.0.113.8",
         "x-synapdesk-client-ip": "203.0.113.9",
         forwarded: "for=203.0.113.10",
-        authorization: "Bearer x",
+        "x-request-id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
       },
     });
     assert.equal(lastHeaders.origin, "http://localhost:3000");
@@ -349,10 +568,17 @@ describe("Regresión", () => {
       "x-real-ip",
       "x-synapdesk-client-ip",
       "forwarded",
-      "authorization",
+      "x-request-id",
     ]) {
       assert.equal(lastHeaders[h], undefined, h);
     }
+  });
+  test("Origin duplicado llega tal cual (sin elegir un valor)", async () => {
+    const headers = new Headers();
+    headers.append("origin", "http://localhost:3000");
+    headers.append("origin", "http://evil.invalid");
+    await call("echo", { method: "POST", body: "{}", headers });
+    assert.equal(lastHeaders.origin, "http://localhost:3000, http://evil.invalid");
   });
   test("todas las respuestas llevan no-store", async () => {
     assert.equal((await call("one")).headers.get("cache-control"), "no-store");

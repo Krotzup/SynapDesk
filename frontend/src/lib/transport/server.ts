@@ -3,62 +3,65 @@ import "server-only";
 import { headers } from "next/headers";
 import {
   BACKEND_TIMEOUT_MS,
-  BODYLESS_STATUS,
+  BackendChannelError,
+  type BackendConfig,
+  callBackend,
   filterCookieHeader,
   getBackendConfig,
   serviceUnavailableError,
 } from "@/lib/backend-proxy";
 import type { Transport } from "./client";
 
-// Transporte de los componentes de servidor (adaptador SSR): directo a FastAPI con las cookies
-// permitidas de la petición actual. Se calcula en cada llamada; nada se guarda entre peticiones.
-// No envía Origin ni pide token CSRF: en el servidor solo hay lecturas.
+// Transporte de los componentes de servidor (adaptador SSR): usa el mismo canal que el proxy
+// (credencial de servicio SEC-01B, HTTPS verificado, sin redirecciones, plazo y tope de tamaño) con
+// las cookies reservadas de la petición actual. Se calcula en cada llamada; nada se guarda entre
+// peticiones. No envía Origin ni pide token CSRF: en el servidor solo hay lecturas.
 // package.json ("imports" → "#transport", condición "react-server") elige este archivo.
-// Mismas reglas que el proxy: perfil de cookies válido, tiempo de espera, sin seguir redirecciones
-// y errores del contrato con un requestId generado aquí.
 
-/** fetch hacia FastAPI con las mismas protecciones que el proxy (lib/backend-proxy.ts). */
-async function backendFetch(url: string, init: RequestInit): Promise<Response> {
-  let response: Response;
-  let body: ArrayBuffer | null = null;
-  let redirected = false;
+const failureMessages: Record<BackendChannelError["reason"], string> = {
+  unavailable: "[ssr] No se pudo obtener la respuesta completa del backend.",
+  redirect: "[ssr] El backend respondió con una redirección; no se sigue.",
+  "response-too-large": "[ssr] La respuesta del backend supera el tamaño permitido.",
+};
+
+/** Petición SSR hacia FastAPI por el canal común. `path` es relativo (/api/v1/...). */
+async function backendFetch(
+  config: BackendConfig,
+  path: string,
+  init: RequestInit
+): Promise<Response> {
+  const body = typeof init.body === "string" ? new TextEncoder().encode(init.body) : undefined;
   try {
-    response = await fetch(url, {
-      ...init,
-      // No seguir redirecciones: podrían llevar las cookies a otro host.
-      redirect: "manual",
-      // Un solo plazo para la respuesta completa: cabeceras y cuerpo.
-      signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
+    const result = await callBackend(
+      config,
+      { method: init.method ?? "GET", path, headers: new Headers(init.headers), body },
+      AbortSignal.timeout(BACKEND_TIMEOUT_MS)
+    );
+    return new Response(result.body, {
+      status: result.response.status,
+      statusText: result.response.statusText,
+      headers: result.response.headers,
     });
-    redirected = response.status >= 300 && response.status < 400;
-    if (redirected) await response.body?.cancel();
-    // El cuerpo se lee aquí, dentro del plazo: si vence o la conexión se corta a mitad del cuerpo,
-    // api.ts recibe el error del contrato y no un TimeoutError al leer el JSON.
-    else if (!BODYLESS_STATUS.has(response.status)) body = await response.arrayBuffer();
-  } catch {
-    // Backend apagado, sin red, conexión cortada o tiempo de espera agotado.
-    console.error("[ssr] No se pudo obtener la respuesta completa del backend.");
+  } catch (error) {
+    console.error(
+      error instanceof BackendChannelError
+        ? failureMessages[error.reason]
+        : failureMessages.unavailable
+    );
     throw serviceUnavailableError();
   }
-  if (redirected) {
-    console.error("[ssr] El backend respondió con una redirección; no se sigue.");
-    throw serviceUnavailableError();
-  }
-  return new Response(body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers: response.headers,
-  });
 }
 
 export async function getTransport(): Promise<Transport> {
   const config = getBackendConfig("ssr");
   if (!config) throw serviceUnavailableError();
-  // Se usa la cabecera original para conservar cookies repetidas (el backend las rechaza).
-  const cookie = filterCookieHeader((await headers()).get("cookie"), config.cookieNames);
+  // Se usa la cabecera original para conservar cookies repetidas o mal formadas (el backend las
+  // rechaza).
+  const cookie = filterCookieHeader((await headers()).get("cookie"));
   return {
-    baseUrl: config.origin,
+    // Ruta relativa: el destino lo agrega el canal desde la configuración.
+    baseUrl: "",
     headers: cookie ? { Cookie: cookie } : {},
-    fetch: backendFetch,
+    fetch: (url, init) => backendFetch(config, url, init),
   };
 }

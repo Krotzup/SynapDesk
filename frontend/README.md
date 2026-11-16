@@ -59,7 +59,7 @@ La aplicación estará disponible en [http://localhost:3000](http://localhost:30
 | `npm run lint`         | Verificación de linting        |
 | `npm run format`       | Formatea todo el código        |
 | `npm run format:check` | Verifica formato sin modificar |
-| `npm run test:proxy`   | Pruebas del proxy (unos 60 s)  |
+| `npm run test:proxy`   | Pruebas proxy/SSR (unos 3 min) |
 
 ## Estado de implementación
 

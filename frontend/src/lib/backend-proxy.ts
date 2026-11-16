@@ -2,23 +2,35 @@ import "server-only";
 
 import type { ApiError } from "@/types";
 
-// Reglas del proxy de mismo origen hacia FastAPI (contrato de autenticación V1, sección 3).
-// Solo de servidor: el destino y las listas permitidas nunca llegan al navegador.
+// Canal de servidor hacia FastAPI, común al proxy de mismo origen y al adaptador SSR
+// (lib/transport/server.ts). Sigue el contrato de autenticación V1, SEC-01B
+// (docs/contratos/comunicacion-interna-segura-v1.md) y la especificación del PR #30
+// (docs/contratos/integracion-http-pr30-pr32-v1.md, sección 3). Solo de servidor: el destino,
+// la credencial de servicio y las listas permitidas nunca llegan al navegador.
 
 export const API_PREFIX = "/api/v1";
 
-// Pensado para la generación de recomendaciones con LLM; provisional. También lo usa el
-// adaptador SSR (lib/transport/server.ts).
+// Plazo único para la operación completa: lectura de la petición del navegador, conexión y TLS,
+// espera y lectura de la respuesta. Provisional (C06): no es un presupuesto productivo aprobado.
 export const BACKEND_TIMEOUT_MS = 30_000;
 
+// Límites provisionales de tamaño (C05/C06 pendientes de medición y acuerdo).
+export const MAX_REQUEST_BODY_BYTES = 1024 * 1024;
+export const MAX_RESPONSE_BODY_BYTES = 5 * 1024 * 1024;
+
 const COOKIE_PROFILES = {
-  // Nombres propuestos en el contrato de autenticación V1 (sección 6); aún no definitivos.
+  // Nombres propuestos en el contrato de autenticación V1 (C02); aún no definitivos.
   local: ["synapdesk_session_dev", "synapdesk_csrf_context_dev"],
   production: ["__Host-synapdesk_session", "__Host-synapdesk_csrf_context"],
 } as const;
 
-// Hacia FastAPI solo viajan estas cabeceras. Se descartan, entre otras, X-Forwarded-*,
-// Forwarded, X-Real-IP, X-SynapDesk-Client-IP, Authorization y Host enviadas por el navegador.
+// Nombres reservados de los dos perfiles. Hacia FastAPI se reenvían todas sus apariciones, tal
+// como llegaron, para que el backend rechace una cookie mal formada, repetida o de otro perfil.
+const RESERVED_COOKIE_NAMES: ReadonlySet<string> = new Set(Object.values(COOKIE_PROFILES).flat());
+
+// Hacia FastAPI solo viajan estas cabeceras del navegador. Se descartan, entre otras, Host,
+// Authorization, X-Forwarded-*, Forwarded, X-Real-IP, X-SynapDesk-Client-IP y X-Request-ID.
+// Authorization la genera el servidor (credencial de servicio SEC-01B).
 const FORWARDED_REQUEST_HEADERS = [
   "accept",
   "content-type",
@@ -34,67 +46,97 @@ const FORWARDED_RESPONSE_HEADERS = ["content-type", "retry-after"] as const;
 export const BODYLESS_STATUS: ReadonlySet<number> = new Set([204, 205, 304]);
 
 /**
- * Cookies de sesión y de contexto CSRF según AUTH_COOKIE_PROFILE. Si la variable no existe se usa
- * "local". Un valor distinto de "local" o "production" (también vacío) es un error de
- * configuración: devuelve null y no se elige otro perfil en silencio.
+ * Cookies de sesión y de contexto CSRF que el perfil activo acepta en las respuestas
+ * (Set-Cookie). AUTH_COOKIE_PROFILE es obligatoria: ausente, vacía u otro valor distinto de
+ * "local" o "production" es un error de configuración y devuelve null. No se elige un perfil en
+ * silencio (C02).
  */
 export function allowedCookieNames(): readonly string[] | null {
   const profile = process.env.AUTH_COOKIE_PROFILE;
-  if (profile === undefined) return COOKIE_PROFILES.local;
   if (profile === "local" || profile === "production") return COOKIE_PROFILES[profile];
   return null;
 }
 
-/** Origen de FastAPI según BACKEND_INTERNAL_URL, o null si falta o no es una URL http(s). */
+/**
+ * Origen de FastAPI según BACKEND_INTERNAL_URL, o null si no es válido. Se exige HTTPS (SEC-01B) y
+ * que la variable sea exactamente el origen: sin usuario ni contraseña, ruta, query ni "#". No se
+ * "repara" un valor dudoso tomando su origen.
+ */
 export function getBackendOrigin(): string | null {
   const value = process.env.BACKEND_INTERNAL_URL;
   if (!value) return null;
+  let url: URL;
   try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:" ? url.origin : null;
+    url = new URL(value);
   } catch {
     return null;
   }
+  if (url.protocol !== "https:" || url.username || url.password) return null;
+  if (value !== url.origin && value !== `${url.origin}/`) return null;
+  return url.origin;
+}
+
+/**
+ * Credencial de servicio SEC-01B desde BACKEND_SERVICE_CREDENTIAL (nombre provisional, C07):
+ * exactamente 32 bytes en base64url canónico sin relleno (43 caracteres). null si falta o no
+ * cumple el formato. Nunca se registra ni se devuelve al navegador.
+ */
+export function getServiceCredential(): string | null {
+  const value = process.env.BACKEND_SERVICE_CREDENTIAL;
+  if (!value || !/^[A-Za-z0-9_-]{43}$/.test(value)) return null;
+  const bytes = Buffer.from(value, "base64url");
+  return bytes.length === 32 && bytes.toString("base64url") === value ? value : null;
 }
 
 export interface BackendConfig {
   origin: string;
+  /** Cookies del perfil activo que pueden volver al navegador en Set-Cookie. */
   cookieNames: ReadonlySet<string>;
+  credential: string;
 }
 
 /**
- * Destino y cookies permitidas, comunes al proxy y al adaptador SSR. Si algo no es válido lo
- * registra (sin valores secretos) y devuelve null: quien llama responde 503.
+ * Destino, perfil de cookies y credencial, comunes al proxy y al adaptador SSR. Si algo falta o
+ * no es válido lo registra (solo el nombre de la variable, nunca su valor) y devuelve null: quien
+ * llama responde 503 sin contactar al backend.
  */
 export function getBackendConfig(source: "proxy" | "ssr"): BackendConfig | null {
   const origin = getBackendOrigin();
   if (!origin) {
-    console.error(`[${source}] BACKEND_INTERNAL_URL no está configurada o no es una URL http(s).`);
+    console.error(
+      `[${source}] BACKEND_INTERNAL_URL no está configurada o no es un origen https:// válido.`
+    );
   }
   const cookieNames = allowedCookieNames();
   if (!cookieNames) {
     console.error(
-      `[${source}] AUTH_COOKIE_PROFILE tiene un valor no válido; usa "local" o "production".`
+      `[${source}] AUTH_COOKIE_PROFILE falta o no es válida; usa "local" o "production".`
     );
   }
-  return origin && cookieNames ? { origin, cookieNames: new Set(cookieNames) } : null;
+  const credential = getServiceCredential();
+  if (!credential) {
+    console.error(`[${source}] BACKEND_SERVICE_CREDENTIAL falta o no tiene el formato esperado.`);
+  }
+  return origin && cookieNames && credential
+    ? { origin, cookieNames: new Set(cookieNames), credential }
+    : null;
 }
 
 /**
- * Deja en la cabecera Cookie solo las cookies permitidas. Si una viene repetida se conservan todas
- * sus apariciones: el backend rechaza la ambigüedad, el proxy no elige una.
+ * Cabecera Cookie hacia FastAPI: solo las cookies con nombre reservado (de los dos perfiles), con
+ * todas sus apariciones y sin modificarlas. Una cookie reservada sin "=", repetida, vacía o de
+ * otro perfil no se descarta ni se elige un valor: llega al backend, que la rechaza (P1). Las
+ * demás cookies del navegador no se reenvían.
  */
-export function filterCookieHeader(
-  cookieHeader: string | null,
-  allowed: ReadonlySet<string>
-): string | null {
+export function filterCookieHeader(cookieHeader: string | null): string | null {
   if (!cookieHeader) return null;
   const kept = cookieHeader
     .split(";")
     .map((part) => part.trim())
     .filter((part) => {
       const separator = part.indexOf("=");
-      return separator > 0 && allowed.has(part.slice(0, separator).trim());
+      const name = (separator === -1 ? part : part.slice(0, separator)).trim();
+      return RESERVED_COOKIE_NAMES.has(name);
     });
   return kept.length > 0 ? kept.join("; ") : null;
 }
@@ -131,6 +173,119 @@ export function methodNotAllowed(): Response {
 
 const unavailable = () => proxyError(503, serviceUnavailableError());
 
+// 413 con un código existente del contrato; la clasificación definitiva depende de C05.
+const requestTooLarge = () =>
+  proxyError(413, backendApiError("VALIDATION_ERROR", "La solicitud supera el tamaño permitido."));
+
+/**
+ * Lee un cuerpo completo con un tope de bytes y dentro del plazo de la señal. Devuelve null si
+ * supera el tope (sin seguir leyendo) y lanza si el plazo vence o la conexión se corta.
+ */
+async function readLimited(
+  stream: ReadableStream<Uint8Array> | null,
+  limit: number,
+  signal: AbortSignal
+): Promise<Uint8Array<ArrayBuffer> | null> {
+  if (!stream) return new Uint8Array(0);
+  const reader = stream.getReader();
+  const cancel = () => void reader.cancel().catch(() => {});
+  if (signal.aborted) {
+    cancel();
+    throw signal.reason;
+  }
+  signal.addEventListener("abort", cancel, { once: true });
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > limit) {
+        cancel();
+        return null;
+      }
+      chunks.push(value);
+    }
+  } finally {
+    signal.removeEventListener("abort", cancel);
+  }
+  if (signal.aborted) throw signal.reason;
+  const body = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return body;
+}
+
+/** Motivo de un fallo del canal; el proxy y el SSR lo convierten en su error del contrato. */
+export type BackendChannelFailure = "unavailable" | "redirect" | "response-too-large";
+
+export class BackendChannelError extends Error {
+  constructor(readonly reason: BackendChannelFailure) {
+    super(`Fallo del canal hacia el backend: ${reason}`);
+  }
+}
+
+export interface BackendRequest {
+  method: string;
+  /** Ruta con /api/v1 y query; el destino lo fija siempre la configuración. */
+  path: string;
+  headers: Headers;
+  body?: Uint8Array<ArrayBuffer>;
+}
+
+/**
+ * Llamada común hacia FastAPI. Agrega exactamente una cabecera Authorization con la credencial de
+ * servicio (reemplaza cualquier valor previo), usa HTTPS con la verificación de certificado y
+ * nombre de Node (sin desactivarla), no sigue redirecciones y lee la respuesta completa con tope
+ * de tamaño dentro del plazo de la señal. Lanza BackendChannelError sin detalles internos.
+ */
+export async function callBackend(
+  config: BackendConfig,
+  request: BackendRequest,
+  signal: AbortSignal
+): Promise<{ response: Response; body: Uint8Array<ArrayBuffer> | null }> {
+  const headers = new Headers(request.headers);
+  headers.delete("authorization");
+  headers.set("authorization", `Bearer ${config.credential}`);
+
+  let response: Response;
+  try {
+    response = await fetch(`${config.origin}${request.path}`, {
+      method: request.method,
+      headers,
+      body: request.body,
+      // No seguir redirecciones: llevarían la credencial y las cookies a otro destino.
+      redirect: "manual",
+      cache: "no-store",
+      signal,
+    });
+  } catch {
+    // Backend apagado, sin red, certificado o nombre no válidos, o plazo vencido.
+    throw new BackendChannelError("unavailable");
+  }
+  if (response.status >= 300 && response.status < 400) {
+    await response.body?.cancel().catch(() => {});
+    throw new BackendChannelError("redirect");
+  }
+  if (BODYLESS_STATUS.has(response.status)) {
+    await response.body?.cancel().catch(() => {});
+    return { response, body: null };
+  }
+  let body: Uint8Array<ArrayBuffer> | null;
+  try {
+    body = await readLimited(response.body, MAX_RESPONSE_BODY_BYTES, signal);
+  } catch {
+    // Plazo vencido o conexión cortada a mitad del cuerpo.
+    throw new BackendChannelError("unavailable");
+  }
+  if (body === null) throw new BackendChannelError("response-too-large");
+  return { response, body };
+}
+
 /** Reenvía la petición del navegador a FastAPI conservando /api/v1 y filtrando cabeceras. */
 export async function proxyToBackend(request: Request, segments: string[]): Promise<Response> {
   const config = getBackendConfig("proxy");
@@ -140,47 +295,40 @@ export async function proxyToBackend(request: Request, segments: string[]): Prom
   if (segments.length === 0 || segments.some((s) => s === "" || s === "." || s === "..")) {
     return proxyError(404, backendApiError("NOT_FOUND", "La ruta solicitada no existe."));
   }
-  const path = segments.map(encodeURIComponent).join("/");
-  const target = `${config.origin}${API_PREFIX}/${path}${new URL(request.url).search}`;
+  const path = `${API_PREFIX}/${segments.map(encodeURIComponent).join("/")}${new URL(request.url).search}`;
 
   const headers = new Headers();
   for (const name of FORWARDED_REQUEST_HEADERS) {
     const value = request.headers.get(name);
     if (value !== null) headers.set(name, value);
   }
-  const cookie = filterCookieHeader(request.headers.get("cookie"), config.cookieNames);
+  const cookie = filterCookieHeader(request.headers.get("cookie"));
   if (cookie) headers.set("cookie", cookie);
 
-  let body: ArrayBuffer | undefined;
-  if (request.method !== "GET" && request.method !== "HEAD") {
-    const buffer = await request.arrayBuffer();
-    if (buffer.byteLength > 0) body = buffer;
-  }
+  // El plazo empieza aquí y cubre también la lectura del cuerpo que envía el navegador.
+  const signal = AbortSignal.timeout(BACKEND_TIMEOUT_MS);
 
-  let response: Response;
-  let responseBody: ArrayBuffer | null;
-  try {
-    response = await fetch(target, {
-      method: request.method,
-      headers,
-      body,
-      // No seguir redirecciones: podrían llevar las cookies a otro host.
-      redirect: "manual",
-      cache: "no-store",
-      // Un solo plazo para la respuesta completa: cabeceras y cuerpo.
-      signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
-    });
-    if (response.status >= 300 && response.status < 400) {
-      await response.body?.cancel();
+  let body: Uint8Array<ArrayBuffer> | undefined;
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    const declared = Number(request.headers.get("content-length"));
+    if (declared > MAX_REQUEST_BODY_BYTES) return requestTooLarge();
+    let read: Uint8Array<ArrayBuffer> | null;
+    try {
+      read = await readLimited(request.body, MAX_REQUEST_BODY_BYTES, signal);
+    } catch {
       return unavailable();
     }
-    // El cuerpo se lee completo antes de responder: si el plazo vence o la conexión se corta a
-    // mitad del cuerpo, el navegador recibe el 503 del contrato y no un estado 200 incompleto.
-    responseBody = BODYLESS_STATUS.has(response.status) ? null : await response.arrayBuffer();
+    if (read === null) return requestTooLarge();
+    if (read.byteLength > 0) body = read;
+  }
+
+  let result: Awaited<ReturnType<typeof callBackend>>;
+  try {
+    result = await callBackend(config, { method: request.method, path, headers, body }, signal);
   } catch {
-    // Backend apagado, sin red, conexión cortada o tiempo de espera agotado.
     return unavailable();
   }
+  const { response } = result;
 
   const responseHeaders = new Headers({ "Cache-Control": "no-store" });
   for (const name of FORWARDED_RESPONSE_HEADERS) {
@@ -189,19 +337,18 @@ export async function proxyToBackend(request: Request, segments: string[]): Prom
   }
   // Solo las cookies del perfil activo, cada una en su propia cabecera y sin modificar sus
   // atributos (también las de borrado). Las repetidas pasan todas: el proxy no las normaliza.
-  const dropped: string[] = [];
+  let dropped = 0;
   for (const setCookie of response.headers.getSetCookie()) {
-    const name = setCookieName(setCookie);
-    if (config.cookieNames.has(name)) responseHeaders.append("set-cookie", setCookie);
-    else dropped.push(name || "(sin nombre)");
+    if (config.cookieNames.has(setCookieName(setCookie))) {
+      responseHeaders.append("set-cookie", setCookie);
+    } else {
+      dropped += 1;
+    }
   }
-  if (dropped.length > 0) {
-    // Solo los nombres: nunca valores ni atributos.
-    console.warn(`[proxy] Set-Cookie no permitido descartado: ${dropped.join(", ")}.`);
+  if (dropped > 0) {
+    // Solo un conteo: ni nombres elegidos por el backend, ni valores, ni atributos.
+    console.warn(`[proxy] Se descartaron ${dropped} Set-Cookie no permitidos por el perfil.`);
   }
 
-  return new Response(responseBody, {
-    status: response.status,
-    headers: responseHeaders,
-  });
+  return new Response(result.body, { status: response.status, headers: responseHeaders });
 }

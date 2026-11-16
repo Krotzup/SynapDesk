@@ -120,8 +120,9 @@ Están documentadas en `.env.example` en la raíz del repositorio.
 
 | Variable | Descripción | Ejemplo |
 |---|---|---|
-| `BACKEND_INTERNAL_URL` | Destino FastAPI del proxy de mismo origen y de las lecturas SSR; solo de servidor. El navegador usa rutas relativas `/api/v1/*` | `http://127.0.0.1:8000` |
-| `AUTH_COOKIE_PROFILE` | Cookies que reenvía el proxy: `local` (`synapdesk_*_dev`) o `production` (`__Host-synapdesk_*`); otro valor es un error de configuración (503); solo de servidor | `local` (si no está definida) |
+| `BACKEND_INTERNAL_URL` | Destino FastAPI del proxy de mismo origen y de las lecturas SSR: origen `https://` exacto (SEC-01B); solo de servidor. El navegador usa rutas relativas `/api/v1/*` | `https://127.0.0.1:8000` |
+| `BACKEND_SERVICE_CREDENTIAL` | Credencial de servicio SEC-01B que el proxy y el SSR envían como `Authorization: Bearer`; 32 bytes en base64url (43 caracteres), por entorno; solo de servidor. Nombre provisional (C07) | sin valor por omisión |
+| `AUTH_COOKIE_PROFILE` | Perfil de cookies: `local` (`synapdesk_*_dev`) o `production` (`__Host-synapdesk_*`); obligatoria, otro valor o ausente es un error de configuración (503); solo de servidor | sin valor por omisión |
 | `NEXT_PUBLIC_USE_MOCKS` | `true` para que los services devuelvan datos de ejemplo de `src/mocks`; cualquier otro valor llama al backend | `true` |
 
 El prefijo `NEXT_PUBLIC_` es obligatorio para que Next.js exponga la variable al navegador.
