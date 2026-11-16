@@ -93,20 +93,27 @@ export function Header() {
         onSubmit={handleSearch}
         className="flex items-center gap-2 rounded-full bg-[#F1F5F9] px-4 py-2 w-full max-w-md border border-[#E2E8F0]/60 focus-within:border-[#2563EB] focus-within:ring-2 focus-within:ring-[#2563EB]/20"
       >
-        <svg
-          className="h-4 w-4 text-[#94A3B8] shrink-0"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          aria-hidden="true"
+        {/* La lupa también envía la búsqueda, para quien usa clic o toque en vez de Enter. */}
+        <button
+          type="submit"
+          aria-label="Buscar tickets"
+          className="-m-1 shrink-0 rounded-full p-1 text-[#94A3B8] transition-colors hover:text-[#2563EB] focus-visible:text-[#2563EB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB]"
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
-          />
-        </svg>
+          <svg
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
+            />
+          </svg>
+        </button>
         <input
           type="search"
           name="search"
@@ -115,7 +122,8 @@ export function Header() {
           maxLength={SEARCH_MAX_LENGTH}
           placeholder="Buscar tickets por título, área, usuario o ID..."
           className="w-full bg-transparent text-sm text-[#0F172A] placeholder-[#94A3B8] outline-none"
-          aria-label="Buscar tickets"
+          // El botón se llama «Buscar tickets»; el campo, por su contenido.
+          aria-label="Texto de búsqueda"
         />
       </form>
 
