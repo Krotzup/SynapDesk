@@ -59,13 +59,13 @@ mocks se conserva el aviso explícito de datos de ejemplo y similitud simulada.
 
 Configurar exclusivamente en el servidor Next.js:
 
-| Variable | Uso |
-| --- | --- |
-| `BACKEND_INTERNAL_URL` | URL raíz fija de FastAPI; nunca se acepta del cliente ni se expone mediante NEXT_PUBLIC. |
-| `SEARCH_PUBLIC_ORIGIN` | Origen público exacto, coincidente con el permitido por el backend. |
-| `AUTH_COOKIE_PROFILE` | Perfil explícito `local` o `production`. Usar el mismo valor en FastAPI y en el proxy general de #30 al integrarlos. |
-| `SEARCH_SESSION_COOKIE_NAME` | Alternativa de ensayo sin perfil. Si se configura junto al perfil, debe coincidir con él. |
-| `BACKEND_ALLOW_HTTP_LOCAL` | `true` solo permite HTTP explícito hacia loopback local; los demás destinos exigen HTTPS. |
+| Variable                     | Uso                                                                                                                  |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `BACKEND_INTERNAL_URL`       | URL raíz fija de FastAPI; nunca se acepta del cliente ni se expone mediante NEXT_PUBLIC.                             |
+| `SEARCH_PUBLIC_ORIGIN`       | Origen público exacto, coincidente con el permitido por el backend.                                                  |
+| `AUTH_COOKIE_PROFILE`        | Perfil explícito `local` o `production`. Usar el mismo valor en FastAPI y en el proxy general de #30 al integrarlos. |
+| `SEARCH_SESSION_COOKIE_NAME` | Alternativa de ensayo sin perfil. Si se configura junto al perfil, debe coincidir con él.                            |
+| `BACKEND_ALLOW_HTTP_LOCAL`   | `true` solo permite HTTP explícito hacia loopback local; los demás destinos exigen HTTPS.                            |
 
 Ejemplo de transporte local: frontend `http://localhost:3000`, backend
 `http://localhost:8000` y origen permitido explícito. No mezclar hosts dentro del

@@ -311,12 +311,21 @@ test("upstream errors and network failures never expose provider messages or pri
 
 test("cookie profiles match the shared proxy and reject conflicting settings", async () => {
   for (const [cookieProfile, name, context, otherContext] of [
-    ["local", "synapdesk_session_dev", "synapdesk_csrf_context_dev", "__Host-synapdesk_csrf_context"],
-    ["production", "__Host-synapdesk_session", "__Host-synapdesk_csrf_context", "synapdesk_csrf_context_dev"],
+    [
+      "local",
+      "synapdesk_session_dev",
+      "synapdesk_csrf_context_dev",
+      "__Host-synapdesk_csrf_context",
+    ],
+    [
+      "production",
+      "__Host-synapdesk_session",
+      "__Host-synapdesk_csrf_context",
+      "synapdesk_csrf_context_dev",
+    ],
   ]) {
     const cookie = `${name}=${sid}`;
-    const profiledRequest = () =>
-      request(undefined, { Cookie: `${cookie}; ${context}=${sid}` });
+    const profiledRequest = () => request(undefined, { Cookie: `${cookie}; ${context}=${sid}` });
     const profileConfig = { ...config, sessionCookieName: undefined, cookieProfile };
     const result = await forwardSemanticSearch(
       profiledRequest(),
