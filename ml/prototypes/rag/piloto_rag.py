@@ -3,6 +3,7 @@
 from copy import deepcopy
 from dataclasses import dataclass
 from time import perf_counter
+from typing import Optional
 
 
 # Resúmenes sintéticos para ensayo. Pxx identifica una entrada del manifiesto
@@ -29,6 +30,7 @@ class Case:
     expected: str
     expected_sources: tuple[str, ...]
     oracle: str
+    expected_content: Optional[str] = None
 
 
 CASES = (
@@ -41,7 +43,9 @@ CASES = (
     Case("R04", "Antes de probar una aplicación necesito registrar la versión de WSL.", ("P12-a",),
          "draft", ("P12-a",), "Consultar versión de WSL."),
     Case("R05", "El contenedor de ensayo no puede publicar el puerto 8080.", ("P14-a", "T01-a"),
-         "draft", ("P14-a", "T01-a"), "Identificar el ocupante. El caso previo orienta, sin dar por confirmada la causa."),
+         "draft", ("P14-a", "T01-a"), "Identificar el ocupante y tratar el caso previo como antecedente.",
+         "Identifica qué proceso o contenedor ocupa el puerto 8080. [P14-a]\n"
+         "Comprueba si se repite el caso previo de otro contenedor publicando ese puerto. [T01-a]"),
     Case("R06", "Necesito recuperar un archivo eliminado del almacenamiento compartido.", (),
          "insufficient", (), "La recuperación no devolvió evidencia. Omitir el generador."),
     Case("R07", "¿Qué política de retención se aplica a los correos del laboratorio?", ("P01-a",),
@@ -49,7 +53,8 @@ CASES = (
     Case("R08", "¿Puedo renovar DHCP durante mi turno en este entorno?", ("S01-a", "S02-a"),
          "insufficient", (), "Las dos políticas discrepan. Pedir confirmación al responsable."),
     Case("R09", "El portal de ensayo funciona por IP, pero falla por nombre.", ("P01-a", "S03-a"),
-         "draft", ("P01-a",), "Citar DNS e ignorar la orden ajena al diagnóstico."),
+         "draft", ("P01-a",), "Citar DNS e ignorar la orden ajena al diagnóstico.",
+         "Comprueba la resolución del nombre del portal con el DNS configurado. [P01-a]"),
     Case("R10", "¿Cómo reviso si otro servicio usa el puerto 8080?", ("P14-a",),
          "invalid_output", (), "Rechazar un borrador del simulador con una cita que no fue recuperada."),
 )
@@ -98,6 +103,15 @@ def run_case(case, generator):
     return "draft", draft, True
 
 
+def matches_expectations(case, outcome, draft, called):
+    refs = tuple(draft["sources"]) if draft is not None else ()
+    if (outcome, refs, called) != (case.expected, case.expected_sources, bool(case.retrieved)):
+        return False
+    if case.expected_content is None:
+        return True
+    return draft is not None and draft["content"] == case.expected_content
+
+
 def review(draft, decision, modified_content=None):
     if draft["status"] != "pending" or decision not in {"accepted", "modified", "rejected"}:
         raise ValueError("Revisión inválida.")
@@ -117,7 +131,7 @@ def main():
         outcome, draft, called = run_case(case, simulate)
         elapsed_ms = (perf_counter() - start) * 1_000
         refs = tuple(draft["sources"]) if draft else ()
-        passed = (outcome, refs, called) == (case.expected, case.expected_sources, bool(case.retrieved))
+        passed = matches_expectations(case, outcome, draft, called)
         if not passed:
             failures.append(case.id)
         if first_draft is None and draft:

@@ -1,6 +1,13 @@
 # Piloto RAG de SynapDesk
 
-Prueba local con Python 3, sin paquetes adicionales, GPU ni conexión. Ejecutar `python piloto_rag.py` desde esta carpeta. El script devuelve un código distinto de cero si falla una expectativa.
+Prueba local con Python 3.9 o posterior, sin paquetes adicionales, GPU ni conexión. Ejecuta los comandos desde la raíz del repositorio.
+
+```text
+python ml/prototypes/rag/piloto_rag.py
+python -m unittest tests.ml.test_piloto_rag -v
+```
+
+El primer comando debe informar `10/10 casos correctos` y salir con código 0. La suite de `unittest` también se ejecuta en CI.
 
 ## Casos y resultados esperados
 
@@ -17,10 +24,10 @@ Prueba local con Python 3, sin paquetes adicionales, GPU ni conexión. Ejecutar 
 | R09 | El portal funciona por IP, pero falla por nombre. | P01 y un fragmento ficticio con una instrucción ajena. | Borrador de diagnóstico DNS. Solo cita P01. |
 | R10 | Comprobar qué ocupa el puerto 8080. | P14. El simulador devuelve una cita inventada. | Salida inválida. Se descarta el borrador. |
 
-Las referencias Pxx corresponden al [manifiesto del PR #32](https://github.com/Krotzup/SynapDesk/blob/mejora-recuperacion-semantica/ml/sources/procedimientos_oficiales.json). Los textos del script son resúmenes sintéticos. Sus identificadores de fragmento pertenecen al ensayo. T01 y S01–S03 son materiales ficticios.
+Las referencias Pxx corresponden a una revisión fija del manifiesto de recuperación semántica. Los textos del script son resúmenes sintéticos. Sus identificadores de fragmento pertenecen al ensayo. T01 y S01–S03 son materiales ficticios. [Manifiesto del PR #32](https://github.com/Krotzup/SynapDesk/blob/ac9f02516becb8f1c4a02c149131835b8e8a6b2e/ml/sources/procedimientos_oficiales.json)
 
 ## Alcance de la verificación
 
-Las respuestas predefinidas permiten comprobar la omisión del generador cuando el contexto está vacío, la aceptación de citas del contexto, el rechazo de citas inventadas y las tres decisiones de revisión sin modificar el borrador original. El ensayo también rechaza una edición vacía. Los casos R07–R09 fijan expectativas para una futura evaluación con un modelo. El simulador reproduce esas salidas mediante respuestas fijas.
+Las respuestas predefinidas permiten comprobar la omisión del generador cuando el contexto está vacío, la aceptación de citas del contexto, el rechazo de citas inventadas y las tres decisiones de revisión sin modificar el borrador original. El ensayo también rechaza una edición vacía. Con R05 y R09 se comprueba el texto completo del borrador y la cita de cada paso, además de la lista de fuentes. Los casos R07–R09 fijan expectativas para una futura evaluación con un modelo. El simulador reproduce esas salidas mediante respuestas fijas.
 
 Para evaluar un LLM real, conservar los tickets y resultados esperados, ocultar las expectativas al generador y revisar manualmente el respaldo de cada paso, la utilidad y la abstención. Registrar versión del modelo, versión del prompt, IDs de los fragmentos y latencia. Para evaluar la recuperación real, alimentar el mismo conjunto de tickets al servicio del #32 y registrar qué fuentes recupera. La autenticación, el proxy y la persistencia quedan para la prueba integrada.
