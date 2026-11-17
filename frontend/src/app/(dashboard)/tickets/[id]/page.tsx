@@ -2,9 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AssistantPanel } from "@/components/recommendations/AssistantPanel";
 import { AssistantRecommendation } from "@/components/recommendations/AssistantRecommendation";
+import { RecommendationHistory } from "@/components/recommendations/RecommendationHistory";
 import { PriorityBadge, StatusBadge } from "@/components/ui/Badge";
 import { isApiError } from "@/lib/errors";
 import { formatDateTime, shortId } from "@/lib/format";
+import { splitRecommendations } from "@/lib/recommendation-history";
 import { recommendationsService } from "@/services/recommendations";
 import { ticketsService } from "@/services/tickets";
 import { Ticket } from "@/types";
@@ -28,7 +30,7 @@ export default async function TicketDetailPage({ params }: TicketDetailPageProps
     getTicket(id),
     recommendationsService.getByTicket(id),
   ]);
-  const recommendation = recommendations.at(-1) ?? null;
+  const { latest: recommendation, previous } = splitRecommendations(recommendations);
 
   return (
     // Bajo 1280 px, el margen derecho deja libre el botón fijo del Asistente IA.
@@ -112,6 +114,8 @@ export default async function TicketDetailPage({ params }: TicketDetailPageProps
             ticketId={ticket.id}
             initialRecommendation={recommendation}
           />
+
+          <RecommendationHistory recommendations={previous} />
         </AssistantPanel>
       </div>
     </div>

@@ -4,6 +4,35 @@ import { MOCK_ERROR_QUERY, rejectWithApiError, simulateLatency } from "./utils";
 
 // Recomendaciones ficticias. El score es similitud coseno (rango -1 a 1), no un porcentaje.
 const recommendations: Recommendation[] = [
+  // Dos recomendaciones anteriores del mismo ticket, para ver el historial en el detalle.
+  // El contenido es el original de la IA: la revisión no lo sobrescribe.
+  {
+    id: "2f4e6a8c-1b3d-4e5f-9a7b-8c9d0e1f2a01",
+    ticketId: "64f10aed-c41c-46a3-91dd-f2cbcd5eb79f",
+    content:
+      "Reinicia el equipo del usuario y vuelve a intentar la conexión a la base de datos desde la aplicación.",
+    status: "rejected",
+    sources: [],
+    createdAt: "2026-10-28T11:05:00Z",
+  },
+  {
+    id: "2f4e6a8c-1b3d-4e5f-9a7b-8c9d0e1f2a02",
+    ticketId: "64f10aed-c41c-46a3-91dd-f2cbcd5eb79f",
+    content:
+      "Comprueba que el servicio de base de datos esté en ejecución y que la aplicación use el puerto correcto.",
+    status: "modified",
+    sources: [
+      {
+        documentId: "5e923ab0-5cee-4c50-b0dc-35fa54ca54aa",
+        documentChunkId: "77223789-bd19-4642-a550-b4f52210320c",
+        title: "Manual de PostgreSQL",
+        excerpt:
+          "Verifique el estado del servicio PostgreSQL y que el puerto 5432 esté habilitado en el firewall.",
+        score: 0.71,
+      },
+    ],
+    createdAt: "2026-10-28T12:10:00Z",
+  },
   {
     id: "459235aa-e33a-4e19-9055-b085319ff895",
     ticketId: "64f10aed-c41c-46a3-91dd-f2cbcd5eb79f",

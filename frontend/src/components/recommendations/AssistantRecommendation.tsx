@@ -10,13 +10,7 @@ import { getFieldErrors, isApiError, isAuthenticationRequired } from "@/lib/erro
 import { recommendationsService } from "@/services/recommendations";
 import { HumanReview, Recommendation, RecommendationStatus, ReviewDecision } from "@/types";
 import { RecommendationSources } from "./RecommendationSources";
-
-const statusLabels: Record<RecommendationStatus, string> = {
-  pending: "Pendiente de revisión",
-  accepted: "Aceptada",
-  modified: "Modificada",
-  rejected: "Rechazada",
-};
+import { RecommendationStatusBadge } from "@/components/ui/Badge";
 
 const reviewedMessages: Record<RecommendationStatus, string> = {
   pending: "La recomendación está pendiente de revisión.",
@@ -338,9 +332,7 @@ export function AssistantRecommendation({
       <div>
         <div className="flex items-center justify-between gap-2 mb-1.5">
           <p className="text-xs font-bold text-[#4338CA]">Recomendación generada</p>
-          <span className="text-[11px] font-semibold text-[#4338CA] bg-[#E0E7FF] px-2 py-0.5 rounded-full">
-            {statusLabels[recommendation.status]}
-          </span>
+          <RecommendationStatusBadge status={recommendation.status} />
         </div>
 
         {mode === "edit" && isPending ? (
