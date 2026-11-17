@@ -1,3 +1,4 @@
+import { parsePage } from "@/lib/params";
 import { TicketListParams, TicketPriority, TicketStatus } from "@/types";
 
 export const TICKET_PAGE_SIZE = 10;
@@ -26,14 +27,12 @@ function oneOf<T extends string>(values: readonly T[], value: string | undefined
  * en lugar de enviarse al backend.
  */
 export function parseTicketListParams(searchParams: SearchParams): TicketListParams {
-  const page = Number(first(searchParams.page));
-
   return {
     status: oneOf(TICKET_STATUSES, first(searchParams.status)),
     priority: oneOf(TICKET_PRIORITIES, first(searchParams.priority)),
     area: first(searchParams.area),
     search: first(searchParams.search),
-    page: Number.isInteger(page) && page >= 1 ? page : 1,
+    page: parsePage(searchParams.page),
     pageSize: TICKET_PAGE_SIZE,
   };
 }

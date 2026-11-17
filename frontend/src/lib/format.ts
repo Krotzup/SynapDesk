@@ -32,3 +32,16 @@ export function formatExcerpt(excerpt: string): string {
 export function shortId(id: string): string {
   return id.slice(0, 8);
 }
+
+// Tipos de archivo de la base de conocimientos con un nombre conocido para el usuario.
+const contentTypeLabels: Record<string, string> = {
+  "application/pdf": "PDF",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "Word",
+  "text/markdown": "Markdown",
+  "text/plain": "Texto",
+};
+
+/** Nombre legible del tipo de archivo; si no se conoce, el tipo MIME tal cual. */
+export function formatContentType(contentType: string): string {
+  return contentTypeLabels[contentType.split(";")[0].trim().toLowerCase()] ?? contentType;
+}
