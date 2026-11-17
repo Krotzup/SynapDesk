@@ -50,6 +50,29 @@ fabricar identidades. Las pruebas de navegador usan un doble explícito de las
 rutas de bootstrap, junto con sesión/CSRF persistentes y recuperación reales;
 eso no constituye validación completa de autenticación de producción.
 
+## Punto 3.1 · CSRF y reintento de búsqueda
+
+**Propuesta pendiente de acuerdo.** Mantener un token CSRF válido ligado a la
+sesión para `POST /api/v1/search` y aceptar el reintento manual como excepción
+al reintento automático único de
+[Autenticación V1](../contratos/autenticacion-v1.md#renovación-y-reintento-del-cliente--approved).
+Así se conserva la protección por sesión y origen que ya aplica la búsqueda.
+Ante `CSRF_INVALID`, la persona ve el rechazo y decide si vuelve a buscar.
+El siguiente intento obtiene un token vigente antes de enviar el POST.
+
+| Criterio de aceptación de la propuesta | Evidencia disponible |
+| --- | --- |
+| Con sesión, origen y token válidos, la búsqueda devuelve su resultado. Con un origen no permitido devuelve `403 ORIGIN_INVALID`. | Pruebas del endpoint y del proxy. Queda por verificar el flujo desde el navegador con las rutas reales de autenticación. |
+| Con sesión válida, un token rechazado devuelve `403 CSRF_INVALID` antes de efectuar la búsqueda. | Pruebas del endpoint, incluidas las de integración. |
+| Tras `403 CSRF_INVALID`, el cliente muestra el rechazo y no repite el POST. Un reintento manual obtiene un token vigente y envía un solo POST nuevo. | Prueba del cliente en [search.mjs](../../frontend/tests/search.mjs) con respuestas simuladas. |
+| Después del logout, el token y la cookie de la sesión cerrada no permiten buscar. | Validar el recorrido completo con AUTH-07. |
+
+Antes de habilitar la búsqueda, registrar el acuerdo de forma explícita en
+los contratos de búsqueda y autenticación. Con el proxy acordado y AUTH-07
+disponible, repetir el recorrido de inicio de sesión, obtención de CSRF,
+búsqueda, rechazo, reintento manual y cierre de sesión. Usar la pestaña de
+red para comprobar la cantidad de POST y anotar los códigos de respuesta.
+
 ## Comparación exploratoria del contenido indexado
 
 Se compararon los mismos 15 documentos y las mismas consultas sintéticas antes

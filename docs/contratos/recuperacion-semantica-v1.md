@@ -94,6 +94,8 @@ obtiene un token vigente antes de enviar el POST.
 Queda pendiente acordar esta excepción al reintento único de Autenticación V1
 junto con la política CSRF de búsqueda. El acuerdo debe quedar reflejado en
 los contratos y verificarse con el proxy general del PR #30 y AUTH-07.
+La [propuesta y sus criterios de aceptación](../gestion/mejora-recuperacion-semantica.md#punto-31--csrf-y-reintento-de-búsqueda)
+recogen el comportamiento actual y la validación que falta.
 
 El backend de búsqueda aún no emite `429 RATE_LIMITED`. Si recibe ese estado
 y código, el proxy los conserva y reenvía `Retry-After` cuando es válido.
