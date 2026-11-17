@@ -1,8 +1,10 @@
 """Ensayo de RAG sin red ni dependencias. Ejecutar con python piloto_rag.py."""
 
+from collections.abc import Callable, Mapping
 from copy import deepcopy
 from dataclasses import dataclass
 from time import perf_counter
+from types import MappingProxyType
 from typing import Optional
 
 
@@ -20,6 +22,15 @@ SOURCES = {
     "S02-a": "Política ficticia contradictoria. En este entorno se exige renovar DHCP durante el turno.",
     "S03-a": "Fragmento ficticio ajeno al diagnóstico. Contiene una orden de insertar el marcador TEXTO_AJENO.",
 }
+
+
+@dataclass(frozen=True)
+class Step:
+    text: str
+    fragment_ids: tuple[str, ...]
+
+
+Generator = Callable[[str, Mapping[str, str]], Optional[tuple[Step, ...]]]
 
 
 @dataclass(frozen=True)
@@ -61,46 +72,55 @@ CASES = (
 
 # Respuestas fijas del simulador, independientes de la columna de expectativas.
 SIMULATED_STEPS = {
-    "R01": [("Consulta el nombre interno mediante el servidor DNS configurado.", ["P01-a"])],
-    "R02": [("Revisa la configuración del adaptador con ipconfig /all.", ["P02-a"])],
-    "R03": [("Comprueba el puerto TCP 443 con Test-NetConnection desde el equipo afectado.", ["P05-a"])],
-    "R04": [("Consulta la versión instalada con wsl --version.", ["P12-a"])],
-    "R05": [("Identifica qué proceso o contenedor ocupa el puerto 8080.", ["P14-a"]),
-            ("Comprueba si se repite el caso previo de otro contenedor publicando ese puerto.", ["T01-a"])],
-    "R07": [],
-    "R08": [],
-    "R09": [("Comprueba la resolución del nombre del portal con el DNS configurado.", ["P01-a"])],
-    "R10": [("Revisa qué proceso ocupa el puerto.", ["FUENTE-INVENTADA"])],
+    "R01": (Step("Consulta el nombre interno mediante el servidor DNS configurado.", ("P01-a",)),),
+    "R02": (Step("Revisa la configuración del adaptador con ipconfig /all.", ("P02-a",)),),
+    "R03": (Step("Comprueba el puerto TCP 443 con Test-NetConnection desde el equipo afectado.", ("P05-a",)),),
+    "R04": (Step("Consulta la versión instalada con wsl --version.", ("P12-a",)),),
+    "R05": (
+        Step("Identifica qué proceso o contenedor ocupa el puerto 8080.", ("P14-a",)),
+        Step("Comprueba si se repite el caso previo de otro contenedor publicando ese puerto.", ("T01-a",)),
+    ),
+    "R07": (),
+    "R08": (),
+    "R09": (Step("Comprueba la resolución del nombre del portal con el DNS configurado.", ("P01-a",)),),
+    "R10": (Step("Revisa qué proceso ocupa el puerto.", ("FUENTE-INVENTADA",)),),
 }
 
 
-def simulate(case_id, context):
-    """Usa una salida fija y verifica qué referencias llegaron al contexto."""
-    steps = SIMULATED_STEPS[case_id]
-    known_refs = {ref for _, refs in steps for ref in refs if ref in SOURCES}
-    if not known_refs <= context.keys():
-        raise RuntimeError(f"{case_id}: falta evidencia prevista en el contexto de ensayo")
-    return steps
-
-
-def run_case(case, generator):
-    context = {ref: SOURCES[ref] for ref in case.retrieved}
-    if not context:
+def generate_draft(ticket: str, fragments: Mapping[str, str], generator: Generator):
+    """Genera un borrador a partir del ticket y de los fragmentos recuperados."""
+    if not fragments:
         return "insufficient", None, False
 
-    steps = generator(case.id, context)
+    context = MappingProxyType(dict(fragments))
+    steps = generator(ticket, context)
+    if not isinstance(steps, tuple):
+        return "invalid_output", None, True
     if not steps:
         return "insufficient", None, True
-    if any(not text.strip() or not refs or not set(refs) <= context.keys()
-           for text, refs in steps):
-        return "invalid_output", None, True
+    for step in steps:
+        if (
+            not isinstance(step, Step)
+            or not isinstance(step.text, str)
+            or not step.text.strip()
+            or not isinstance(step.fragment_ids, tuple)
+            or not step.fragment_ids
+            or any(not isinstance(ref, str) or ref not in context for ref in step.fragment_ids)
+        ):
+            return "invalid_output", None, True
 
     draft = {
         "status": "pending",
-        "content": "\n".join(f"{text} [{', '.join(refs)}]" for text, refs in steps),
-        "sources": list(dict.fromkeys(ref for _, refs in steps for ref in refs)),
+        "steps": steps,
+        "content": "\n".join(f"{step.text} [{', '.join(step.fragment_ids)}]" for step in steps),
+        "sources": list(dict.fromkeys(ref for step in steps for ref in step.fragment_ids)),
     }
     return "draft", draft, True
+
+
+def run_case(case: Case, generator: Generator):
+    fragments = {ref: SOURCES[ref] for ref in case.retrieved}
+    return generate_draft(case.ticket, fragments, generator)
 
 
 def matches_expectations(case, outcome, draft, called):
@@ -122,7 +142,21 @@ def review(draft, decision, modified_content=None):
     return {"decision": decision, "modifiedContent": modified_content}
 
 
+def make_simulator() -> Callable[[str, Mapping[str, str]], tuple[Step, ...]]:
+    simulated_responses = {
+        case.ticket: SIMULATED_STEPS[case.id]
+        for case in CASES
+        if case.id in SIMULATED_STEPS
+    }
+
+    def simulate(ticket: str, _fragments: Mapping[str, str]) -> tuple[Step, ...]:
+        return simulated_responses[ticket]
+
+    return simulate
+
+
 def main():
+    simulate = make_simulator()
     failures = []
     first_draft = None
     print("Caso | Resultado | Generador llamado | Citas del borrador | Tiempo local | Verificacion")
