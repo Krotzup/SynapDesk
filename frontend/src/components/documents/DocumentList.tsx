@@ -1,11 +1,14 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { RetryButton } from "@/components/ui/RetryButton";
 import { DocumentStatusBadge } from "@/components/ui/Badge";
 import { Pagination } from "@/components/ui/Pagination";
+import { isApiError, isAuthenticationRequired } from "@/lib/errors";
 import { formatContentType, formatDateTime } from "@/lib/format";
 import { buildQuery } from "@/lib/params";
 import { documentsService } from "@/services/documents";
+import { Document, PaginatedResponse } from "@/types";
 
 interface DocumentListProps {
   page: number;
@@ -20,9 +23,15 @@ const hrefFor = (page: number) => `/documentos${buildQuery({ page: page > 1 ? pa
  */
 export async function DocumentList({ page, pageSize }: DocumentListProps) {
   await connection();
-  const result = await documentsService.getAll({ page, pageSize }).catch(() => null);
-
-  if (!result) {
+  let result: PaginatedResponse<Document>;
+  try {
+    result = await documentsService.getAll({ page, pageSize });
+  } catch (error) {
+    // Sin sesión válida (401): al login, como el resto del panel.
+    if (isAuthenticationRequired(error)) redirect("/login");
+    // Errores que no tienen el formato del contrato (por ejemplo, un fallo de programación) no
+    // se ocultan como temporales: los muestra la página de error del panel.
+    if (!isApiError(error)) throw error;
     return (
       <div
         role="alert"
