@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/Button";
+
 const areaMetrics = [
   { name: "Backend", total: 42, resolved: 38, avgTime: "18m", rate: 90 },
   { name: "Frontend", total: 35, resolved: 31, avgTime: "12m", rate: 88 },
@@ -23,9 +25,9 @@ export default function MetricasPage() {
               <option>Este mes</option>
               <option>Último trimestre</option>
             </select>
-            <button className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white border border-[#E2E8F0] hover:bg-[#F8FAFC] text-[#0F172A] text-xs font-semibold rounded-xl transition-colors shadow-sm">
+            <Button type="button" variant="secondary">
               📊 Exportar PDF
-            </button>
+            </Button>
           </div>
         </div>
 

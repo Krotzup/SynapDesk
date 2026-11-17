@@ -1,9 +1,9 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { Button } from "@/components/ui/Button";
 import { buildQuery } from "@/lib/params";
 import { Role } from "@/types";
 
@@ -25,27 +25,8 @@ function initialsFromEmail(email: string): string {
   return letters.toUpperCase();
 }
 
-const mockNotifications = [
-  {
-    id: 1,
-    title: "Nuevo ticket asignado",
-    desc: "Se te asignó el ticket #TCK-4827 de Base de Datos.",
-    time: "Hace 5 min",
-    unread: true,
-  },
-  {
-    id: 2,
-    title: "Respuesta del Asistente IA",
-    desc: "El motor RAG generó una recomendación para #TCK-4826.",
-    time: "Hace 20 min",
-    unread: true,
-  },
-];
-
 export function Header() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const [notifications, setNotifications] = useState(mockNotifications);
 
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -53,8 +34,6 @@ export function Header() {
   const { user, signOut } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
-
-  const unreadCount = notifications.filter((n) => n.unread).length;
 
   // La redirección al login la hace AuthProvider cuando se confirma el cierre.
   const handleLogout = async () => {
@@ -77,10 +56,6 @@ export function Header() {
     if (!term) return;
     router.push(`/tickets${buildQuery({ search: term })}`);
     setSearch("");
-  };
-
-  const markAllAsRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, unread: false })));
   };
 
   return (
@@ -128,145 +103,62 @@ export function Header() {
         />
       </form>
 
-      {/* Acciones y perfil */}
-      <div className="flex items-center gap-3 relative">
-        {/* Notificaciones */}
-        <div className="relative">
-          <button
-            onClick={() => {
-              setIsNotifOpen(!isNotifOpen);
-              setIsUserMenuOpen(false);
-            }}
-            className="relative rounded-full p-2 text-[#64748B] hover:bg-[#F1F5F9] transition-colors outline-none"
-            aria-label="Notificaciones"
+      {/* Perfil de usuario: el disparador abre un panel con el correo, el rol y Cerrar sesión */}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+          // El nombre incluye el correo visible (WCAG 2.5.3, etiqueta en el nombre).
+          aria-label={`Menú de usuario: ${user.email}`}
+          aria-expanded={isUserMenuOpen}
+          aria-controls="menu-usuario"
+          className="flex items-center gap-2.5 cursor-pointer rounded-full px-2.5 py-1.5 hover:bg-[#F1F5F9] transition-colors select-none outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB]"
+        >
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#6366F1] text-xs font-bold text-white">
+            {initialsFromEmail(user.email)}
+          </div>
+          <span className="text-sm font-semibold text-[#0F172A]">{user.email}</span>
+          <svg
+            className={`h-4 w-4 text-[#94A3B8] transition-transform duration-200 ${isUserMenuOpen ? "rotate-180" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
           >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        {isUserMenuOpen && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setIsUserMenuOpen(false)} />
+            <div
+              id="menu-usuario"
+              className="absolute right-0 mt-2 w-56 rounded-2xl bg-white p-2 shadow-xl border border-[#E2E8F0] z-20 text-xs font-medium text-[#0F172A]"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-              />
-            </svg>
-            {unreadCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#EF4444] opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#EF4444]" />
-              </span>
-            )}
-          </button>
-
-          {isNotifOpen && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setIsNotifOpen(false)} />
-              <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white p-4 shadow-xl border border-[#E2E8F0] z-20 text-xs text-[#0F172A]">
-                <div className="flex items-center justify-between border-b border-[#F1F5F9] pb-3 mb-2">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-sm">Notificaciones</h3>
-                    {unreadCount > 0 && (
-                      <span className="bg-[#2563EB] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                        {unreadCount} nuevas
-                      </span>
-                    )}
-                  </div>
-                  {unreadCount > 0 && (
-                    <button
-                      onClick={markAllAsRead}
-                      className="text-[11px] font-semibold text-[#2563EB] hover:underline"
-                    >
-                      Marcar leídas
-                    </button>
-                  )}
-                </div>
-                <div className="divide-y divide-[#F1F5F9] max-h-80 overflow-y-auto">
-                  {notifications.map((item) => (
-                    <div
-                      key={item.id}
-                      className={`py-3 px-2 rounded-xl ${item.unread ? "bg-[#EFF6FF]/60" : "hover:bg-[#F8FAFC]"}`}
-                    >
-                      <div className="flex items-center justify-between font-bold mb-1">
-                        <span>{item.title}</span>
-                        <span className="text-[10px] font-normal text-[#94A3B8]">{item.time}</span>
-                      </div>
-                      <p className="text-[11px] text-[#64748B] leading-relaxed">{item.desc}</p>
-                    </div>
-                  ))}
-                </div>
+              <div className="px-3 py-2 border-b border-[#F1F5F9]">
+                <p className="font-bold text-sm break-all">{user.email}</p>
+                <p className="text-[#94A3B8] text-[11px] mt-0.5">{roleLabels[user.role]}</p>
               </div>
-            </>
-          )}
-        </div>
-
-        {/* Perfil de usuario */}
-        <div className="relative">
-          <button
-            onClick={() => {
-              setIsUserMenuOpen(!isUserMenuOpen);
-              setIsNotifOpen(false);
-            }}
-            className="flex items-center gap-2.5 cursor-pointer rounded-full px-2.5 py-1.5 hover:bg-[#F1F5F9] transition-colors select-none outline-none"
-          >
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#6366F1] text-xs font-bold text-white">
-              {initialsFromEmail(user.email)}
+              <div className="pt-2">
+                <Button
+                  type="button"
+                  variant="danger"
+                  fullWidth
+                  onClick={handleLogout}
+                  disabled={isSigningOut}
+                >
+                  {isSigningOut ? "Cerrando sesión…" : "Cerrar sesión"}
+                </Button>
+                {logoutError && (
+                  <p role="alert" className="px-3 py-1.5 text-[11px] text-[#B91C1C]">
+                    {logoutError}
+                  </p>
+                )}
+              </div>
             </div>
-            <span className="text-sm font-semibold text-[#0F172A]">{user.email}</span>
-            <svg
-              className={`h-4 w-4 text-[#94A3B8] transition-transform duration-200 ${isUserMenuOpen ? "rotate-180" : ""}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 9l-7 7-7-7"
-              />
-            </svg>
-          </button>
-
-          {isUserMenuOpen && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setIsUserMenuOpen(false)} />
-              <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white p-2 shadow-xl border border-[#E2E8F0] z-20 text-xs font-medium text-[#0F172A]">
-                <div className="px-3 py-2 border-b border-[#F1F5F9]">
-                  <p className="font-bold text-sm break-all">{user.email}</p>
-                  <p className="text-[#94A3B8] text-[11px] mt-0.5">{roleLabels[user.role]}</p>
-                </div>
-                <div className="py-1">
-                  <Link
-                    href="/admin"
-                    onClick={() => setIsUserMenuOpen(false)}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-[#F1F5F9] text-[#475569] hover:text-[#0F172A] transition-colors"
-                  >
-                    ⚙️ Configuración
-                  </Link>
-                </div>
-                <div className="border-t border-[#F1F5F9] pt-1">
-                  <button
-                    onClick={handleLogout}
-                    disabled={isSigningOut}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-[#FEF2F2] text-[#EF4444] font-semibold transition-colors text-left disabled:opacity-50"
-                  >
-                    🚪 {isSigningOut ? "Cerrando sesión…" : "Cerrar sesión"}
-                  </button>
-                  {logoutError && (
-                    <p role="alert" className="px-3 py-1.5 text-[11px] text-[#B91C1C]">
-                      {logoutError}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+          </>
+        )}
       </div>
     </header>
   );
