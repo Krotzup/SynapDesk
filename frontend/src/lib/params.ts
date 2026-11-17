@@ -13,11 +13,12 @@ export function buildQuery<T extends object>(params?: T): string {
 }
 
 /**
- * Número de página leído de la URL (?page=). Cualquier valor que no sea un entero mayor o igual
- * a 1 (vacío, texto, decimal, negativo) se trata como la primera página.
+ * Número de página leído de la URL (?page=). Solo se aceptan dígitos: cualquier otro valor
+ * (vacío, texto, decimal, negativo, notación científica como "1e2" o hexadecimal como "0x10")
+ * o un número fuera del rango seguro se trata como la primera página.
  */
 export function parsePage(value: string | string[] | undefined): number {
-  const raw = Array.isArray(value) ? value[0] : value;
-  const page = Number(raw?.trim() || undefined);
-  return Number.isInteger(page) && page >= 1 ? page : 1;
+  const raw = (Array.isArray(value) ? value[0] : value)?.trim() ?? "";
+  const page = /^\d+$/.test(raw) ? Number(raw) : NaN;
+  return Number.isSafeInteger(page) && page >= 1 ? page : 1;
 }

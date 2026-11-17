@@ -31,9 +31,16 @@ describe("parsePage", () => {
   });
 
   test("cualquier otro valor es la primera página", () => {
-    for (const value of [undefined, "", "   ", "0", "-2", "1.5", "abc", "2x", "Infinity"]) {
+    for (const value of [undefined, "", "   ", "0", "-2", "1.5", "abc", "2x", "Infinity", "+3"]) {
       assert.equal(parsePage(value), 1, `valor ${JSON.stringify(value)}`);
     }
+  });
+
+  test("rechaza notación científica, hexadecimal y números fuera del rango seguro", () => {
+    for (const value of ["1e2", "0x10", "1e308", "9007199254740993"]) {
+      assert.equal(parsePage(value), 1, `valor ${JSON.stringify(value)}`);
+    }
+    assert.equal(parsePage("007"), 7);
   });
 
   test("con el parámetro repetido usa el primero", () => {
