@@ -33,7 +33,7 @@ const usersList = [
 
 export default function AdminPage() {
   return (
-    <div className="p-8 bg-[#F8FAFC] min-h-screen">
+    <div className="px-4 py-6 sm:p-6 lg:p-8 bg-[#F8FAFC] min-h-screen">
       <div className="max-w-5xl mx-auto space-y-6">
         {/* Encabezado */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -55,7 +55,7 @@ export default function AdminPage() {
             <input
               type="text"
               placeholder="Buscar por nombre o correo..."
-              className="w-full sm:w-64 bg-[#F8FAFC] border border-[#E2E8F0] text-xs rounded-xl px-3 py-2 text-[#0F172A] placeholder-[#94A3B8] outline-none focus:border-[#2563EB]"
+              className="w-full sm:w-64 min-h-11 sm:min-h-0 bg-[#F8FAFC] border border-[#E2E8F0] text-xs rounded-xl px-3 py-2 text-[#0F172A] placeholder-[#94A3B8] outline-none focus:border-[#2563EB]"
             />
           </div>
 

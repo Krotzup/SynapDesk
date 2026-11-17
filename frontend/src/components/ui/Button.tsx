@@ -23,6 +23,9 @@ const sizeStyles: Record<ButtonSize, string> = {
   sm: "px-3 py-1.5 text-xs",
 };
 
+// En el teléfono, toda zona táctil mide al menos 44 px de alto.
+const touchTarget = "min-h-11 sm:min-h-0";
+
 /** Clases del botón, para dar el mismo aspecto a un enlace (por ejemplo, un Link de Next). */
 export function buttonClassName(
   variant: ButtonVariant = "primary",
@@ -36,6 +39,7 @@ export function buttonClassName(
     "focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-1",
     "disabled:opacity-50 disabled:cursor-not-allowed",
     sizeStyles[size],
+    touchTarget,
     variantStyles[variant],
     fullWidth ? "w-full" : "",
     className,

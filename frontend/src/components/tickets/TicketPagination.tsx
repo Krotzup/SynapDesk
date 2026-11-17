@@ -9,9 +9,9 @@ interface TicketPaginationProps {
 }
 
 const linkClass =
-  "inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold border border-[#E2E8F0] text-[#2563EB] hover:bg-[#EFF6FF] transition-colors";
+  "inline-flex flex-1 sm:flex-none items-center justify-center min-h-11 sm:min-h-0 px-4 sm:px-3 py-1.5 rounded-lg text-sm sm:text-xs font-semibold border border-[#E2E8F0] text-[#2563EB] hover:bg-[#EFF6FF] transition-colors";
 const disabledClass =
-  "inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold border border-[#F1F5F9] text-[#CBD5E1] cursor-not-allowed";
+  "inline-flex flex-1 sm:flex-none items-center justify-center min-h-11 sm:min-h-0 px-4 sm:px-3 py-1.5 rounded-lg text-sm sm:text-xs font-semibold border border-[#F1F5F9] text-[#CBD5E1] cursor-not-allowed";
 
 /** Paginación del listado; cada enlace conserva los filtros activos. */
 export function TicketPagination({ result, filters }: TicketPaginationProps) {
@@ -27,14 +27,14 @@ export function TicketPagination({ result, filters }: TicketPaginationProps) {
   return (
     <nav
       aria-label="Paginación de tickets"
-      className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4 border-t border-[#F1F5F9] text-xs text-[#64748B]"
+      className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-[#F1F5F9] text-xs text-[#64748B]"
     >
       <p>
         {first <= totalItems
           ? `Mostrando ${first}–${last} de ${totalItems} ${noun}`
           : `${totalItems} ${noun} en total`}
       </p>
-      <div className="flex items-center gap-2">
+      <div className="flex w-full sm:w-auto items-center gap-2">
         {page > 1 ? (
           <Link href={hrefFor(page - 1)} className={linkClass}>
             ← Anterior
@@ -44,7 +44,7 @@ export function TicketPagination({ result, filters }: TicketPaginationProps) {
             ← Anterior
           </span>
         )}
-        <span className="px-2 tabular-nums">
+        <span className="px-2 tabular-nums whitespace-nowrap">
           Página {page} de {Math.max(totalPages, 1)}
         </span>
         {page < totalPages ? (

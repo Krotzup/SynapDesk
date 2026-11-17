@@ -59,3 +59,14 @@ body {
   color: var(--color-text-body);
   font-family: var(--font-inter), system-ui, sans-serif;
 }
+
+/* ─── Teléfono ────────────────────────────────────────────────────────────── */
+/* Campos con texto de al menos 16 px: iOS no hace zoom automático al enfocarlos. La regla va
+   fuera de las capas de Tailwind, así que prevalece sobre text-xs y text-sm de los campos. */
+@media (max-width: 639.98px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
