@@ -6,10 +6,17 @@ from typing import Literal
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.seguridad.politica_bootstrap import PoliticaBootstrap
+from app.seguridad.intermediario import PoliticaIntermediario
+
 RAIZ_PROYECTO = Path(__file__).resolve().parents[2]
 
 
 class Configuracion(BaseSettings):
+    # Exclusivo de servidor; ausente no afecta salud ni habilita rutas protegidas.
+    auth_intermediario: PoliticaIntermediario | None = Field(default=None, repr=False)
+    # JSON explícito AUTH_BOOTSTRAP; ausente mantiene el servicio cerrado.
+    auth_bootstrap: PoliticaBootstrap | None = None
     app_env: Literal["development", "testing", "staging", "production"] = "development"
     backend_cors_origins: list[str] = Field(default_factory=list)
     postgres_host: str = Field(default="127.0.0.1", min_length=1)
@@ -20,6 +27,13 @@ class Configuracion(BaseSettings):
     postgres_sslmode: Literal[
         "disable", "allow", "prefer", "require", "verify-ca", "verify-full"
     ] = "prefer"
+    # Pin no sensible del clúster esperado; ausencia cierra solo el CLI de alta.
+    auth_bootstrap_cluster_id: str | None = Field(default=None, pattern=r"^[1-9][0-9]{0,19}$")
+
+    @field_validator("auth_bootstrap_cluster_id", mode="before")
+    @classmethod
+    def pin_bootstrap_vacio(cls, valor: object) -> object:
+        return None if valor == "" else valor
 
     # PROVISIONAL_CONFIGURATION / PENDING_MEASUREMENT; memoria en KiB.
     auth_argon2_memoria_kib: int = Field(default=65536, ge=8, le=2**32 - 1)

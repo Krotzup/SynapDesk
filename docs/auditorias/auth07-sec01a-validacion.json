@@ -1,0 +1,52 @@
+{
+  "base_temporal": "synapdesk_auth07_sec01a_349ac032d2134338a1d9621238f92e4e",
+  "puerto_cliente": 5433,
+  "pasos": [
+    {
+      "paso": "pip_check",
+      "exit_code": 0
+    },
+    {
+      "paso": "alembic_upgrade",
+      "exit_code": 0
+    },
+    {
+      "paso": "alembic_current",
+      "exit_code": 0
+    },
+    {
+      "paso": "alembic_heads",
+      "exit_code": 0
+    },
+    {
+      "paso": "alembic_check",
+      "exit_code": 0
+    },
+    {
+      "paso": "unitarias",
+      "exit_code": 0
+    },
+    {
+      "paso": "postgresql",
+      "exit_code": 0
+    }
+  ],
+  "eliminada": true,
+  "servidor": {
+    "base": "synapdesk_auth07_sec01a_349ac032d2134338a1d9621238f92e4e",
+    "puerto_interno": 5432,
+    "version": "170011"
+  },
+  "unitarias": {
+    "tests": 403,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "postgresql": {
+    "tests": 166,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  }
+}
