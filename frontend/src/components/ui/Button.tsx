@@ -13,7 +13,7 @@ const variantStyles: Record<ButtonVariant, string> = {
   primary: "bg-[#2563EB] text-white hover:bg-[#1D4ED8] border border-transparent",
   secondary: "bg-white text-[#0F172A] border border-[#CBD5E1] hover:bg-[#F8FAFC]",
   ghost: "bg-transparent text-[#475569] border border-[#E2E8F0] hover:bg-[#F1F5F9]",
-  danger: "bg-white text-[#EF4444] border border-transparent hover:bg-[#FEE2E2]",
+  danger: "bg-white text-[#B91C1C] border border-transparent hover:bg-[#FEE2E2]",
   accept: "bg-[#16A3A1] text-white hover:bg-[#0F8E8C] border border-transparent",
 };
 

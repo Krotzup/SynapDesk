@@ -16,6 +16,9 @@ export function AssistantPanel({ children }: { children: ReactNode }) {
   const panelRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const close = useCallback(() => setOpen(false), []);
+  // Al pasar a 1280 px o más el panel deja de ser un Drawer: se cierra, para que no reaparezca
+  // solo (y robe el foco) si la ventana vuelve a achicarse, por ejemplo al girar una tablet.
+  if (isInline && open) setOpen(false);
   const modal = !isInline && open;
   useDialog({ active: modal, onClose: close, containerRef: panelRef, initialFocusRef: closeRef });
 

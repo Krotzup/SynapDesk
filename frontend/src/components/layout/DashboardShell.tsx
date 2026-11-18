@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { ReactNode, useCallback, useState } from "react";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { useMediaQuery } from "@/lib/use-media-query";
 
 interface DashboardShellProps {
   statusSummary: ReactNode;
@@ -26,6 +27,11 @@ export function DashboardShell({ statusSummary, children }: DashboardShellProps)
     setNavPath(pathname);
     setIsNavOpen(false);
   }
+
+  // Desde 1024 px el menú está siempre a la vista: el Drawer se cierra, para que no reaparezca
+  // solo si la ventana vuelve a achicarse (por ejemplo, al girar una tablet).
+  const isWide = useMediaQuery("(min-width: 1024px)");
+  if (isWide && isNavOpen) setIsNavOpen(false);
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#F8FAFC]">

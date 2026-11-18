@@ -24,11 +24,13 @@ function formValue(data: FormData, name: string): string | undefined {
 export function TicketFilters(filters: TicketListParams) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  // Bajo 768 px los filtros quedan detrás del botón "Filtros"; desde ahí, siempre a la vista.
-  const [isOpen, setIsOpen] = useState(false);
   const activeCount = [filters.search, filters.status, filters.priority, filters.area].filter(
     Boolean
   ).length;
+  // Bajo 768 px los filtros quedan detrás del botón "Filtros"; desde ahí, siempre a la vista.
+  // La key del listado vuelve a montar este componente al aplicar un filtro: con filtros activos
+  // el panel empieza abierto, para elegir el siguiente sin volver a tocar "Filtros".
+  const [isOpen, setIsOpen] = useState(activeCount > 0);
 
   function apply(form: HTMLFormElement) {
     const data = new FormData(form);
