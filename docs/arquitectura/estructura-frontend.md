@@ -79,10 +79,9 @@ frontend/
 │   │   │   │                                    rechazadas
 │   │   │   │
 │   │   │   └── admin/
-│   │   │       └── page.tsx                  ← /admin — gestión de usuarios y roles
-│   │   │                                        Listar usuarios, cambiar roles
-│   │   │                                        (admin / agente), dar de baja
-│   │   │                                        Solo accesible para rol admin
+│   │   │       └── page.tsx                  ← /admin — aviso «Próximamente»: la gestión
+│   │   │                                        de usuarios y roles no está aprobada en el
+│   │   │                                        MVP (sin enlace en el menú lateral)
 │   │   │
 │   │   ├── layout.tsx                        ← Layout raíz (fuentes, metadata global, html/body)
 │   │   ├── page.tsx                          ← / — redirige a /login o /tickets según sesión
