@@ -59,11 +59,36 @@ def configuracion_workflow():
     return cargar_workflow((RAIZ / WORKFLOW).read_text(encoding="utf-8"))
 
 
+@pytest.mark.parametrize("evento", ["opened", "synchronize", "reopened", "edited", "ready_for_review"])
+def test_workflow_cubre_cambio_de_base_y_salida_de_draft(configuracion_workflow, evento):
+    pr = configuracion_workflow["on"]["pull_request"]
+    assert pr["branches"] == ["main"]
+    assert evento in pr.get("types", ["opened", "synchronize", "reopened"])
+
+
 def test_workflow_activa_cinco_cambios_exclusivos(configuracion_workflow):
     resultado = workflow(configuracion_workflow)
     assert len(resultado["activacion_exclusiva"]) == 5
     assert all(resultado["activacion_exclusiva"].values())
     assert resultado["eventos"] == ["pull_request/main", "push/main"]
+    assert resultado["tipos_pull_request"] == [
+        "opened", "synchronize", "reopened", "edited", "ready_for_review",
+    ]
+
+
+@pytest.mark.parametrize("evento", ["opened", "synchronize", "reopened", "edited", "ready_for_review"])
+def test_workflow_rechaza_perder_cualquiera_de_los_eventos(configuracion_workflow, evento):
+    datos = deepcopy(configuracion_workflow)
+    datos["on"]["pull_request"]["types"].remove(evento)
+    with pytest.raises(ValueError):
+        workflow(datos)
+
+
+def test_workflow_rechaza_volver_a_eventos_implicitos(configuracion_workflow):
+    datos = deepcopy(configuracion_workflow)
+    del datos["on"]["pull_request"]["types"]
+    with pytest.raises(ValueError):
+        workflow(datos)
 
 
 @pytest.mark.parametrize("cambio", ["paths", "permisos", "job_if", "paso_omitible", "quitar_suite",

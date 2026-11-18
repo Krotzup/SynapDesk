@@ -16,6 +16,7 @@ from urllib.parse import unquote, urlsplit
 
 RAIZ = Path(__file__).resolve().parents[2]
 WORKFLOW = ".github/workflows/backend-auth-ci.yml"
+TIPOS_PULL_REQUEST = ["opened", "synchronize", "reopened", "edited", "ready_for_review"]
 JOBS = {"unitarias", "postgresql", "tls", "alembic", "documentacion"}
 ACCIONES = {"actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
             "actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065"}
@@ -252,9 +253,9 @@ def cargar_workflow(texto):
 def workflow(datos):
     if set(datos["on"]) != {"pull_request", "push"} or datos["permissions"] != {"contents": "read"}:
         raise ErrorControl("Eventos o permisos inseguros.")
-    for evento in datos["on"].values():
-        if evento != {"branches": ["main"]}:
-            raise ErrorControl("No se admiten filtros que omitan checks obligatorios.")
+    if (datos["on"]["pull_request"] != {"branches": ["main"], "types": TIPOS_PULL_REQUEST}
+            or datos["on"]["push"] != {"branches": ["main"]}):
+        raise ErrorControl("No se admiten filtros o eventos que omitan checks obligatorios.")
     if set(datos["jobs"]) != JOBS or "secrets." in json.dumps(datos):
         raise ErrorControl("Jobs o acceso a secretos inesperados.")
     for nombre, job in datos["jobs"].items():
@@ -299,6 +300,7 @@ def workflow(datos):
     muestras = ["backend/app/api/cookies_auth.py", "backend/pruebas/test_cookies_estrictas_http.py",
                 "backend/migraciones/versiones/0006_user_created.py", "docs/contratos/autenticacion-v1.md", WORKFLOW]
     return {"jobs": sorted(JOBS), "eventos": ["pull_request/main", "push/main"],
+            "tipos_pull_request": list(TIPOS_PULL_REQUEST),
             "activacion_exclusiva": {ruta: True for ruta in muestras}, "filtros_de_rutas": False}
 
 
