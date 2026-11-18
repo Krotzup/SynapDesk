@@ -32,21 +32,32 @@ Ejemplo de fecha:
 
 ## URL base
 
-Configuración provisional documentada para desarrollo local:
+El navegador no llama directamente a FastAPI: consume rutas relativas `/api/v1/*` bajo el origen del frontend y el proxy de mismo origen de Next.js (Route Handler `frontend/src/app/api/v1/[...path]/route.ts`) las reenvía al backend, conservando el prefijo `/api/v1`. Las páginas del servidor (SSR) leen datos directamente del mismo destino. El [contrato de transporte de autenticación](autenticacion-v1.md#3-arquitectura-y-despliegue) define proxy de mismo origen, adaptador SSR seguro por petición, cookies necesarias, respuestas privadas sin caché compartida y secretos exclusivamente en servidor.
+
+Configuración local (`frontend/.env.local`, variables solo de servidor):
 
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:8000
+BACKEND_INTERNAL_URL=https://127.0.0.1:8000
+BACKEND_SERVICE_CREDENTIAL=<32 bytes en base64url, 43 caracteres; sin valor en el repositorio>
+AUTH_COOKIE_PROFILE=local
 ```
 
-En esa configuración local provisional, las solicitudes del frontend se dirigen directamente a:
+Ejemplo local: navegador en `http://localhost:3000`, solicitud pública `http://localhost:3000/api/v1/...` y destino FastAPI `https://127.0.0.1:8000/api/v1/...` (SEC-01B exige TLS directo también en local; ver [comunicación interna segura](comunicacion-interna-segura-v1.md)). FastAPI escucha solo en `127.0.0.1`. La regla de no mezclar `localhost` y `127.0.0.1` se aplica al origen del navegador, que es donde viven las cookies; el destino interno no recibe cookies propias del navegador. El origen permitido por el backend (`AUTH_ORIGENES_PERMITIDOS`) es el del navegador, `http://localhost:3000`, no el destino interno. El ingreso del navegador a Next.js y el salto de servicio Next.js→FastAPI son perfiles distintos: entrar a Next.js por `http://localhost:3000` en local no acredita TLS público ni la IP del navegador, y un destino FastAPI por HTTP no admite la credencial de servicio en claro (el proxy lo rechaza por configuración).
 
-```text
-http://localhost:8000/api/v1
-```
+El puerto `3000` corresponde al frontend Next.js y no debe utilizarse como destino del proxy. `BACKEND_INTERNAL_URL` no se expone mediante `NEXT_PUBLIC_*` ni se acepta desde parámetros, cabeceras o cuerpos del cliente. `NEXT_PUBLIC_API_URL` ya no se utiliza en el frontend.
 
-El puerto `3000` corresponde al frontend Next.js y no debe utilizarse como URL directa del backend. Para autenticación V1, el navegador consumirá rutas relativas `/api/v1/*` bajo el origen público del frontend; el proxy reenviará las solicitudes al backend en Render como destino interno. El navegador no consumirá directamente la URL de Render. El [contrato de transporte de autenticación](autenticacion-v1.md#3-arquitectura-y-despliegue) formaliza proxy de mismo origen, adaptador SSR seguro por petición, cookies necesarias, respuestas privadas sin caché compartida y secretos exclusivamente en servidor. Set-Cookie debe llegar al navegador sin exponer la credencial en JSON. La configuración concreta y el perfil HTTP local siguen sujetos a revisión; no cambian los valores de entorno ni el cliente actual por documentarlos.
+Comportamiento del proxy (detalle en `frontend/src/lib/backend-proxy.ts`):
 
-El destino se configura solo en servidor mediante BACKEND_INTERNAL_URL, ya presente en los árboles de PR30/PR32, aún no integrados en esta rama. Con SEC-01B, Next.js→FastAPI exige HTTPS con CA/hostname verificados incluso localmente; el ejemplo previo de backend HTTP no autoriza bearer en claro. Un cliente de ensayo puede entrar a Next en `http://localhost:3000` sin que eso acredite TLS público o IP de navegador. Mantener un host consistente para cookies, sin mezclar localhost y 127.0.0.1. No aceptar destinos elegidos por el cliente ni exponer BACKEND_INTERNAL_URL mediante NEXT_PUBLIC_*. NEXT_PUBLIC_API_URL no se usará para autenticación del navegador mediante proxy; sus usos actuales fuera de ese flujo permanecen hasta que se migren expresamente.
+* El proxy y el adaptador SSR usan el mismo canal (`frontend/src/lib/backend-proxy.ts`). Cada petición lleva exactamente una cabecera `Authorization: Bearer <credencial de servicio>` generada en el servidor desde `BACKEND_SERVICE_CREDENTIAL` (SEC-01B; nombre provisional, decisión C07). La `Authorization` del navegador se descarta. La credencial no aparece en `NEXT_PUBLIC_*`, respuestas, errores ni registros.
+* La conexión con FastAPI es HTTPS con la verificación de CA y nombre del certificado de Node; nunca se desactiva. `BACKEND_INTERNAL_URL` debe ser exactamente un origen `https://`, sin usuario, ruta, query ni `#`. Una CA local de prueba se agrega solo al proceso de Next con `NODE_EXTRA_CA_CERTS`.
+* Hacia FastAPI reenvía solo `Accept`, `Content-Type`, `Origin` (sin modificarlo ni inventarlo), `Sec-Fetch-Site`, `X-CSRF-Token` y las cookies con nombre reservado de **los dos** perfiles (`synapdesk_session_dev`, `synapdesk_csrf_context_dev`, `__Host-synapdesk_session`, `__Host-synapdesk_csrf_context`), con todas sus apariciones y sin modificarlas: una cookie reservada sin `=`, repetida, vacía o de otro perfil llega al backend para que la rechace (política P1); el proxy no elige un valor ni la oculta. Descarta `X-Forwarded-*`, `Forwarded`, `X-Real-IP`, `X-SynapDesk-Client-IP`, `X-Request-ID` y el resto de las cookies.
+* Hacia el navegador conserva estado y cuerpo, `Content-Type`, `Retry-After` y cada `Set-Cookie` **del perfil activo** como cabecera separada, sin modificar sus atributos (también los de borrado). Descarta los `Set-Cookie` de otros nombres o del otro perfil y registra solo cuántos descartó, sin nombres ni valores. Agrega `Cache-Control: no-store` a todas las respuestas, incluidos los errores.
+* `AUTH_COOKIE_PROFILE` es obligatoria y acepta solo `local` o `production`. Ausente, vacía u otro valor es un error de configuración: el proxy y el adaptador SSR responden 503 sin contactar al backend y no eligen un perfil en silencio. Lo mismo ocurre si falta `BACKEND_SERVICE_CREDENTIAL` o no tiene el formato de SEC-01B (32 bytes en base64url, 43 caracteres).
+* El plazo de 30 segundos es único por operación: cubre la lectura del cuerpo que envía el navegador, la conexión y TLS, la espera y la lectura completa de la respuesta. Límites provisionales de tamaño (decisiones C05/C06): 1 MiB para el cuerpo de la petición (si lo supera, 413 `VALIDATION_ERROR` sin contactar al backend) y 5 MiB para la respuesta (si la supera, 503).
+* No sigue redirecciones. Si el backend no responde, falla la verificación TLS, tarda más de 30 segundos en entregar la respuesta completa (cabeceras y cuerpo), corta la conexión a mitad del cuerpo, responde con una redirección o la configuración no es válida, responde 503 `SERVICE_UNAVAILABLE` con el formato de error del contrato y un `requestId` nuevo, generado en el servidor. El adaptador SSR aplica las mismas reglas: tiempo de espera, rechazo de redirecciones y errores con `requestId`.
+* No envía ninguna cabecera con la IP del cliente: no existe una cabecera IP interna aprobada y las que envíe el navegador se descartan. La credencial de servicio no acredita la IP; su procedencia sigue pendiente de evidencia en el despliegue (SEC-01B, sección 6; decisión C08).
+
+Los nombres de cookies (C02), el nombre de la variable de la credencial (C07), el tiempo de espera y los límites de tamaño (C05/C06) son propuestos y siguen sujetos a revisión con el backend.
 
 ## Autenticación
 
