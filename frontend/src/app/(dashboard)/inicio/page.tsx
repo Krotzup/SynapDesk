@@ -9,7 +9,7 @@ import { USE_MOCKS } from "@/lib/config";
 // Cada bloque pide sus datos por separado: si uno falla, los demás se siguen mostrando.
 export default function InicioPage() {
   return (
-    <div className="p-8 bg-[#F8FAFC] min-h-screen">
+    <div className="px-4 py-6 sm:p-6 lg:p-8 bg-[#F8FAFC] min-h-screen">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Banner de bienvenida */}
         <div className="bg-gradient-to-r from-[#0B132B] to-[#1E3A8A] rounded-2xl p-6 sm:p-8 text-white shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">

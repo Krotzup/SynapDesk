@@ -17,6 +17,9 @@ from app.persistencia.modelos import Usuario, Sesion as SesionModelo, ContextoCs
 from app.seguridad.csrf import ServicioCsrf
 from app.seguridad.sesiones import ServicioSesiones
 from app.seguridad.transacciones import transaccion_seguridad
+from pruebas.intermediario_auxiliar import credencial, politica
+
+ORIGIN = "https://testserver"
 
 
 @pytest.fixture(autouse=True)
@@ -46,8 +49,10 @@ def test_empty_and_unprepared_databases_are_not_reported_as_low_similarity(datab
 @pytest.mark.skipif(not os.getenv("SEARCH_TEST_PROFILE"), reason="Requiere perfil V2 y base semántica exclusiva preparada.")
 def test_search_with_real_session_csrf_model_and_independent_databases(configuracion_bd_test):
     from app.recuperacion.servicio import ServicioRecuperacion
+    service_credential = credencial()
     configuration = Configuracion(_env_file=None, app_env="testing", search_enabled=False,
-        auth_cookie_profile="local", auth_origenes_permitidos=["http://testserver"],
+        auth_cookie_profile="local", auth_origenes_permitidos=[ORIGIN],
+        auth_intermediario=politica([service_credential]),
         search_relevance_profile=Path(os.environ["SEARCH_TEST_PROFILE"]),
         synapdesk_semantic_database_url=os.environ["SYNAPDESK_SEMANTIC_TEST_DATABASE_URL"],
         postgres_host=configuracion_bd_test.postgres_host, postgres_port=configuracion_bd_test.postgres_port,
@@ -65,10 +70,12 @@ def test_search_with_real_session_csrf_model_and_independent_databases(configura
             csrf.obtener_autenticado(emitted.credencial)
             token = csrf.emitir_token(sesion=emitted.credencial)
         service = ServicioRecuperacion(configuration)
-        with TestClient(crear_aplicacion(configuration)) as client:
+        with TestClient(crear_aplicacion(configuration), base_url=ORIGIN, headers={
+            "Origin": ORIGIN, "Authorization": f"Bearer {service_credential.get_secret_value()}",
+        }) as client:
             client.app.state.recuperacion = service
             headers = {"Cookie": "synapdesk_session_dev=" + emitted.credencial.get_secret_value(),
-                       "Origin": "http://testserver", "X-CSRF-Token": token.token.get_secret_value()}
+                       "X-CSRF-Token": token.token.get_secret_value()}
             missing = client.post("/api/v1/search", json={"query": "La impresora no imprime"})
             assert missing.status_code == 401
             invalid = client.post("/api/v1/search", json={"query": "red"}, headers=headers | {"X-CSRF-Token": "invalid"})

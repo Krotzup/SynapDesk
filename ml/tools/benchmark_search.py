@@ -2,11 +2,12 @@
 import argparse
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 from math import ceil
 import os
 from pathlib import Path
+from secrets import token_urlsafe
 from statistics import median
 from threading import Barrier, Lock
 from time import perf_counter
@@ -15,6 +16,7 @@ from uuid import uuid4
 import psycopg
 from fastapi.testclient import TestClient
 from psycopg.conninfo import conninfo_to_dict
+from pydantic import SecretStr
 from sqlalchemy import event
 from sqlalchemy.orm import Session
 
@@ -24,9 +26,12 @@ from app.persistencia.conexion import crear_motor_bd
 from app.persistencia.modelos import Usuario
 from app.recuperacion.servicio import ServicioRecuperacion
 from app.seguridad.csrf import ServicioCsrf
+from app.seguridad.intermediario import digest_credencial_servicio
 from app.seguridad.sesiones import ServicioSesiones
 from app.seguridad.transacciones import transaccion_seguridad
 from ml.semantic_retrieval.embeddings import LocalEmbedder
+
+ORIGIN = "https://testserver"
 
 
 def main():
@@ -54,12 +59,24 @@ def main():
     except (KeyError, ValueError, psycopg.Error):
         parser.error("Configura dos bases locales desechables con nombres de ensayo y credenciales válidas.")
     model = LocalEmbedder()
+    service_credential = SecretStr(token_urlsafe(32))
     config = Configuracion(
         _env_file=None,
         app_env="testing",
         search_enabled=False,
         auth_cookie_profile="local",
-        auth_origenes_permitidos=["http://testserver"],
+        auth_origenes_permitidos=[ORIGIN],
+        auth_intermediario={
+            "habilitado": True,
+            "entorno": "testing",
+            "transporte": "tls_directo",
+            "politica_ip": "no_acreditada",
+            "credenciales": [{
+                "identificador": "benchmark",
+                "digest": digest_credencial_servicio(service_credential, "testing"),
+                "vence_en": datetime.now(timezone.utc) + timedelta(hours=1),
+            }],
+        },
         search_relevance_profile=args.profile,
         synapdesk_semantic_database_url=semantic_url,
         postgres_host=auth["host"],
@@ -80,7 +97,8 @@ def main():
             csrf = ServicioCsrf(db, config)
             csrf.obtener_autenticado(credential)
             token = csrf.emitir_token(sesion=credential).token.get_secret_value()
-            headers.append({"Origin": "http://testserver", "X-CSRF-Token": token,
+            headers.append({"Origin": ORIGIN, "X-CSRF-Token": token,
+                            "Authorization": f"Bearer {service_credential.get_secret_value()}",
                             "Cookie": f"synapdesk_session_dev={credential.get_secret_value()}"})
     engine.dispose()
 
@@ -126,7 +144,7 @@ def measure(config, headers, model):
     sample_lock = Lock()
     payload = {"query": "No se resuelve el nombre del servidor DNS.", "limit": 5}
     scenarios = {}
-    with TestClient(crear_aplicacion(config)) as client:
+    with TestClient(crear_aplicacion(config), base_url=ORIGIN) as client:
         client.app.state.recuperacion = service
         engine = client.app.state.motor_bd
 

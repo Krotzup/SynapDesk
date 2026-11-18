@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function NewTicketPage() {
   return (
-    <div className="p-8 bg-[#F8FAFC] min-h-screen">
+    <div className="px-4 py-6 sm:p-6 lg:p-8 bg-[#F8FAFC] min-h-screen">
       <div className="max-w-3xl mx-auto space-y-6">
         <Link
           href="/tickets"
@@ -33,7 +33,7 @@ export default function NewTicketPage() {
           </p>
         )}
 
-        <div className="bg-white p-6 rounded-2xl border border-[#E2E8F0] shadow-sm">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl border border-[#E2E8F0] shadow-sm">
           <NewTicketForm />
         </div>
       </div>

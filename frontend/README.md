@@ -59,30 +59,30 @@ mocks se conserva el aviso explícito de datos de ejemplo y similitud simulada.
 
 Configurar exclusivamente en el servidor Next.js:
 
-| Variable                     | Uso                                                                                                                  |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `BACKEND_INTERNAL_URL`       | URL raíz fija de FastAPI; nunca se acepta del cliente ni se expone mediante NEXT_PUBLIC.                             |
-| `SEARCH_PUBLIC_ORIGIN`       | Origen público exacto, coincidente con el permitido por el backend.                                                  |
-| `AUTH_COOKIE_PROFILE`        | Perfil explícito `local` o `production`. Usar el mismo valor en FastAPI y en el proxy general de #30 al integrarlos. |
-| `SEARCH_SESSION_COOKIE_NAME` | Alternativa de ensayo sin perfil. Si se configura junto al perfil, debe coincidir con él.                            |
-| `BACKEND_ALLOW_HTTP_LOCAL`   | `true` solo permite HTTP explícito hacia loopback local; los demás destinos exigen HTTPS.                            |
+| Variable                     | Uso                                                                                                                    |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `BACKEND_INTERNAL_URL`       | Origen HTTPS fijo de FastAPI. Nunca se acepta del cliente ni se expone mediante NEXT_PUBLIC.                           |
+| `BACKEND_SERVICE_CREDENTIAL` | Credencial privada SEC-01B, de 32 bytes codificados en base64url canónico. Debe coincidir con la política del backend. |
+| `SEARCH_PUBLIC_ORIGIN`       | Origen público exacto, coincidente con el permitido por el backend.                                                    |
+| `AUTH_COOKIE_PROFILE`        | Perfil explícito `local` o `production`. Usar el mismo valor en FastAPI y en el proxy general de #30 al integrarlos.   |
+| `SEARCH_SESSION_COOKIE_NAME` | Alternativa de ensayo sin perfil. Si se configura junto al perfil, debe coincidir con él.                              |
 
-Ejemplo de transporte local: frontend `http://localhost:3000`, backend
-`http://localhost:8000` y origen permitido explícito. No mezclar hosts dentro del
+Ejemplo de transporte local: frontend `http://localhost:3000` con perfil `local`,
+backend `https://localhost:8000` con certificado de confianza y origen permitido explícito. No mezclar hosts dentro del
 flujo de cookies. Los nombres concretos de cookies y el despliegue de autenticación
 requieren su configuración acordada; no se aprueban automáticamente propuestas.
 
 La ruta reenvía solo la cookie autorizada, Origin, CSRF, Content-Type y
-Sec-Fetch-Site cuando existe. No reenvía todas las cookies, Authorization ni
-cabeceras de IP aportadas por el cliente. Rechaza destinos/redirecciones
+Sec-Fetch-Site cuando existe. Descarta Authorization y las cabeceras de IP
+aportadas por el cliente y agrega su propio bearer SEC-01B. Rechaza destinos/redirecciones
 arbitrarios y cookies ambiguas; usa no-store, plazo finito y errores saneados.
 No funciona como proxy genérico para otras rutas.
 
 Al combinar esta rama con el PR #30, el proxy general atiende `/auth/me`
 y `/auth/csrf`. La ruta específica de búsqueda aplica sus límites, valida el
 origen y reenvía solo la cookie de sesión. Ambos usan el mismo perfil de
-cookies, un plazo de 30 segundos y HTTP 503 `SERVICE_UNAVAILABLE` para fallos
-de transporte.
+cookies y la configuración de SEC-01B. La ruta dedicada usa su propio adaptador
+hasta verificar la interoperabilidad con el transporte del #30.
 
 La pantalla diferencia resultados, base vacía e información insuficiente;
 muestra extractos, idioma y enlace HTTPS de la fuente cuando existen metadatos.

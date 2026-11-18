@@ -37,3 +37,6 @@ artifacts/
 
 # Docker
 *.pid
+
+# PKI, credenciales y aplicaciones efímeras del arnés AUTH-07D.2
+backend/.arnes-auth07d2-*/

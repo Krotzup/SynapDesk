@@ -3,15 +3,16 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
-from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.concurrency import run_in_threadpool
 
 from app.api.salud import router as router_salud
 from app.api.busqueda import error_response, router as router_busqueda
-from app.recuperacion.servicio import ErrorRecuperacion
+from app.api.csrf_auth import router as router_csrf
+from app.api.errores_auth import manejar_validacion, registrar_errores
 from app.configuracion import Configuracion
 from app.persistencia.conexion import crear_motor_bd
+from app.recuperacion.servicio import ErrorRecuperacion
 
 
 def crear_aplicacion(configuracion: Configuracion | None = None) -> FastAPI:
@@ -52,6 +53,7 @@ def crear_aplicacion(configuracion: Configuracion | None = None) -> FastAPI:
     aplicacion.state.motor_bd = None
     aplicacion.state.configuracion = configuracion
     aplicacion.state.recuperacion = None
+    registrar_errores(aplicacion)
 
     @aplicacion.exception_handler(ErrorRecuperacion)
     async def error_recuperacion(request, error):
@@ -60,7 +62,7 @@ def crear_aplicacion(configuracion: Configuracion | None = None) -> FastAPI:
     @aplicacion.exception_handler(RequestValidationError)
     async def entrada_invalida(request, error):
         if request.url.path != "/api/v1/search":
-            return await request_validation_exception_handler(request, error)
+            return await manejar_validacion(request, error)
         fields = {str(item["loc"][-1]) for item in error.errors() if item["loc"][-1] in {"query", "limit"}}
         details = [{"field": field, "message": "Usa una consulta de 1–1000 caracteres y un límite entero de 1–20."}
                    for field in sorted(fields or {"request"})]
@@ -76,4 +78,5 @@ def crear_aplicacion(configuracion: Configuracion | None = None) -> FastAPI:
 
     aplicacion.include_router(router_salud, prefix="/api/v1")
     aplicacion.include_router(router_busqueda, prefix="/api/v1")
+    aplicacion.include_router(router_csrf, prefix="/api/v1")
     return aplicacion

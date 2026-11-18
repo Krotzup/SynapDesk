@@ -44,7 +44,7 @@ jobs:
       - name: Run unit tests
         run: python -m unittest discover -s tests -t . -v
 
-      - name: Train with synthetic dataset
+      - name: Train with synthetic dataset and default features
         run: >
           python ml/train_ticket_classifier.py
           --input-csv ml/samples/tickets_esp_sintetico.csv
@@ -53,13 +53,12 @@ jobs:
           --max-features 2000
           --output-dir ml/artifacts/ticket_classifier_sample
 
-      - name: Train optional priority character features with synthetic dataset
+      - name: Train words-only baseline with synthetic dataset
         run: >
           python ml/train_ticket_classifier.py
           --input-csv ml/samples/tickets_esp_sintetico.csv
           --language es
           --min-target-count 1
           --max-features 2000
-          --character-ngram-targets priority
-          --disable-business-rules
-          --output-dir ml/artifacts/ticket_classifier_priority_chars_sample
+          --words-only
+          --output-dir ml/artifacts/ticket_classifier_words_only_sample

@@ -1,31 +1,45 @@
 import { ButtonHTMLAttributes } from "react";
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "accept";
+type ButtonSize = "md" | "sm";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   fullWidth?: boolean;
+  size?: ButtonSize;
 }
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary: "bg-[#2563EB] text-white hover:bg-[#1D4ED8] border border-transparent",
   secondary: "bg-white text-[#0F172A] border border-[#CBD5E1] hover:bg-[#F8FAFC]",
   ghost: "bg-transparent text-[#475569] border border-[#E2E8F0] hover:bg-[#F1F5F9]",
-  danger: "bg-white text-[#EF4444] border border-transparent hover:bg-[#FEE2E2]",
+  danger: "bg-white text-[#B91C1C] border border-transparent hover:bg-[#FEE2E2]",
   accept: "bg-[#16A3A1] text-white hover:bg-[#0F8E8C] border border-transparent",
 };
+
+// "sm" es para acciones dentro de tablas y filtros compactos; "md", para el resto.
+const sizeStyles: Record<ButtonSize, string> = {
+  md: "px-4 py-2.5 text-sm",
+  sm: "px-3 py-1.5 text-xs",
+};
+
+// En el teléfono, toda zona táctil mide al menos 44 px de alto.
+const touchTarget = "min-h-11 sm:min-h-0";
 
 /** Clases del botón, para dar el mismo aspecto a un enlace (por ejemplo, un Link de Next). */
 export function buttonClassName(
   variant: ButtonVariant = "primary",
   fullWidth = false,
-  className = ""
+  className = "",
+  size: ButtonSize = "md"
 ) {
   return [
-    "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5",
-    "text-sm font-medium transition-colors duration-150",
+    "inline-flex items-center justify-center gap-2 rounded-lg",
+    "font-medium transition-colors duration-150",
     "focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-1",
     "disabled:opacity-50 disabled:cursor-not-allowed",
+    sizeStyles[size],
+    touchTarget,
     variantStyles[variant],
     fullWidth ? "w-full" : "",
     className,
@@ -37,6 +51,7 @@ export function buttonClassName(
 export function Button({
   variant = "primary",
   fullWidth = false,
+  size = "md",
   className = "",
   children,
   disabled,
@@ -44,7 +59,7 @@ export function Button({
 }: ButtonProps) {
   return (
     <button
-      className={buttonClassName(variant, fullWidth, className)}
+      className={buttonClassName(variant, fullWidth, className, size)}
       disabled={disabled}
       {...props}
     >

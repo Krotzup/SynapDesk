@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/Button";
+
 const areaMetrics = [
   { name: "Backend", total: 42, resolved: 38, avgTime: "18m", rate: 90 },
   { name: "Frontend", total: 35, resolved: 31, avgTime: "12m", rate: 88 },
@@ -7,7 +9,7 @@ const areaMetrics = [
 
 export default function MetricasPage() {
   return (
-    <div className="p-8 bg-[#F8FAFC] min-h-screen">
+    <div className="px-4 py-6 sm:p-6 lg:p-8 bg-[#F8FAFC] min-h-screen">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Encabezado */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -18,14 +20,14 @@ export default function MetricasPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <select className="bg-white border border-[#E2E8F0] text-xs font-semibold rounded-xl px-3.5 py-2 text-[#0F172A] outline-none shadow-sm">
+            <select className="min-h-11 sm:min-h-0 bg-white border border-[#E2E8F0] text-xs font-semibold rounded-xl px-3.5 py-2 text-[#0F172A] outline-none shadow-sm">
               <option>Últimos 30 días</option>
               <option>Este mes</option>
               <option>Último trimestre</option>
             </select>
-            <button className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white border border-[#E2E8F0] hover:bg-[#F8FAFC] text-[#0F172A] text-xs font-semibold rounded-xl transition-colors shadow-sm">
+            <Button type="button" variant="secondary">
               📊 Exportar PDF
-            </button>
+            </Button>
           </div>
         </div>
 

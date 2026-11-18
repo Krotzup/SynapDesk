@@ -96,6 +96,19 @@ class EventoAutenticacion(Base):
 
     __tablename__ = "eventos_autenticacion"
     __table_args__ = (
+        CheckConstraint(
+            "(tipo_evento NOT IN ('admin_bootstrap','user_created') AND "
+            "actor_tipo IS NULL AND actor_id IS NULL AND rol_asignado IS NULL) OR "
+            "(tipo_evento = 'admin_bootstrap' AND actor_tipo IS NOT NULL AND "
+            "actor_tipo = 'postgresql_role' AND actor_id IS NOT NULL AND "
+            "actor_id ~ '^[1-9][0-9]{0,9}$' AND rol_asignado IS NULL) OR "
+            "(tipo_evento = 'user_created' AND actor_tipo IS NOT NULL AND "
+            "actor_tipo = 'synapdesk_user' AND actor_id IS NOT NULL AND "
+            "actor_id ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' AND "
+            "rol_asignado IS NOT NULL AND rol_asignado IN ('admin','agent') AND "
+            "resultado = 'success' AND motivo IS NOT NULL AND motivo = 'user_created_by_admin')",
+            name="actor_externo_valido",
+        ),
         CheckConstraint("btrim(tipo_evento) <> ''", name="tipo_evento_no_vacio"),
         CheckConstraint("btrim(resultado) <> ''", name="resultado_no_vacio"),
         CheckConstraint(
@@ -119,6 +132,9 @@ class EventoAutenticacion(Base):
         Uuid(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     tipo_evento: Mapped[str] = mapped_column(String(64), nullable=False)
+    actor_tipo: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    actor_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    rol_asignado: Mapped[str | None] = mapped_column(String(16), nullable=True)
     ocurrido_en: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )

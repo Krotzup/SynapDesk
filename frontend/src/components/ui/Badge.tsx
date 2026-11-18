@@ -1,4 +1,9 @@
-import { DocumentProcessingStatus, TicketPriority, TicketStatus } from "@/types";
+import {
+  DocumentProcessingStatus,
+  RecommendationStatus,
+  TicketPriority,
+  TicketStatus,
+} from "@/types";
 
 // ─── Badge de prioridad ───────────────────────────────────────────────────────
 
@@ -85,6 +90,23 @@ export function DocumentStatusBadge({ status }: DocumentStatusBadgeProps) {
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${documentStatusStyles[status]}`}
     >
       {documentStatusLabels[status]}
+    </span>
+  );
+}
+
+// ─── Badge de estado de recomendación ────────────────────────────────────────
+
+export const recommendationStatusLabels: Record<RecommendationStatus, string> = {
+  pending: "Pendiente de revisión",
+  accepted: "Aceptada",
+  modified: "Modificada",
+  rejected: "Rechazada",
+};
+
+export function RecommendationStatusBadge({ status }: { status: RecommendationStatus }) {
+  return (
+    <span className="text-[11px] font-semibold text-[#4338CA] bg-[#E0E7FF] px-2 py-0.5 rounded-full whitespace-nowrap">
+      {recommendationStatusLabels[status]}
     </span>
   );
 }

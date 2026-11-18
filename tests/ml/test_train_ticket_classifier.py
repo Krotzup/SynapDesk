@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import pandas as pd
 
@@ -15,6 +16,7 @@ sys.path.insert(0, str(ROOT / "ml"))
 from train_ticket_classifier import (  # noqa: E402
     REQUIRED_COLUMNS,
     load_and_prepare_dataset,
+    parse_args,
     safe_train_test_split,
     validate_columns,
 )
@@ -34,6 +36,16 @@ def valid_row(**overrides: object) -> dict[str, object]:
 
 
 class TrainTicketClassifierTest(unittest.TestCase):
+    def test_cli_selects_character_features(self) -> None:
+        cases = (
+            ([], ("priority",)),
+            (["--words-only"], ()),
+            (["--character-ngram-targets", "type", "queue"], ("type", "queue")),
+        )
+        for args, expected in cases:
+            with self.subTest(args=args), patch.object(sys, "argv", ["train_ticket_classifier.py", *args]):
+                self.assertEqual(parse_args().character_ngram_targets, expected)
+
     def test_validate_columns_reports_missing_columns(self) -> None:
         columns = sorted(REQUIRED_COLUMNS - {"body"})
         df = pd.DataFrame(columns=columns)

@@ -5,7 +5,7 @@ export interface SearchProxyConfig {
   publicOrigin?: string;
   sessionCookieName?: string;
   cookieProfile?: string;
-  allowHttpLocal?: boolean;
+  serviceCredential?: string;
 }
 
 const noStore = { "Cache-Control": "no-store" };
@@ -120,22 +120,28 @@ function readSessionCookie(header: string, sessionName: string): string | undefi
 function destination(config: SearchProxyConfig): string {
   if (!config.backendUrl || !config.publicOrigin) throw new Error("Configuración incompleta.");
   const url = new URL(config.backendUrl);
-  const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
   const origin = new URL(config.publicOrigin);
   const publicLocal = ["localhost", "127.0.0.1", "[::1]"].includes(origin.hostname);
   if (
-    url.username ||
-    url.password ||
-    url.search ||
-    url.hash ||
-    url.pathname !== "/" ||
-    (url.protocol !== "https:" && !(url.protocol === "http:" && local && config.allowHttpLocal)) ||
+    url.protocol !== "https:" ||
+    (config.backendUrl !== url.origin && config.backendUrl !== `${url.origin}/`) ||
     origin.origin !== config.publicOrigin ||
     (origin.protocol !== "https:" &&
-      !(origin.protocol === "http:" && publicLocal && config.allowHttpLocal))
+      !(origin.protocol === "http:" && publicLocal && config.cookieProfile === "local"))
   )
     throw new Error("Destino no autorizado.");
   return new URL("/api/v1/search", url).toString();
+}
+
+function serviceAuthorization(credential: string | undefined): string {
+  if (
+    !credential ||
+    !/^[A-Za-z0-9_-]{43}$/.test(credential) ||
+    Buffer.from(credential, "base64url").toString("base64url") !== credential
+  ) {
+    throw new Error("Credencial de servicio inválida.");
+  }
+  return `Bearer ${credential}`;
 }
 
 async function readBody(request: Request): Promise<string> {
@@ -169,9 +175,11 @@ export async function forwardSemanticSearch(
 ): Promise<Response> {
   let target: string;
   let cookieName: string;
+  let authorization: string;
   try {
     target = destination(config);
     cookieName = sessionCookieName(config);
+    authorization = serviceAuthorization(config.serviceCredential);
   } catch {
     return failure(503, "SERVICE_UNAVAILABLE");
   }
@@ -204,6 +212,7 @@ export async function forwardSemanticSearch(
     return failure(422, "VALIDATION_ERROR");
   }
   const headers: Record<string, string> = {
+    Authorization: authorization,
     "Content-Type": "application/json",
     Cookie: cookie,
     Origin: request.headers.get("origin")!,

@@ -24,7 +24,20 @@ python -m alembic heads
 python -m alembic history
 ```
 
-Los comandos `heads` y `history` no requieren PostgreSQL. `heads` debe mostrar `0003_retirar_prioridad_critical (head)`.
+Los comandos `heads` y `history` no requieren PostgreSQL. `heads` debe mostrar `0006_user_created (head)`.
+
+`0005_actor_bootstrap` añade actor externo opcional a auditoría y lo exige para
+admin_bootstrap. Conserva los eventos anteriores y no crea usuarios. Su downgrade
+rechaza retirar esos campos cuando existe auditoría administrativa, para no perder
+identidad del operador. No altera las revisiones anteriores.
+
+`0006_user_created` amplía actor_id a 36 caracteres para el UUID del admin
+SynapDesk y añade rol_asignado para user_created. Reutiliza sujeto, fecha,
+resultado y correlación. La restricción conserva admin_bootstrap y los eventos
+anteriores; exige actor interno, rol admin/agent, éxito y motivo cerrado para
+user_created. No inserta cuentas ni modifica 0001–0005. El downgrade a 0005
+conserva los eventos previos, pero rechaza ejecutarse si existen altas auditadas;
+no elimina evidencia ni trunca UUID. El bootstrap exige ahora el head 0006.
 
 Para verificar primero contra `db_test`:
 

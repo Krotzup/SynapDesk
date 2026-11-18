@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC] p-8">
+    <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC] p-4 sm:p-8">
       {state.status === "checking" ? (
         <p role="status" className="text-sm text-[#64748B]">
           Verificando sesión…
@@ -86,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ) : (
         <div
           role="alert"
-          className="max-w-md bg-white p-8 rounded-2xl border border-[#E2E8F0] shadow-sm text-center space-y-4"
+          className="max-w-md bg-white p-6 sm:p-8 rounded-2xl border border-[#E2E8F0] shadow-sm text-center space-y-4"
         >
           <h1 className="text-lg font-bold text-[#0F172A]">No se pudo verificar tu sesión</h1>
           <p className="text-sm text-[#64748B]">

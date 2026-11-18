@@ -52,24 +52,22 @@ eso no constituye validación completa de autenticación de producción.
 
 ## Punto 3.1 · CSRF y reintento de búsqueda
 
-**Propuesta pendiente de acuerdo.** Mantener un token CSRF válido ligado a la
-sesión para `POST /api/v1/search` y aceptar el reintento manual como excepción
-al reintento automático único de
-[Autenticación V1](../contratos/autenticacion-v1.md#renovación-y-reintento-del-cliente--approved).
-Así se conserva la protección por sesión y origen que ya aplica la búsqueda.
+La [política P8 aprobada](../contratos/autenticacion-v1.md#renovación-preventiva-y-ausencia-de-reintentos-de-escritura--approved-p8)
+descarta el reintento automático de POST. La
+[sección 4 del contrato de integración](../contratos/integracion-http-pr30-pr32-v1.md#4-implementación-lista-para-asignar-a-américa--pr-32)
+mantiene CSRF ligado a la sesión y Origin exacto en `POST /api/v1/search`.
 Ante `CSRF_INVALID`, la persona ve el rechazo y decide si vuelve a buscar.
 El siguiente intento obtiene un token vigente antes de enviar el POST.
 
-| Criterio de aceptación de la propuesta | Evidencia disponible |
+| Criterio de aceptación | Evidencia disponible |
 | --- | --- |
 | Con sesión, origen y token válidos, la búsqueda devuelve su resultado. Con un origen no permitido devuelve `403 ORIGIN_INVALID`. | Pruebas del endpoint y del proxy. Queda por verificar el flujo desde el navegador con las rutas reales de autenticación. |
 | Con sesión válida, un token rechazado devuelve `403 CSRF_INVALID` antes de efectuar la búsqueda. | Pruebas del endpoint, incluidas las de integración. |
 | Tras `403 CSRF_INVALID`, el cliente muestra el rechazo y no repite el POST. Un reintento manual obtiene un token vigente y envía un solo POST nuevo. | Prueba del cliente en [search.mjs](../../frontend/tests/search.mjs) con respuestas simuladas. |
 | Después del logout, el token y la cookie de la sesión cerrada no permiten buscar. | Validar el recorrido completo con AUTH-07. |
 
-Antes de habilitar la búsqueda, registrar el acuerdo de forma explícita en
-los contratos de búsqueda y autenticación. Con el proxy acordado y AUTH-07
-disponible, repetir el recorrido de inicio de sesión, obtención de CSRF,
+Antes de habilitar la búsqueda, con AUTH-07 y el proxy acordado disponibles,
+repetir el recorrido de inicio de sesión, obtención de CSRF,
 búsqueda, rechazo, reintento manual y cierre de sesión. Usar la pestaña de
 red para comprobar la cantidad de POST y anotar los códigos de respuesta.
 
@@ -223,6 +221,8 @@ python -m ml.tools.benchmark_search --profile ml/artifacts/piloto_perfil_v2.json
 ```
 
 El ensayo crea ocho usuarios y sesiones ficticios en la base de autenticación.
+Usa `TestClient` con esquema ASGI HTTPS y una credencial de servicio efímera.
+La medición excluye el tiempo de red y del establecimiento de TLS.
 Elimina esa base desechable al terminar. El informe registra estados HTTP,
 medianas, p95, máximos y el máximo de conexiones ocupadas por escenario.
 

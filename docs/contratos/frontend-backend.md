@@ -2,7 +2,7 @@
 
 ## Estado
 
-**Provisional**
+**Provisional por módulo; autenticación formalizada en el alcance aprobado AUTH-07D.3.** El resto del contrato conserva sus estados y acuerdos propios.
 
 ## Propósito
 
@@ -46,11 +46,11 @@ http://localhost:8000/api/v1
 
 El puerto `3000` corresponde al frontend Next.js y no debe utilizarse como URL directa del backend. Para autenticación V1, el navegador consumirá rutas relativas `/api/v1/*` bajo el origen público del frontend; el proxy reenviará las solicitudes al backend en Render como destino interno. El navegador no consumirá directamente la URL de Render. El [contrato de transporte de autenticación](autenticacion-v1.md#3-arquitectura-y-despliegue) formaliza proxy de mismo origen, adaptador SSR seguro por petición, cookies necesarias, respuestas privadas sin caché compartida y secretos exclusivamente en servidor. Set-Cookie debe llegar al navegador sin exponer la credencial en JSON. La configuración concreta y el perfil HTTP local siguen sujetos a revisión; no cambian los valores de entorno ni el cliente actual por documentarlos.
 
-El destino del proxy se configurará en el servidor Next.js mediante BACKEND_INTERNAL_URL, requisito futuro todavía no implementado ni incorporado a los archivos de entorno. Ejemplo local: navegador en `http://localhost:3000`, destino FastAPI `http://localhost:8000` y solicitud pública `http://localhost:3000/api/v1/...`. Mantener un host consistente para cookies, sin mezclar localhost y 127.0.0.1. No aceptar destinos elegidos por el cliente ni exponer BACKEND_INTERNAL_URL mediante NEXT_PUBLIC_*. NEXT_PUBLIC_API_URL no se usará para autenticación del navegador mediante proxy; sus usos actuales fuera de ese flujo permanecen hasta que se migren expresamente.
+El destino se configura solo en servidor mediante BACKEND_INTERNAL_URL, ya presente en los árboles de PR30/PR32, aún no integrados en esta rama. Con SEC-01B, Next.js→FastAPI exige HTTPS con CA/hostname verificados incluso localmente; el ejemplo previo de backend HTTP no autoriza bearer en claro. Un cliente de ensayo puede entrar a Next en `http://localhost:3000` sin que eso acredite TLS público o IP de navegador. Mantener un host consistente para cookies, sin mezclar localhost y 127.0.0.1. No aceptar destinos elegidos por el cliente ni exponer BACKEND_INTERNAL_URL mediante NEXT_PUBLIC_*. NEXT_PUBLIC_API_URL no se usará para autenticación del navegador mediante proxy; sus usos actuales fuera de ese flujo permanecen hasta que se migren expresamente.
 
 ## Autenticación
 
-El Product Owner aprobó sesiones opacas persistidas en PostgreSQL, administradas por FastAPI y transportadas mediante cookie HttpOnly, con acceso público a través de un proxy del mismo origen. La especificación, sus propuestas y decisiones pendientes se concentran en el [contrato de autenticación V1](autenticacion-v1.md). La autenticación todavía no está implementada.
+El Product Owner aprobó sesiones opacas persistidas en PostgreSQL, administradas por FastAPI y transportadas mediante cookie HttpOnly, con acceso público a través de un proxy del mismo origen. La especificación, sus propuestas y decisiones pendientes se concentran en el [contrato de autenticación V1](autenticacion-v1.md). Los servicios internos y adaptadores están implementados; GET csrf está registrado con cierre seguro, sin emisión, y login/me/logout HTTP siguen sin registrar (404). No hay administración HTTP. La [especificación HTTP V1](autenticacion-http-adaptadores-v1.md) separa aprobación, implementación y evidencia.
 
 Rutas iniciales previstas:
 
@@ -67,11 +67,17 @@ El [contrato de seguridad](autenticacion-v1.md#6-cookies-y-csrf) formaliza como 
 
 Para V1, las mutaciones autenticadas de negocio se realizan con fetch desde componentes o servicios cliente a `/api/v1/*`, incluido login/logout con sus respectivos requisitos, creación/modificación de tickets y acciones mutables del asistente. No se usan Server Actions o Server Functions para esas mutaciones. Las lecturas SSR conservan el adaptador por petición y la ausencia de caché compartida. El proxy transporta cookies/cabeceras permitidas y múltiples Set-Cookie separados; no fabrica Origin ni confía en cabeceras de proxy arbitrarias.
 
-Se permite renovar CSRF preventivamente cerca de expiresAt, solo en memoria del contexto cliente y coordinando solicitudes; no se extiende por ello la inactividad ni se expulsan tokens vigentes en uso. Solo tras un 403 explícito con error.code CSRF_INVALID garantizado antes de efectos de negocio puede obtenerse otro token y reintentarse una vez, confirmando que sigue el contexto esperado. Si cambió sesión/contexto, la continuidad no se puede confirmar o vuelve a fallar, se devuelve el error. No se reintentan automáticamente otros 403, timeouts, fallos de red, 500/503 ni resultados desconocidos. Los valores de duración y capacidad siguen provisionales.
+**AUTH-07D.3, APPROVED P1–P10:** cookies malformadas/duplicadas/perfiles mezclados se rechazan antes de filtrarlos, sin convertirlas en anónimas. No recuperación automática de sesión vencida/revocada/inválida. /me no renueva treinta minutos de inactividad ni ocho horas absolutas. Logout puede únicamente revocar una sesión verificable de cuenta inactiva con controles restantes, sin acceso/identidad activa/contexto privilegiado nuevo; este último caso aún requiere un ajuste interno de backend.
+
+Arquitectura B aprobada: navegador → Next.js público → FastAPI privado → PostgreSQL, Render pendiente de evidencia. SEC-01B usa credencial opaca por entorno solo servidor, TLS con CA/hostname y rotación controlada; servicio, usuario, IP, Origin y CSRF son controles independientes. No existe cabecera IP interna aprobada. Falta de control obligatorio mantiene cierre, sin bypass local. Cuotas productivas necesarias deben aprobarse/configurarse: ensayo no equivale a producción.
+
+Se conserva renovación preventiva coordinada CSRF, solo en memoria y sin ampliar actividad/expulsar tokens vigentes. **P8 sustituye el reenvío automático de escrituras anteriormente permitido tras CSRF_INVALID:** renovar prueba no repite la mutación. Tampoco retry automático ante 429, timeout/red/TLS, 500/503 o resultado incierto. Presupuestos numéricos por operación/tramo pendientes de medición/decisión, sin cambios de consumo de cuotas.
+
+Los [atributos de cookies](autenticacion-http-adaptadores-v1.md#cookies-y-tratamiento-de-credenciales-obsoletas) quedan formalizados: HttpOnly, Secure producción, SameSite=Lax, Path=/ y sin Domain __Host-. Nombres/mapeo concreto, 200/DTO CSRF/cuerpo logout y códigos adicionales siguen como propuestas C01–C04, según [matriz D.3](auth07d3-compatibilidad-y-plan-integracion.md). AuthUser no incorpora name.
 
 Origin es obligatorio en mutaciones públicas: debe coincidir exactamente con un origen permitido configurado. Origin ausente, null, ambiguo/múltiple o externo no permitido produce HTTP 403 ORIGIN_INVALID con ApiErrorBody antes de efectos, incluso en logout sin sesión. No hay excepciones implícitas para Server Actions, scripts o clientes externos; las reglas de solo lectura/SSR no son un bypass para mutaciones.
 
-Logout es idempotente respecto al cierre y conserva validación de origen: devuelve 204 cuando no existe sesión válida que revocar. Si la sesión es válida, exige CSRF válido antes de confirmar su revocación; CSRF inválido devuelve 403 sin revocar ni borrar la cookie. Si PostgreSQL impide verificar una cookie presentada o confirmar una revocación requerida, devuelve 503, no un 204 ficticio. Sin cookie no hay credencial que consultar o revocar. La [precedencia de logout](autenticacion-v1.md#post-apiv1authlogout) precisa los casos; la idempotencia no evita los controles. La estructura de AuthUser y ApiErrorBody permanece intacta. No se autoriza implementación; servicios, proxy y protección de rutas se adaptarán en otra tarea.
+Logout es idempotente respecto al cierre y conserva validación de origen: devuelve 204 cuando no existe sesión válida que revocar. Si la sesión es válida, exige CSRF válido antes de confirmar su revocación; CSRF inválido devuelve 403 sin revocar ni borrar la cookie. Si PostgreSQL impide verificar una cookie presentada o confirmar una revocación requerida, devuelve 503, no un 204 ficticio. Sin cookie no hay credencial que consultar o revocar. La [precedencia de logout](autenticacion-v1.md#post-apiv1authlogout) precisa los casos; la idempotencia no evita los controles. La estructura de AuthUser y ApiErrorBody permanece intacta. D.3 no autoriza registrar rutas. ServicioLogout actual rechaza cuenta inactiva: debe implementar la excepción estrecha P4 en otra tarea y conservar rechazo de /me/administración. Las [especificaciones PR30/PR32](integracion-http-pr30-pr32-v1.md) indican responsabilidades y aceptación sin modificar sus ramas.
 
 ## Usuarios
 
@@ -404,7 +410,7 @@ Cuando se apruebe este contrato, los servicios de `frontend/src/services/` deber
 * en la creación de tickets: unidad de conteo de las longitudes (el frontend cuenta unidades de JavaScript `string.length`, que pueden diferir de los caracteres de Python en emojis y otros símbolos) y respuesta ante campos no previstos en la solicitud;
 * forma de representar categorías y áreas;
 * estrategia para operaciones de IA que requieran procesamiento prolongado;
-* política de reintentos y tiempos máximos;
+* presupuestos numéricos por operación/tramo pendientes; P8 ya prohíbe reintentos automáticos de escrituras de autenticación;
 * métricas definitivas del MVP.
 
 ## Criterios de aceptación

@@ -9,6 +9,7 @@ const config = {
   backendUrl: "https://backend.invalid",
   publicOrigin: "https://desk.invalid",
   sessionCookieName: "test_session",
+  serviceCredential: Buffer.alloc(32, 7).toString("base64url"),
 };
 const sid = "A".repeat(43);
 const item = {
@@ -85,7 +86,7 @@ test("fixed same-origin proxy forwards only session, origin and CSRF without red
   assert.equal(response.status, 200);
   assert.equal(captured.url, "https://backend.invalid/api/v1/search");
   assert.equal(captured.options.headers.Cookie, `test_session=${sid}`);
-  assert.equal(captured.options.headers.Authorization, undefined);
+  assert.equal(captured.options.headers.Authorization, `Bearer ${config.serviceCredential}`);
   assert.equal(captured.options.headers["X-Forwarded-For"], undefined);
   assert.equal(captured.options.redirect, "error");
   assert.equal(captured.options.cache, "no-store");
@@ -243,10 +244,15 @@ test("results group by document and Spanish preference preserves every fragment 
   assert.deepEqual(items, [english, spanish, secondEnglish]);
 });
 
-test("only configured HTTPS or explicitly allowed loopback HTTP destinations are accepted", async () => {
-  const send = async () => Response.json({ status: "no_documents", items: [] });
+test("SEC-01B requires HTTPS and a canonical server credential before contacting FastAPI", async () => {
+  let calls = 0;
+  const send = async () => {
+    calls++;
+    return Response.json({ status: "no_documents", items: [] });
+  };
   for (const backendUrl of [
     "http://remote.invalid",
+    "http://127.0.0.1:8000",
     "https://user:secret@backend.invalid",
     "https://backend.invalid/other",
     "https://backend.invalid/?target=other",
@@ -256,16 +262,12 @@ test("only configured HTTPS or explicitly allowed loopback HTTP destinations are
       503
     );
   }
-  assert.equal(
-    (
-      await forwardSemanticSearch(
-        request(),
-        { ...config, backendUrl: "http://127.0.0.1:8000", allowHttpLocal: true },
-        send
-      )
-    ).status,
-    200
-  );
+  for (const serviceCredential of [undefined, "malformed", "B".repeat(43)]) {
+    const response = await forwardSemanticSearch(request(), { ...config, serviceCredential }, send);
+    assert.equal(response.status, 503);
+    assert.equal(response.headers.get("cache-control"), "no-store");
+  }
+  assert.equal(calls, 0);
 });
 
 test("invalid or excessive requests do not echo their contents", async () => {

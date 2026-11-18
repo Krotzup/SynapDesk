@@ -22,10 +22,10 @@ export function ErrorState({ error, retry }: ErrorStateProps) {
   }, [error]);
 
   return (
-    <div className="p-8 bg-[#F8FAFC] min-h-full">
+    <div className="px-4 py-6 sm:p-6 lg:p-8 bg-[#F8FAFC] min-h-full">
       <div
         role="alert"
-        className="max-w-xl mx-auto mt-16 bg-white p-8 rounded-2xl border border-[#E2E8F0] shadow-sm text-center space-y-4"
+        className="max-w-xl mx-auto mt-4 sm:mt-16 bg-white p-6 sm:p-8 rounded-2xl border border-[#E2E8F0] shadow-sm text-center space-y-4"
       >
         <div
           aria-hidden="true"
@@ -37,11 +37,14 @@ export function ErrorState({ error, retry }: ErrorStateProps) {
         <p className="text-sm text-[#64748B]">
           Ocurrió un problema al obtener la información. Puede ser algo temporal; intenta de nuevo.
         </p>
-        <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center justify-center gap-4 pt-2">
           <Button disabled={isPending} onClick={() => startTransition(() => retry())}>
             {isPending ? "Reintentando…" : "Reintentar"}
           </Button>
-          <Link href="/inicio" className="text-sm text-[#2563EB] font-medium hover:underline">
+          <Link
+            href="/inicio"
+            className="inline-flex items-center justify-center min-h-11 sm:min-h-0 text-sm text-[#2563EB] font-medium hover:underline"
+          >
             Ir al inicio
           </Link>
         </div>

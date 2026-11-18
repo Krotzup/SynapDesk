@@ -59,16 +59,15 @@ La vectorización se ajusta dentro de cada entrenamiento: no aprende vocabulario
 ni IDF de la prueba. `max_features` limita cada vectorizador; la variante con
 caracteres puede utilizar hasta dos veces ese número de características.
 
-El entrenamiento existente admite `--character-ngram-targets` para generar un
-artefacto experimental con la unión de palabras y caracteres únicamente en los
-objetivos indicados (`type`, `priority`, `queue`). Se registra en configuración
-y en un nombre de modelo diferenciado; conserva el formato de inferencia. Sin
-esa opción se conserva el baseline en los tres objetivos. Evaluar cada objetivo
-antes de adoptar la variante, ya que una mejora de prioridad no garantiza
-mejorar tipo o área. Usar un destino nuevo para conservar el modelo anterior:
+El entrenamiento usa palabras y caracteres para `priority` por defecto, y solo
+palabras para `type` y `queue`. `--character-ngram-targets` reemplaza la selección
+predeterminada por los objetivos indicados. La variante se distingue por la
+configuración del artefacto y el nombre del modelo, y conserva el formato de
+inferencia. Para reproducir el baseline histórico de palabras en los tres
+objetivos, usar `--words-only` y un destino nuevo:
 
 ```text
-python ml/train_ticket_classifier.py --input-csv ml/data/raw/tickets_esp.csv --character-ngram-targets priority --output-dir ml/artifacts/ticket_classifier_priority_chars
+python ml/train_ticket_classifier.py --input-csv ml/data/raw/tickets_esp.csv --words-only --output-dir ml/artifacts/ticket_classifier_words_only
 ```
 
 Ejemplo de una línea, válido en PowerShell, CMD y Git Bash:
@@ -106,29 +105,81 @@ externo. El conjunto de prueba externo no elige parámetros. Se informa qué
 parámetros se eligieron en cada partición; no se adopta una configuración global
 como superior. Es más costoso: limitar candidatos antes de activar la grilla.
 
-## Umbral para high optativo
+## Comparación con el catálogo vigente
 
-`--tune-high-threshold` evalúa, únicamente para prioridad, una política
-experimental de promoción de `low`/`medium` a `high` cuando la probabilidad de
-`high` alcanza un corte. No rebaja una predicción `high` existente.
-No utiliza coincidencias léxicas de urgencia ni altera la confianza del modelo.
+El 12 de noviembre de 2026 se evaluaron los cuatro candidatos en `type`,
+`priority` y `queue` con el derivado V2 validado. Se usó el evaluador de
+`71f6b85` y Python 3.12.4 con las versiones de `ml/requirements.txt`.
+Se conservaron 2.237 tickets en 2.237 grupos de texto. Los tres objetivos y
+todos los candidatos compartieron cinco particiones con semilla 42, sin textos
+compartidos entre entrenamiento y prueba. Se usaron configuraciones base, con
+el catálogo `low`, `medium`, `high` y las reglas desactivadas.
 
-El corte se elige entre 0.2/0.35/0.5/0.65/0.8/1 usando predicciones fuera de
-pliegue **solo del entrenamiento externo**, con grupos internos separados. Se
-maximiza F-beta de `high` (`--high-beta`, 2 por defecto experimental). En empate
-se prefieren menos falsas alarmas y después el corte mayor. Ni esos candidatos
-ni beta constituyen una política aprobada para el producto.
+- SHA-256 del CSV V2: `a3792862678c009ca66dad41aeb3e1fbc0a55d4213fd3c39e5cd2e6586e6740a`.
+- SHA-256 del manifiesto V2: `489d95ba95c58cb38de279fc257631742472b2ab995ee9870efa6284aa57f1a1`.
+- SHA-256 de las particiones: `22f72d96ef11508f6c12a2303597f00dbc4257fcb0e64d754fa3cd21b101ad1f`.
 
-La prueba externa se usa después, una vez congelado el corte. Si también hay
-grilla, ambos ajustes permanecen dentro del entrenamiento externo. LinearSVC
-registra `not_applicable`, porque no ofrece `predict_proba`; no se inventan
-probabilidades. La ausencia de `high` en un entrenamiento interno produce error
-explícito. Las probabilidades siguen sin calibración estadística.
+Cada celda muestra Macro F1 medio ± desviación poblacional / Weighted F1 medio.
 
-Ejemplo acotado:
+| Candidato | Tipo | Prioridad | Cola |
+| --- | --- | --- | --- |
+| `sgd_words` | 0,6921 ± 0,0147 / 0,6948 | 0,6577 ± 0,0266 / 0,6865 | 0,6566 ± 0,0364 / 0,6290 |
+| `sgd_words_chars` | 0,6816 ± 0,0180 / 0,6874 | 0,6598 ± 0,0231 / 0,6883 | 0,6481 ± 0,0581 / 0,6247 |
+| `logistic_words` | 0,6617 ± 0,0155 / 0,6647 | 0,6239 ± 0,0258 / 0,6497 | 0,5643 ± 0,0185 / 0,5277 |
+| `linear_svc_words` | 0,6955 ± 0,0155 / 0,7005 | 0,6556 ± 0,0203 / 0,6839 | 0,6457 ± 0,0181 / 0,6266 |
 
-```text
-python ml/evaluate_ticket_classifier.py --input-csv ml/data/raw/tickets_esp.csv --candidates sgd_words --tune-hyperparameters --tune-high-threshold --output ml/artifacts/evaluacion_clasificador/sgd_ajustado.json
+Para prioridad, los caracteres detectaron 741 de los 980 casos `high`, con
+214 falsas alarmas. El baseline detectó 733 con 212 falsas alarmas. El
+incremento es de 8 detecciones (+0,8 puntos porcentuales de recall) y 2 falsas
+alarmas. La diferencia de Macro F1 (0,0021) es menor que la desviación entre
+pliegues de ambos candidatos (aproximadamente 0,023–0,027). La comparación es
+descriptiva.
+
+El [PR #35, abierto el 12 de noviembre de 2026](https://github.com/Krotzup/SynapDesk/pull/35),
+registra el acuerdo del equipo de dar más peso a detectar tickets `high` y de usar
+SGD con palabras y caracteres para sugerir prioridad. Tipo y cola usan SGD de
+palabras. El agente conserva la decisión final sobre la prioridad.
+
+El reporte local histórico `prioridad_recall_high.json` usó el mismo V2 y la misma
+huella de particiones. Con palabras y caracteres, el umbral experimental de
+promoción elevó la detección a 820 de 980, pero también elevó las falsas alarmas de
+214 a 388 y redujo el Macro F1 medio de 0,6598 a 0,6336. Ese costo respalda retirar
+el umbral del evaluador y conservar la salida directa del clasificador.
+SGD obtuvo el mayor Macro F1 en cola. LinearSVC obtuvo el mayor Macro F1
+observado en tipo, por 0,0034 sobre SGD, y requeriría resolver la ausencia de
+probabilidades antes de considerarlo para la salida actual. Las diferencias
+son descriptivas.
+
+Para repetir la comparación, colocar el CSV y su manifiesto V2 juntos en la
+ruta indicada o ajustar `$dataset`. Usar un directorio de salida nuevo.
+
+```powershell
+$dataset = 'ml/artifacts/mejoras_clasificador_tickets/final_v2/tickets_esp_entrenamiento_v2.csv'
+$output = 'ml/artifacts/evaluacion_clasificador_vigente/reproduccion'
+foreach ($target in 'type', 'priority', 'queue') {
+    python -X utf8 ml/evaluate_ticket_classifier.py --input-csv $dataset --target $target --output "$output/$target.json"
+    if ($LASTEXITCODE -ne 0) { throw "Falló la evaluación de $target" }
+}
+```
+
+### Artefacto verificado para la variante aprobada
+
+Se generó y verificó la carga del Joblib `20261112173515` con caracteres
+solo para prioridad. Su SHA-256 es
+`60a167ea7ca6ae94f6008e61385c62aff3defb8de4c6d7c62a0e76c760e85173`.
+El manifiesto, el modelo y sus métricas están en
+`ml/artifacts/evaluacion_clasificador_vigente/modelo_prioridad_caracteres/`.
+Una inferencia con un ticket sintético devolvió los tres objetivos con
+confianza y alternativas, con reglas desactivadas y el catálogo vigente.
+
+El entrenamiento del artefacto reservó 448 registros para prueba y usó 1.789
+para entrenar, sin textos compartidos. Su Macro F1 / Weighted F1 fue
+0,6835 / 0,6899 en tipo, 0,6451 / 0,6670 en prioridad y 0,6500 / 0,5992
+en cola. Esta partición pertenece al mismo corpus V2 usado en la comparación
+y sus resultados son descriptivos. La tabla anterior resume los cinco pliegues.
+
+```powershell
+python -X utf8 ml/train_ticket_classifier.py --input-csv $dataset --character-ngram-targets priority --output-dir "$output/modelo_prioridad_caracteres"
 ```
 
 ## Reporte y límites
@@ -142,8 +193,7 @@ Si no hay `high` real en un pliegue, su recall es `null` y `valid_folds` indica
 cuántos pliegues contribuyen al resumen; no se informa un recall perfecto.
 
 Las falsas alarmas de `high` del resumen son conteos por pliegue; el total está
-en `oof_metrics.high_detection`. Los resultados con umbral aparecen por
-separado. No se guardan textos ni predicciones individuales en el reporte.
+en `oof_metrics.high_detection`. El reporte guarda métricas agregadas.
 El destino debe ser nuevo y se rechaza una fuente que cambie durante la
 evaluación. Los reportes permanecen en `ml/artifacts/`, excluido de Git.
 
@@ -163,5 +213,4 @@ alcance solicitado en GitHub es validación cruzada por grupos; obtener otro
 corpus independiente no es una condición de cierre de esta rama.
 
 Referencias metodológicas: [GroupKFold](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html),
-[validación anidada](https://scikit-learn.org/stable/auto_examples/model_selection/plot_nested_cross_validation_iris.html)
-y [selección de umbrales](https://scikit-learn.org/stable/modules/classification_threshold.html).
+[validación anidada](https://scikit-learn.org/stable/auto_examples/model_selection/plot_nested_cross_validation_iris.html).

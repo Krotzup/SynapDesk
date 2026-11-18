@@ -23,7 +23,8 @@ entero de 1–20 (5 por defecto). El modelo también impone 128 tokens incluidos
 los especiales. Se conserva el límite de caracteres y se comunica el exceso
 real de tokens; no se trunca ni divide silenciosamente la consulta.
 
-La petición requiere una única cookie de sesión del nombre configurado, Origin
+La petición requiere [SEC-01B](comunicacion-interna-segura-v1.md) con TLS directo y credencial de servicio,
+una única cookie de sesión del nombre configurado, Origin
 público explícitamente permitido y un único `X-CSRF-Token` válido ligado a esa
 sesión. Las cookies de autenticación duplicadas, malformadas o de perfiles
 mezclados se rechazan con 401 en la búsqueda. El proxy solo reenvía la cookie
@@ -32,6 +33,9 @@ verificaciones de usuario activo, rol admitido, revocación y vencimientos de lo
 servicios existentes. La consulta no renueva actividad de sesión; su política
 general sigue pendiente. La transacción de autorización termina antes de emitir
 la respuesta y no produce cookies nuevas.
+
+La credencial de servicio identifica a Next.js. La sesión, el Origin y el token
+CSRF siguen siendo controles independientes.
 
 ## Respuesta
 
@@ -83,7 +87,7 @@ del driver ni contenido de la consulta original en los errores.
 | 503 | `SEARCH_NOT_READY` | Esquema semántico no preparado. |
 | 503 | `SEARCH_CONFIGURATION_ERROR` | Base no independiente o configuración incompatible. |
 | 503 | `SEARCH_UNAVAILABLE` | Servicio deshabilitado o fallo de búsqueda/modelo. |
-| 503 | `DEPENDENCY_UNAVAILABLE` | No se pudo verificar la sesión o confirmar su transacción. |
+| 503 | `DEPENDENCY_UNAVAILABLE` | No se pudo verificar el intermediario, la sesión o su transacción. |
 | 503 | `SERVICE_UNAVAILABLE` | El proxy no pudo comunicarse con el backend o recibió una respuesta incompatible. |
 
 El cliente de búsqueda no reenvía el POST automáticamente. Ante 403 +
@@ -91,11 +95,11 @@ El cliente de búsqueda no reenvía el POST automáticamente. Ante 403 +
 misma y muestra el rechazo. Una nueva búsqueda iniciada por el usuario
 obtiene un token vigente antes de enviar el POST.
 
-Queda pendiente acordar esta excepción al reintento único de Autenticación V1
-junto con la política CSRF de búsqueda. El acuerdo debe quedar reflejado en
-los contratos y verificarse con el proxy general del PR #30 y AUTH-07.
-La [propuesta y sus criterios de aceptación](../gestion/mejora-recuperacion-semantica.md#punto-31--csrf-y-reintento-de-búsqueda)
-recogen el comportamiento actual y la validación que falta.
+Este comportamiento aplica la [política P8 aprobada](autenticacion-v1.md#renovación-preventiva-y-ausencia-de-reintentos-de-escritura--approved-p8)
+y conserva CSRF de sesión y Origin exacto según la
+[sección 4 del contrato de integración](integracion-http-pr30-pr32-v1.md#4-implementación-lista-para-asignar-a-américa--pr-32).
+Los [criterios de aceptación](../gestion/mejora-recuperacion-semantica.md#punto-31--csrf-y-reintento-de-búsqueda)
+recogen el comportamiento actual y la validación con AUTH-07 que falta.
 
 El backend de búsqueda aún no emite `429 RATE_LIMITED`. Si recibe ese estado
 y código, el proxy los conserva y reenvía `Retry-After` cuando es válido.

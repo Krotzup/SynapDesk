@@ -9,6 +9,9 @@ import pytest
 from app.aplicacion import crear_aplicacion
 from app.configuracion import Configuracion
 from app.recuperacion.servicio import ErrorRecuperacion, ServicioRecuperacion
+from pruebas.intermediario_auxiliar import configuracion, credencial
+
+ORIGIN = "https://testserver"
 
 
 @pytest.fixture(autouse=True)
@@ -23,9 +26,12 @@ def authorized(request):
 
 @pytest.fixture
 def client():
-    config = Configuracion(_env_file=None, app_env="testing", search_session_cookie_name="test_session",
-                           auth_origenes_permitidos=["http://testserver"])
-    with TestClient(crear_aplicacion(config)) as value:
+    token = credencial()
+    config = configuracion([token], search_session_cookie_name="test_session",
+                           auth_origenes_permitidos=[ORIGIN])
+    with TestClient(crear_aplicacion(config), base_url=ORIGIN, headers={
+        "Authorization": f"Bearer {token.get_secret_value()}", "Origin": ORIGIN,
+    }) as value:
         yield value
 
 
@@ -88,7 +94,7 @@ def test_malformed_or_mixed_auth_cookies_are_rejected_before_database(client, co
     service = Mock()
     client.app.state.recuperacion = service
     response = client.post("/api/v1/search", json={"query": "red"}, headers={
-        "Cookie": cookie, "Origin": "http://testserver", "X-CSRF-Token": "test-token",
+        "Cookie": cookie, "Origin": ORIGIN, "X-CSRF-Token": "test-token",
     })
     assert response.status_code == 401
     assert response.json()["error"]["code"] == "AUTHENTICATION_REQUIRED"
@@ -98,13 +104,31 @@ def test_malformed_or_mixed_auth_cookies_are_rejected_before_database(client, co
 def test_origin_and_csrf_are_required_before_retrieval(client):
     service = Mock()
     client.app.state.recuperacion = service
-    response = client.post("/api/v1/search", json={"query": "red"}, headers={"Cookie": "test_session=unknown"})
+    response = client.post("/api/v1/search", json={"query": "red"},
+                           headers={"Cookie": "test_session=unknown", "Origin": "https://invalid.test"})
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "ORIGIN_INVALID"
     response = client.post("/api/v1/search", json={"query": "red"},
-                           headers={"Cookie": "test_session=unknown", "Origin": "http://testserver"})
+                           headers={"Cookie": "test_session=unknown", "Origin": ORIGIN})
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "CSRF_INVALID"
+    service.buscar.assert_not_called()
+
+
+@pytest.mark.parametrize("control", ["missing", "incorrect", "forwarded"])
+def test_search_requires_verified_service_before_session_or_model(client, control):
+    service = Mock()
+    client.app.state.recuperacion = service
+    if control == "missing":
+        del client.headers["Authorization"]
+    elif control == "incorrect":
+        client.headers["Authorization"] = f"Bearer {credencial().get_secret_value()}"
+    else:
+        client.headers["X-Forwarded-Proto"] = "https"
+    response = client.post("/api/v1/search", json={"query": "red"})
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "DEPENDENCY_UNAVAILABLE"
+    assert response.headers["cache-control"] == "no-store"
     service.buscar.assert_not_called()
 
 

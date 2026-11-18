@@ -47,7 +47,7 @@ Las predicciones asistirán al agente y no modificarán automáticamente los val
 | Entradas | `subject` y `body` | Información disponible al crear un ticket |
 | Objetivos | `type`, `priority`, `queue` | Tres clasificadores independientes |
 | Framework | scikit-learn | Baseline actual; no exige PyTorch ni TensorFlow |
-| Vectorización | `TfidfVectorizer` | Texto con unigramas y bigramas |
+| Vectorización | `TfidfVectorizer` | Unigramas y bigramas de palabras en los tres objetivos, más `char_wb` de 3 a 5 en prioridad por defecto |
 | Clasificador | `SGDClassifier(loss="log_loss")` | Una pipeline por objetivo |
 | Balanceo | `class_weight="balanced"` | Configuración del baseline |
 | Serialización | Joblib | Artefacto `.joblib` con pipelines y metadatos |
@@ -58,7 +58,7 @@ Las predicciones asistirán al agente y no modificarán automáticamente los val
 
 Configuración adicional observada: `max_features=120000`, `ngram_range=(1, 2)`, `min_df=2`, `sublinear_tf=True`, `strip_accents="unicode"`, `alpha=1e-5`, `max_iter=1000` y `tol=1e-3`.
 
-El entrenamiento usa una proporción de prueba de `0.2` y semilla predeterminada `42`, aplicada también al clasificador. Usa `GroupShuffleSplit` por texto preparado; ante grupos insuficientes o entrenamiento con menos de dos clases falla sin alternativa que separe filas del mismo grupo. La evaluación experimental añade `GroupKFold` y ajustes internos, separados del entrenamiento habitual. Los caracteres pueden habilitarse por objetivo, sin cambiar el baseline predeterminado.
+El entrenamiento usa una proporción de prueba de `0.2` y semilla predeterminada `42`, aplicada también al clasificador. Usa `GroupShuffleSplit` por texto preparado; ante grupos insuficientes o entrenamiento con menos de dos clases falla sin alternativa que separe filas del mismo grupo. La evaluación experimental añade `GroupKFold` y ajustes internos, separados del entrenamiento habitual. La [evaluación vigente](../../ml/CLASSIFIER_EVALUATION.md) respalda usar caracteres solo en prioridad por defecto. `--words-only` conserva la opción de reproducir el baseline histórico. La configuración del artefacto registra los objetivos que usan caracteres y la salida nativa de inferencia conserva su formato.
 
 Estos parámetros describen el experimento, no umbrales definitivos de calidad ni un compromiso de conservar el algoritmo en todas las versiones.
 
