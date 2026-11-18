@@ -109,15 +109,17 @@ artefactos quedan excluidos de Git. Completar también `npm run lint` y
 
 ## Comandos disponibles
 
-| Comando                | Descripción                    |
-| ---------------------- | ------------------------------ |
-| `npm run dev`          | Servidor de desarrollo         |
-| `npm run build`        | Build de producción            |
-| `npm run start`        | Servidor de producción         |
-| `npm run lint`         | Verificación de linting        |
-| `npm run format`       | Formatea todo el código        |
-| `npm run format:check` | Verifica formato sin modificar |
-| `npm run test:proxy`   | Pruebas proxy/SSR (unos 3 min) |
+| Comando                   | Descripción                                                             |
+| ------------------------- | ----------------------------------------------------------------------- |
+| `npm run dev`             | Servidor de desarrollo                                                  |
+| `npm run build`           | Build de producción                                                     |
+| `npm run start`           | Servidor de producción                                                  |
+| `npm run lint`            | Verificación de linting                                                 |
+| `npm run format`          | Formatea todo el código                                                 |
+| `npm run format:check`    | Verifica formato sin modificar                                          |
+| `npm run test:proxy`      | Pruebas proxy/SSR (unos 3 min)                                          |
+| `npm run test:unit`       | Pruebas de lógica (`tests/unit`)                                        |
+| `npm run test:components` | Pruebas de formularios con jsdom y Testing Library (`tests/components`) |
 
 ## Estado de implementación
 
