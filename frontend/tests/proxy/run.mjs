@@ -102,7 +102,7 @@ try {
     [
       "--conditions=react-server",
       "--import",
-      "./tests/proxy/register.mjs",
+      "./tests/support/register.mjs",
       "--test",
       // Argumentos extra, por ejemplo: npm run test:proxy -- --test-name-pattern="SSR".
       ...process.argv.slice(2),
