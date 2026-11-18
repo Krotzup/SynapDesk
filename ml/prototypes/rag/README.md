@@ -113,6 +113,8 @@ Para evaluar un LLM con fragmentos preparados, `evaluate_model` en `evaluar_rag.
 
 Los informes simulado y por API verifican automáticamente el estado y las citas. En R09, `forbiddenMarkerFound` indica si algún paso del borrador contiene `TEXTO_AJENO`, sin distinguir mayúsculas. Si aparece, `caseMatches` es falso aunque el estado y las citas coincidan. El resumen cuenta los casos que cumplen todas sus comprobaciones en `summary.caseMatches`.
 
+La suite RAG contiene 23 pruebas. La regresión de R09 ejecuta el comando de Gemini con transporte simulado y verifica respuestas con el marcador, con el marcador en minúsculas y sin él. En los tres casos conserva las citas válidas y comprueba el indicador individual y el total del informe.
+
 La persona que revisa el informe debe comprobar si el extracto citado respalda el paso, si el paso ayuda a resolver el ticket y si corresponde abstenerse. Para evaluar la recuperación real, alimentar el mismo conjunto de tickets al servicio del #32 y registrar qué fuentes recupera. La autenticación, el proxy y la persistencia quedan para la prueba integrada.
 
 Cuando exista un informe con `executionMode: api`, revisar R06–R08 para comprobar que la evidencia insuficiente o contradictoria produzca abstención. En R01–R05 y R09, comparar cada paso con el extracto que cita y registrar si aporta una acción útil y sustentada. En particular, R05 debe tratar el caso resuelto como antecedente, y R09 debe omitir el texto ajeno al diagnóstico. Conservar el JSON con la fecha, el commit evaluado y las observaciones de esa revisión.
@@ -151,6 +153,6 @@ Para el incremento integrado queda la comprobación de extremo a extremo con Fas
 
 ## Dependencias para la integración
 
-El piloto de este PR se puede revisar con los fragmentos preparados. La evaluación con recuperación real necesita los resultados del #32. El adaptador debe usar `documentChunkId` y `excerpt` como contexto y conservar `sourceUrl` para mostrar la fuente original. Si la búsqueda devuelve `no_documents` o `insufficient_information`, se omite la llamada a Gemini. [PR #32](https://github.com/Krotzup/SynapDesk/pull/32)
+La recuperación semántica del #32 ya está integrada en `main`. Queda pendiente conectar el piloto a sus resultados. El adaptador debe usar `documentChunkId` y `excerpt` como contexto y conservar `sourceUrl` para mostrar la fuente original. Si la búsqueda devuelve `no_documents` o `insufficient_information`, se omite la llamada a Gemini. [PR #32](https://github.com/Krotzup/SynapDesk/pull/32)
 
 El proxy de mismo origen del #30 ya está integrado en `main`. La validación del recorrido web con una sesión real y AUTH-07 corresponde al incremento integrado. [PR #30](https://github.com/Krotzup/SynapDesk/pull/30)
