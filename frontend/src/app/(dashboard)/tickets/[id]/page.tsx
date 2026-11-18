@@ -32,9 +32,9 @@ export default async function TicketDetailPage({ params }: TicketDetailPageProps
   const { id } = await params;
   const [ticket, recommendations] = await Promise.all([
     getTicket(id),
-    recommendationsService.getByTicket(id),
+    recommendationsService.getByTicket(id).catch(() => null),
   ]);
-  const { latest: recommendation, previous } = splitRecommendations(recommendations);
+  const { latest: recommendation, previous } = splitRecommendations(recommendations ?? []);
 
   return (
     // Bajo 1280 px, el margen derecho deja libre el botón fijo del Asistente IA.
@@ -127,6 +127,11 @@ export default async function TicketDetailPage({ params }: TicketDetailPageProps
 
         {/* Panel derecho: Asistente IA */}
         <AssistantPanel>
+          {recommendations === null && (
+            <p role="status" className="text-sm text-[#64748B]">
+              No se pudieron cargar las recomendaciones. El ticket sigue disponible.
+            </p>
+          )}
           {/* La predicción ML depende de las decisiones pendientes del contrato backend-ML */}
           <div className="p-3 bg-white border border-dashed border-[#C7D2FE] rounded-xl text-xs text-[#64748B]">
             La clasificación automática (categoría y prioridad estimadas) se mostrará cuando se

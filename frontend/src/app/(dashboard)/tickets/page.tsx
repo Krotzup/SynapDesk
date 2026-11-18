@@ -19,9 +19,18 @@ export default async function TicketsPage({ searchParams }: TicketsPageProps) {
   await connection();
   const filters = parseTicketListParams(await searchParams);
   const filtered = hasActiveFilters(filters);
+  const localIngress = process.env.NEXT_PUBLIC_TRUSTED_LOCAL_INGRESS === "true";
+  if (localIngress && filtered) {
+    return (
+      <div className="p-6 space-y-3">
+        <p role="alert">Los filtros todavía no están disponibles. Puedes consultar el listado paginado.</p>
+        <Link href="/tickets" className="text-[#2563EB] hover:underline">Volver al listado</Link>
+      </div>
+    );
+  }
   const [result, summary] = await Promise.all([
     ticketsService.getAll(filters),
-    metricsService.getSummary(),
+    metricsService.getSummary().catch(() => null),
   ]);
   const tickets = result.items;
 
@@ -29,28 +38,28 @@ export default async function TicketsPage({ searchParams }: TicketsPageProps) {
   const summaryCards = [
     {
       label: "Total tickets",
-      value: summary.totalTickets,
+      value: summary?.totalTickets ?? "–",
       icon: "📋",
       bg: "bg-[#EFF6FF]",
       text: "text-[#2563EB]",
     },
     {
       label: "Abiertos",
-      value: summary.openTickets,
+      value: summary?.openTickets ?? "–",
       icon: "🔓",
       bg: "bg-[#DBEAFE]",
       text: "text-[#1E40AF]",
     },
     {
       label: "En proceso",
-      value: summary.inProgressTickets,
+      value: summary?.inProgressTickets ?? "–",
       icon: "⏳",
       bg: "bg-[#FEF3C7]",
       text: "text-[#D97706]",
     },
     {
       label: "Resueltos",
-      value: summary.resolvedTickets,
+      value: summary?.resolvedTickets ?? "–",
       icon: "✅",
       bg: "bg-[#D1FAE5]",
       text: "text-[#10B981]",
@@ -129,7 +138,11 @@ export default async function TicketsPage({ searchParams }: TicketsPageProps) {
               {filtered ? "Resultados" : "Todos los tickets"}
             </h2>
             {/* La key reinicia los campos cuando los filtros cambian desde otro lugar (menú lateral) */}
-            <TicketFilters key={buildQuery(filtersForUrl(filters))} {...filters} />
+            {localIngress ? (
+              <p className="text-sm text-[#64748B]">Filtros próximamente. El listado admite paginación.</p>
+            ) : (
+              <TicketFilters key={buildQuery(filtersForUrl(filters))} {...filters} />
+            )}
           </div>
 
           {/* Teléfono: tarjetas. Desde 768 px: tabla. */}

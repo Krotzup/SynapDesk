@@ -652,6 +652,56 @@ describe("8. Plazo de 30 s", () => {
 });
 
 // ── Regresión de lo que ya funcionaba ──
+describe("Ingreso local compuesto", () => {
+  const capability = Symbol.for("synapdesk.mvp04.ingress");
+  const localRequest = (headers = {}) => new Request("http://localhost:3000/api/local/csrf", {
+    method: "POST", headers: { origin: "http://localhost:3000", "sec-fetch-site": "same-origin", ...headers },
+  });
+  test("el flag público solo no habilita el BFF ni contacta al backend", async (t) => {
+    const previous = process.env.NEXT_PUBLIC_TRUSTED_LOCAL_INGRESS;
+    t.after(() => previous === undefined ? delete process.env.NEXT_PUBLIC_TRUSTED_LOCAL_INGRESS : process.env.NEXT_PUBLIC_TRUSTED_LOCAL_INGRESS = previous);
+    process.env.NEXT_PUBLIC_TRUSTED_LOCAL_INGRESS = "true";
+    const { POST } = await import("../../src/app/api/local/csrf/route.ts");
+    const before = hits;
+    await expectContractError(await POST(localRequest()), 503, "SERVICE_UNAVAILABLE");
+    assert.equal(hits, before);
+  });
+  test("con capacidad privada sigue exigiendo Origin y Fetch-Site propios", async (t) => {
+    t.after(() => delete process[capability]);
+    process[capability] = { localTesting: true, publicOrigin: "http://localhost:3000" };
+    const { POST } = await import("../../src/app/api/local/csrf/route.ts");
+    const before = hits;
+    for (const headers of [{ origin: "https://ajeno.invalid" }, { origin: "" }, { "sec-fetch-site": "cross-site" }]) {
+      await expectContractError(await POST(localRequest(headers)), 403, "ORIGIN_INVALID");
+    }
+    assert.equal(hits, before);
+  });
+  test("BFF traduce a GET CSRF y SSR marca únicamente su llamada de código", async (t) => {
+    t.after(() => delete process[capability]);
+    const calls = [];
+    process[capability] = { localTesting: true, publicOrigin: "http://localhost:3000",
+      attest: (method, path, headers, filter, ssr) => {
+        assert.equal(headers.get("authorization"), `Bearer ${CREDENTIAL}`);
+        assert.equal(filter, proxy.filterCookieHeader);
+        calls.push({method, path, ssr}); return "proof-of-test";
+      } };
+    const { POST } = await import("../../src/app/api/local/csrf/route.ts");
+    assert.equal((await POST(localRequest())).status, 200);
+    await api.get("/echo");
+    assert.deepEqual(calls, [{method:"GET", path:"/api/v1/auth/csrf", ssr:false},
+      {method:"GET", path:"/api/v1/echo", ssr:true}]);
+    assert.equal(lastHeaders["x-synapdesk-ingress-evidence"], "proof-of-test");
+  });
+  test("un sello rechazado cierra proxy y SSR antes de contactar al backend", async (t) => {
+    t.after(() => delete process[capability]);
+    process[capability] = { localTesting:true, attest: () => { throw new Error("binding rejected"); } };
+    const before = hits;
+    await expectContractError(await call("echo"), 503, "SERVICE_UNAVAILABLE");
+    await expectThrownContractError(api.get("/echo"));
+    assert.equal(hits, before);
+  });
+});
+
 describe("Regresión", () => {
   test("cabeceras de IP y arbitrarias no llegan a FastAPI; Origin y X-CSRF-Token sí", async () => {
     await call("echo", {
