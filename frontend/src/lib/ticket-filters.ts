@@ -3,6 +3,25 @@ import { TicketListParams, TicketPriority, TicketStatus } from "@/types";
 
 export const TICKET_PAGE_SIZE = 10;
 
+/**
+ * Filtros del listado (búsqueda, estado, prioridad y área). El backend MVP02 no los implementa
+ * y pide no enviarlos esperando que se ignoren: quedan desactivados hasta que el contrato
+ * apruebe sus valores. Para reactivarlos basta con cambiar esta constante.
+ */
+export const TICKET_FILTERS_ENABLED = false;
+
+/** Aviso que acompaña a los filtros mientras están desactivados. */
+export const TICKET_FILTERS_NOTICE =
+  "Los filtros y la búsqueda de tickets se habilitarán cuando el backend los implemente.";
+
+/** Enlace al listado filtrado por estado, o undefined mientras los filtros estén desactivados. */
+export function ticketListHrefForStatus(
+  status: TicketStatus,
+  enabled: boolean = TICKET_FILTERS_ENABLED
+): string | undefined {
+  return enabled ? `/tickets?status=${status}` : undefined;
+}
+
 export const TICKET_STATUSES: readonly TicketStatus[] = [
   "open",
   "in_progress",
@@ -24,9 +43,15 @@ function oneOf<T extends string>(values: readonly T[], value: string | undefined
 
 /**
  * Lee los filtros del listado desde la URL. Los valores desconocidos se ignoran
- * en lugar de enviarse al backend.
+ * en lugar de enviarse al backend. Con los filtros desactivados solo se lee la página.
  */
-export function parseTicketListParams(searchParams: SearchParams): TicketListParams {
+export function parseTicketListParams(
+  searchParams: SearchParams,
+  enabled: boolean = TICKET_FILTERS_ENABLED
+): TicketListParams {
+  if (!enabled) {
+    return { page: parsePage(searchParams.page), pageSize: TICKET_PAGE_SIZE };
+  }
   return {
     status: oneOf(TICKET_STATUSES, first(searchParams.status)),
     priority: oneOf(TICKET_PRIORITIES, first(searchParams.priority)),

@@ -6,7 +6,13 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { priorityLabels, statusLabels } from "@/components/ui/Badge";
 import { buildQuery } from "@/lib/params";
-import { hasActiveFilters, TICKET_PRIORITIES, TICKET_STATUSES } from "@/lib/ticket-filters";
+import {
+  hasActiveFilters,
+  TICKET_FILTERS_ENABLED,
+  TICKET_FILTERS_NOTICE,
+  TICKET_PRIORITIES,
+  TICKET_STATUSES,
+} from "@/lib/ticket-filters";
 import { TicketListParams } from "@/types";
 
 const fieldClass =
@@ -31,6 +37,8 @@ export function TicketFilters(filters: TicketListParams) {
   // La key del listado vuelve a montar este componente al aplicar un filtro: con filtros activos
   // el panel empieza abierto, para elegir el siguiente sin volver a tocar "Filtros".
   const [isOpen, setIsOpen] = useState(activeCount > 0);
+
+  if (!TICKET_FILTERS_ENABLED) return <DisabledTicketFilters />;
 
   function apply(form: HTMLFormElement) {
     const data = new FormData(form);
@@ -145,6 +153,48 @@ export function TicketFilters(filters: TicketListParams) {
           </Link>
         )}
       </form>
+    </div>
+  );
+}
+
+/**
+ * Filtros desactivados mientras el backend no los implementa: desde 768 px se ven los campos
+ * deshabilitados; en el teléfono, solo el aviso.
+ */
+function DisabledTicketFilters() {
+  return (
+    <div className="w-full lg:w-auto space-y-2">
+      <fieldset
+        disabled
+        aria-describedby="filtros-aviso"
+        className="hidden md:flex md:flex-row md:flex-wrap md:items-center gap-2 opacity-60"
+      >
+        <legend className="sr-only">Filtros del listado</legend>
+        <label htmlFor="ticket-search" className="sr-only">
+          Buscar por título, área, categoría, usuario o ID
+        </label>
+        <input
+          id="ticket-search"
+          type="search"
+          placeholder="Título, área, usuario o ID..."
+          className={`${fieldClass} md:w-56 placeholder-[#94A3B8] cursor-not-allowed`}
+        />
+        <label htmlFor="ticket-status" className="sr-only">
+          Estado
+        </label>
+        <select id="ticket-status" className={`${fieldClass} cursor-not-allowed`}>
+          <option>Todos los estados</option>
+        </select>
+        <label htmlFor="ticket-priority" className="sr-only">
+          Prioridad
+        </label>
+        <select id="ticket-priority" className={`${fieldClass} cursor-not-allowed`}>
+          <option>Todas las prioridades</option>
+        </select>
+      </fieldset>
+      <p id="filtros-aviso" className="text-xs text-[#64748B] lg:text-right">
+        {TICKET_FILTERS_NOTICE}
+      </p>
     </div>
   );
 }

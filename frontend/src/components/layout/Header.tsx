@@ -6,6 +6,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { Logo } from "@/components/layout/Logo";
 import { Button } from "@/components/ui/Button";
 import { buildQuery } from "@/lib/params";
+import { TICKET_FILTERS_ENABLED } from "@/lib/ticket-filters";
 import { Role } from "@/types";
 
 // Límite provisional del texto de búsqueda; el contrato aún no define uno para GET /tickets.
@@ -74,7 +75,7 @@ export function Header({ isNavOpen, onOpenNav }: HeaderProps) {
   const handleSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const term = search.trim();
-    if (!term) return;
+    if (!TICKET_FILTERS_ENABLED || !term) return;
     router.push(`/tickets${buildQuery({ search: term })}`);
     setSearch("");
     setIsSearchOpen(false);
@@ -133,6 +134,7 @@ export function Header({ isNavOpen, onOpenNav }: HeaderProps) {
           <button
             type="submit"
             aria-label="Buscar tickets"
+            disabled={!TICKET_FILTERS_ENABLED}
             className="-ml-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[#64748B] transition-colors hover:text-[#2563EB] focus-visible:text-[#2563EB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] sm:-m-1 sm:h-auto sm:w-auto sm:p-1"
           >
             <svg
@@ -157,7 +159,13 @@ export function Header({ isNavOpen, onOpenNav }: HeaderProps) {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             maxLength={SEARCH_MAX_LENGTH}
-            placeholder="Buscar tickets por título, área, usuario o ID..."
+            // Desactivada junto con los filtros del listado, que es adonde lleva la búsqueda.
+            disabled={!TICKET_FILTERS_ENABLED}
+            placeholder={
+              TICKET_FILTERS_ENABLED
+                ? "Buscar tickets por título, área, usuario o ID..."
+                : "Búsqueda de tickets: disponible próximamente"
+            }
             className="w-full min-w-0 bg-transparent text-sm text-[#0F172A] placeholder-[#94A3B8] outline-none"
             // El botón se llama «Buscar tickets»; el campo, por su contenido.
             aria-label="Texto de búsqueda"
@@ -186,7 +194,7 @@ export function Header({ isNavOpen, onOpenNav }: HeaderProps) {
         </button>
       </form>
 
-      {/* Teléfono: la lupa sola despliega el buscador. */}
+      {/* Teléfono: la lupa sola despliega el buscador (oculta mientras esté desactivado). */}
       <button
         ref={searchToggleRef}
         type="button"
@@ -194,7 +202,7 @@ export function Header({ isNavOpen, onOpenNav }: HeaderProps) {
         aria-label="Abrir búsqueda"
         aria-expanded={isSearchOpen}
         aria-controls="busqueda-cabecera"
-        className="ml-auto flex h-11 w-11 items-center justify-center rounded-xl text-[#475569] hover:bg-[#F1F5F9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] sm:hidden"
+        className={`${TICKET_FILTERS_ENABLED ? "flex" : "hidden"} ml-auto h-11 w-11 items-center justify-center rounded-xl text-[#475569] hover:bg-[#F1F5F9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] sm:hidden`}
       >
         <svg
           className="h-5 w-5"
@@ -214,7 +222,7 @@ export function Header({ isNavOpen, onOpenNav }: HeaderProps) {
 
       {/* Perfil de usuario: el disparador abre un panel con el correo, el rol y Cerrar sesión */}
       <div
-        className="relative shrink-0"
+        className="relative ml-auto shrink-0"
         onKeyDown={(event) => {
           if (event.key === "Escape" && isUserMenuOpen) {
             setIsUserMenuOpen(false);

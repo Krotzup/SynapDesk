@@ -4,12 +4,39 @@ import {
   filtersForUrl,
   hasActiveFilters,
   parseTicketListParams,
+  TICKET_FILTERS_ENABLED,
   TICKET_PAGE_SIZE,
+  ticketListHrefForStatus,
 } from "@/lib/ticket-filters";
 
-describe("parseTicketListParams", () => {
+describe("filtros desactivados (el backend MVP02 no los implementa)", () => {
+  test("por defecto están desactivados", () => {
+    assert.equal(TICKET_FILTERS_ENABLED, false);
+  });
+
+  test("solo se lee la página: los filtros de la URL no llegan al backend", () => {
+    assert.deepEqual(
+      parseTicketListParams({
+        status: "open",
+        priority: "high",
+        area: "Soporte",
+        search: "vpn",
+        page: "2",
+      }),
+      { page: 2, pageSize: TICKET_PAGE_SIZE }
+    );
+  });
+
+  test("sin filtros activos, los conteos no enlazan a un listado filtrado", () => {
+    assert.equal(hasActiveFilters(parseTicketListParams({ status: "open" })), false);
+    assert.equal(ticketListHrefForStatus("open"), undefined);
+    assert.equal(ticketListHrefForStatus("open", true), "/tickets?status=open");
+  });
+});
+
+describe("parseTicketListParams con los filtros habilitados", () => {
   test("sin parámetros: primera página y sin filtros", () => {
-    assert.deepEqual(parseTicketListParams({}), {
+    assert.deepEqual(parseTicketListParams({}, true), {
       status: undefined,
       priority: undefined,
       area: undefined,
@@ -20,13 +47,16 @@ describe("parseTicketListParams", () => {
   });
 
   test("lee los filtros válidos y recorta los textos", () => {
-    const params = parseTicketListParams({
-      status: "in_progress",
-      priority: "high",
-      area: " Soporte ",
-      search: "  vpn  ",
-      page: "3",
-    });
+    const params = parseTicketListParams(
+      {
+        status: "in_progress",
+        priority: "high",
+        area: " Soporte ",
+        search: "  vpn  ",
+        page: "3",
+      },
+      true
+    );
     assert.equal(params.status, "in_progress");
     assert.equal(params.priority, "high");
     assert.equal(params.area, "Soporte");
@@ -35,17 +65,17 @@ describe("parseTicketListParams", () => {
   });
 
   test("ignora estados y prioridades desconocidos en lugar de enviarlos", () => {
-    const params = parseTicketListParams({ status: "borrado", priority: "critical" });
+    const params = parseTicketListParams({ status: "borrado", priority: "critical" }, true);
     assert.equal(params.status, undefined);
     assert.equal(params.priority, undefined);
   });
 
   test("un texto solo con espacios no es filtro", () => {
-    assert.equal(parseTicketListParams({ search: "   " }).search, undefined);
+    assert.equal(parseTicketListParams({ search: "   " }, true).search, undefined);
   });
 
   test("el tamaño de página no se puede cambiar desde la URL", () => {
-    assert.equal(parseTicketListParams({ pageSize: "1000" }).pageSize, TICKET_PAGE_SIZE);
+    assert.equal(parseTicketListParams({ pageSize: "1000" }, true).pageSize, TICKET_PAGE_SIZE);
   });
 });
 
