@@ -148,15 +148,19 @@ export interface TicketListParams extends PaginationParams {
 
 // ─── Métricas ─────────────────────────────────────────────────────────────────
 
+// Conteos aprobados para el MVP (GET /metrics/summary). Cada estado se cuenta una vez.
 export interface Metrics {
   totalTickets: number;
   openTickets: number;
   inProgressTickets: number;
   resolvedTickets: number;
-  avgResolutionTimeHours: number;
-  recommendationsAccepted: number;
-  recommendationsModified: number;
-  recommendationsRejected: number;
+  closedTickets: number;
+  // Pendientes de aprobación en el contrato: el backend todavía no los envía y la
+  // interfaz no los muestra.
+  avgResolutionTimeHours?: number;
+  recommendationsAccepted?: number;
+  recommendationsModified?: number;
+  recommendationsRejected?: number;
 }
 
 // ─── Errores de API ───────────────────────────────────────────────────────────
@@ -170,6 +174,11 @@ export interface ApiErrorBody {
 
 export interface ApiError {
   error: ApiErrorBody;
+  /**
+   * Estado HTTP de la respuesta. No viene en el cuerpo: lo agrega el cliente HTTP (y los datos de
+   * ejemplo) para distinguir casos que el contrato define por estado, como 409 y 503.
+   */
+  status?: number;
 }
 
 // Elemento de details en un 422 VALIDATION_ERROR (propuesta de Felipe del 03-11-2026).

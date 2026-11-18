@@ -1,7 +1,7 @@
-// Hooks de módulos para las pruebas unitarias: permiten ejecutar los .ts de src/ con Node, sin
-// Next ni dependencias nuevas. Resuelven el alias "@/" y los imports relativos sin extensión, y
-// transpilan TypeScript con la versión del proyecto (elimina los imports que solo son tipos).
-// Es el mismo enfoque que tests/proxy del PR #30; al integrarse ambos se pueden unificar.
+// Hooks de módulos compartidos por las pruebas unitarias y las del proxy: permiten ejecutar los .ts
+// de src/ con Node, sin Next ni dependencias nuevas. Resuelven el alias "@/" y los imports relativos
+// sin extensión, sustituyen "next/headers" (la cookie la fija cada prueba) y "server-only" (vacío), y
+// transpilan TypeScript con la versión del proyecto, que elimina los imports que solo son tipos.
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -13,7 +13,11 @@ const frontend = path.resolve(here, "../..");
 const src = path.join(frontend, "src");
 const ts = createRequire(path.join(frontend, "package.json"))("typescript");
 
+const stub = (file) => ({ url: pathToFileURL(path.join(here, file)).href, shortCircuit: true });
+
 export async function resolve(specifier, context, next) {
+  if (specifier === "next/headers") return stub("next-headers-stub.mjs");
+  if (specifier === "server-only") return stub("server-only-stub.mjs");
   if (specifier.startsWith("@/")) {
     return {
       url: pathToFileURL(path.join(src, `${specifier.slice(2)}.ts`)).href,

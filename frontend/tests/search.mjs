@@ -209,7 +209,7 @@ test("a rejected search POST stays rejected and a manual retry gets a fresh CSRF
   });
   const submit = () => api.post("/search", { query: "DNS" });
   await assert.rejects(submit(), (actual) => {
-    assert.deepEqual(actual, error);
+    assert.deepEqual(actual, { ...error, status: 403 });
     return true;
   });
   assert.deepEqual(attempts, [

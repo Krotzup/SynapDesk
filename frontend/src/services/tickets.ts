@@ -2,22 +2,11 @@ import { api } from "@/lib/api";
 import { USE_MOCKS } from "@/lib/config";
 import { buildQuery } from "@/lib/params";
 import { ticketsMock } from "@/mocks/tickets";
-import { PaginatedResponse, Ticket, TicketListParams, TicketPriority, TicketStatus } from "@/types";
+import { PaginatedResponse, Ticket, TicketListParams, TicketStatus } from "@/types";
 
 export interface CreateTicketRequest {
   title: string;
   description: string;
-}
-
-// Usa assignedToId (UUID) en lugar del objeto User completo
-export interface UpdateTicketRequest {
-  title?: string;
-  description?: string;
-  status?: TicketStatus;
-  priority?: TicketPriority;
-  category?: string | null;
-  area?: string | null;
-  assignedToId?: string | null;
 }
 
 const ticketsApi = {
@@ -28,7 +17,8 @@ const ticketsApi = {
 
   create: (data: CreateTicketRequest): Promise<Ticket> => api.post("/tickets", data),
 
-  update: (id: string, data: UpdateTicketRequest): Promise<Ticket> =>
+  // Solo el estado (MVP02): asignación, edición libre y borrado no están aprobados.
+  updateStatus: (id: string, data: { status: TicketStatus }): Promise<Ticket> =>
     api.patch(`/tickets/${id}`, data),
 
   // Cierre o eliminación lógica

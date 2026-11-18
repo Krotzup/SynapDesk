@@ -13,14 +13,33 @@ export function simulateLatency<T>(data: T): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(structuredClone(data)), LATENCY_MS));
 }
 
-/** Rechaza con el formato de error del contrato frontend-backend. */
+// Estado HTTP de cada código, como lo agrega el cliente HTTP real (ver ApiError.status).
+const STATUS_BY_CODE: Record<string, number> = {
+  AUTHENTICATION_REQUIRED: 401,
+  FORBIDDEN: 403,
+  CSRF_INVALID: 403,
+  ORIGIN_INVALID: 403,
+  VALIDATION_ERROR: 422,
+  SERVICE_UNAVAILABLE: 503,
+};
+
+function statusForCode(code: string): number | undefined {
+  return code.endsWith("_NOT_FOUND") ? 404 : STATUS_BY_CODE[code];
+}
+
+/**
+ * Rechaza con el formato de error del contrato frontend-backend, más el estado HTTP. Se puede
+ * indicar el estado cuando el contrato no fija el código (por ejemplo, el 409).
+ */
 export function rejectWithApiError(
   code: string,
   message: string,
-  details: unknown = null
+  details: unknown = null,
+  status: number | undefined = statusForCode(code)
 ): Promise<never> {
   const error: ApiError = {
     error: { code, message, details, requestId: crypto.randomUUID() },
+    ...(status ? { status } : {}),
   };
   return new Promise((_, reject) => setTimeout(() => reject(error), LATENCY_MS));
 }

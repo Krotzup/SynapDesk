@@ -123,7 +123,7 @@ Respuesta resumida de usuario:
 | `GET`    | `/api/v1/tickets`      | Listar tickets                          |
 | `GET`    | `/api/v1/tickets/{id}` | Obtener el detalle de un ticket         |
 | `POST`   | `/api/v1/tickets`      | Crear un ticket                         |
-| `PATCH`  | `/api/v1/tickets/{id}` | Actualizar campos permitidos            |
+| `PATCH`  | `/api/v1/tickets/{id}` | Cambiar el estado del ticket            |
 | `DELETE` | `/api/v1/tickets/{id}` | Cerrar o eliminar lógicamente un ticket |
 
 Solicitud inicial para crear un ticket:
@@ -211,6 +211,46 @@ Ejemplo de `422`, con el formato descrito en [Errores de validación](#errores-d
   }
 }
 ```
+
+### Cambio de estado (`PATCH /api/v1/tickets/{id}`)
+
+**Propuesta pendiente de aprobación.** En MVP02 (16-11-2026) el Product Owner aprobó que `admin` y `agent` actualicen **exclusivamente el estado** de un ticket. Esta sección propone la forma de la operación, tal como la usa el frontend (PR #43) y como la resuelve el núcleo de tickets del backend (PR #39). La ruta todavía no está implementada.
+
+**Solicitud.** El cliente envía solo `status`:
+
+```json
+{
+  "status": "in_progress"
+}
+```
+
+Valores admitidos: `open`, `in_progress`, `resolved` y `closed`. Un `status` ausente o fuera de esa lista responde `422` con `details` en el campo `status`. No se pueden editar otros campos (título, descripción, prioridad, categoría, área ni asignación).
+
+**Efectos.** Cambia `status` y `updatedAt`. No modifica ningún otro campo. El cambio a un estado no deduce ni borra `resolvedAt` mientras su regla siga pendiente (ver más abajo).
+
+**Respuesta exitosa.** `200 OK`, con el ticket completo en el mismo formato de `GET /api/v1/tickets/{id}`.
+
+**Autenticación y permisos.** Requiere sesión válida y rol `admin` o `agent`. Como toda mutación de V1, se envía con `fetch` desde el cliente, a través del proxy de mismo origen, con `X-CSRF-Token` y `Origin` válido, según el [contrato de autenticación V1](autenticacion-v1.md).
+
+**Errores.**
+
+| HTTP  | `error.code`                     | Caso                                                       |
+| ----: | -------------------------------- | ---------------------------------------------------------- |
+| `401` | `AUTHENTICATION_REQUIRED`        | Sin sesión válida                                          |
+| `403` | `CSRF_INVALID`, `ORIGIN_INVALID` | Token CSRF u `Origin` inválidos (rechazo previo a efectos) |
+| `403` | `FORBIDDEN`                      | El rol no puede cambiar el estado                          |
+| `404` | `TICKET_NOT_FOUND`               | El ticket no existe                                        |
+| `409` | Por definir                      | El ticket cambió y la operación entra en conflicto         |
+| `422` | `VALIDATION_ERROR`               | `status` ausente o no válido                               |
+| `503` | `SERVICE_UNAVAILABLE`            | Servicio temporalmente no disponible                       |
+
+El frontend identifica el `409` y el `503` por estado HTTP, sin depender de `error.code`. Ante un `409` pide recargar el ticket; no reintenta automáticamente ninguna mutación. En todos los errores muestra `error.requestId` como código de referencia.
+
+**Pendiente de decisión** (no implementar hasta acordarlo):
+
+* **`resolvedAt`:** si se fija al pasar a `resolved`, qué ocurre al pasar a `closed` y si se borra al reabrir el ticket;
+* **transiciones:** si se permite pasar de cualquier estado a cualquier otro (comportamiento actual de frontend y backend) o se restringen;
+* **concurrencia (`409`):** cuándo se emite, con qué `error.code` y si el cliente envía alguna precondición (por ejemplo, el estado esperado). Hoy no hay ninguna aprobada y prevalece la última escritura.
 
 ## Documentos
 
@@ -313,16 +353,33 @@ El backend determinará el usuario revisor mediante la sesión autenticada. El f
 | ------ | ------------------------- | -------------------------- |
 | `GET`  | `/api/v1/metrics/summary` | Obtener un resumen general |
 
-Las métricas específicas deberán aprobarse antes de considerar estable esta respuesta.
+**Propuesta pendiente de aprobación.** En MVP02 (16-11-2026) se aprobó que `admin` y `agent` consulten los conteos globales de tickets. Esta sección propone la representación del resumen, igual a `TicketSummary` del backend (PR #39) y a lo que muestra el frontend (PR #44).
 
-Datos inicialmente previstos:
+Respuesta (`200 OK`):
 
-* total de tickets;
-* tickets resueltos;
-* tiempo promedio de resolución;
-* recomendaciones aceptadas;
-* recomendaciones modificadas;
-* recomendaciones rechazadas.
+```json
+{
+  "totalTickets": 14,
+  "openTickets": 6,
+  "inProgressTickets": 3,
+  "resolvedTickets": 4,
+  "closedTickets": 1
+}
+```
+
+Reglas:
+
+* todos los campos son enteros mayores o iguales a 0 y siempre se envían, incluso cuando valen 0;
+* cada ticket se cuenta una sola vez, en el campo de su estado actual;
+* `openTickets + inProgressTickets + resolvedTickets + closedTickets` es igual a `totalTickets`;
+* el alcance es global (todos los tickets) para ambos roles.
+
+Requiere sesión válida. Errores: `401 AUTHENTICATION_REQUIRED`, `403 FORBIDDEN` y `503 SERVICE_UNAVAILABLE`.
+
+**Fuera del MVP, pendientes de aprobación.** No forman parte de la respuesta y el frontend no los muestra:
+
+* tiempo promedio de resolución (depende de la regla de `resolvedAt`);
+* recomendaciones aceptadas, modificadas y rechazadas.
 
 ## Paginación
 
@@ -422,7 +479,8 @@ Cuando se apruebe este contrato, los servicios de `frontend/src/services/` deber
 * forma de representar categorías y áreas;
 * estrategia para operaciones de IA que requieran procesamiento prolongado;
 * presupuestos numéricos por operación/tramo pendientes; P8 ya prohíbe reintentos automáticos de escrituras de autenticación;
-* métricas definitivas del MVP.
+* aprobación de la representación propuesta para el resumen de métricas y de las métricas adicionales (tiempo promedio de resolución y revisiones de recomendaciones);
+* en el cambio de estado de tickets: regla de `resolvedAt`, transiciones permitidas y concurrencia (`409` y su `error.code`).
 
 ## Criterios de aceptación
 
