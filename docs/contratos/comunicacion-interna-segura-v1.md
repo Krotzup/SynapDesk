@@ -133,9 +133,16 @@ inventa una dirección ni se sustituye por una cuota global.
 procedencia insuficiente. No construye IpVerificada desde HTTP. Las pruebas
 internas reutilizan ServicioIpConfiable y ServicioIdentificadores con evidencia
 controlada del fixture, fuera de cabeceras y configuración de la aplicación.
-No se incluye adaptador local HTTP ni un interruptor de bypass para desarrollo.
+La aplicación normal no incluye adaptador local HTTP ni un interruptor de bypass para desarrollo.
 
-Un futuro adaptador requerirá evidencia del ingreso, identidad de servicio,
+**Actualización acotada MVP04:** existe una [composición local de ensayo](ingreso-local-mvp04.md)
+fuera de la fábrica productiva, limitada a testing y base propia del arnés. El
+ingreso Node observa el socket original y entrega evidencia firmada, ligada a
+la petición y de un uso, además de SEC-01B/TLS. No habilita esta política en
+producción ni acepta una IP arbitraria; las prohibiciones anteriores siguen
+vigentes para la aplicación normal. Render conserva procedencia no acreditada.
+
+Un futuro adaptador productivo requerirá evidencia del ingreso, identidad de servicio,
 canal, peer real no reescrito y perfil autorizado, antes de construir IpVerificada.
 El digest de IP sigue usando la clave HMAC de privacidad existente, diferente
 de credenciales de servicio. IPv4/IPv6/mapeadas y NAT conservan AUTH-06.

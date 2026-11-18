@@ -473,6 +473,12 @@ Cuando se apruebe este contrato, los servicios de `frontend/src/services/` deber
 
 ## Decisiones pendientes
 
+La [composición local MVP09](ingreso-local-mvp04.md#registro-y-recomposición-mvp09)
+permite repetir el CRUD con servicios persistentes y la UI actual, exclusivamente
+en testing propio. No habilita la fábrica productiva ni ratifica las decisiones
+pendientes. Conserva DTO, paginación y PATCH de estado; los filtros ampliados,
+PATCH de otros campos y clasificación ML no forman parte de esta incorporación.
+
 * detalles pendientes del [contrato de autenticación V1](autenticacion-v1.md), sobre la arquitectura de sesiones ya aprobada;
 * política de CORS;
 * límites de paginación;
