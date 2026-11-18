@@ -146,15 +146,19 @@ export interface TicketListParams extends PaginationParams {
 
 // ─── Métricas ─────────────────────────────────────────────────────────────────
 
+// Conteos aprobados para el MVP (GET /metrics/summary). Cada estado se cuenta una vez.
 export interface Metrics {
   totalTickets: number;
   openTickets: number;
   inProgressTickets: number;
   resolvedTickets: number;
-  avgResolutionTimeHours: number;
-  recommendationsAccepted: number;
-  recommendationsModified: number;
-  recommendationsRejected: number;
+  closedTickets: number;
+  // Pendientes de aprobación en el contrato: el backend todavía no los envía y la
+  // interfaz no los muestra.
+  avgResolutionTimeHours?: number;
+  recommendationsAccepted?: number;
+  recommendationsModified?: number;
+  recommendationsRejected?: number;
 }
 
 // ─── Errores de API ───────────────────────────────────────────────────────────
