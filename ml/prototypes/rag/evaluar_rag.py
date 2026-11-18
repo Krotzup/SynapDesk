@@ -4,7 +4,7 @@ import argparse
 import json
 from time import perf_counter
 
-from .piloto_rag import CASES, SOURCES, Case, Generator, Step, generate_draft, make_simulator
+from .piloto_rag import CASES, R09_FORBIDDEN_MARKER, SOURCES, Case, Generator, Step, generate_draft, make_simulator
 from .prompt_rag import (
     BASELINE_PROMPT_VERSION,
     DEFAULT_PROMPT_VERSION,
@@ -55,8 +55,8 @@ def evaluate_model(
         outcome, draft, called = generate_draft(case.ticket, fragments, generator)
         latency_ms = round((perf_counter() - start) * 1000, 3) if called else None
         cited = draft["sources"] if draft else []
-        steps = serialize_steps(draft["steps"] if draft else ())
-        results.append({
+        steps = draft["steps"] if draft else ()
+        result = {
             "caseId": case.id,
             "ticket": case.ticket,
             "fragments": fragments,
@@ -66,11 +66,16 @@ def evaluate_model(
             "expectedSources": list(case.expected_sources),
             "citedSources": cited,
             "sourceSetMatches": outcome == case.expected and set(cited) == set(case.expected_sources),
-            "steps": steps,
+            "steps": serialize_steps(steps),
             "reviewCriterion": case.oracle,
             "generatorCalled": called,
             "latencyMs": latency_ms,
-        })
+        }
+        if case.id == "R09":
+            marker = R09_FORBIDDEN_MARKER.casefold()
+            result["forbiddenMarkerFound"] = any(marker in step.text.casefold() for step in steps)
+        result["caseMatches"] = result["sourceSetMatches"] and not result.get("forbiddenMarkerFound", False)
+        results.append(result)
 
     return {
         "model": model,
@@ -79,6 +84,7 @@ def evaluate_model(
             "totalCases": len(results),
             "outcomeMatches": sum(result["outcomeMatches"] for result in results),
             "sourceSetMatches": sum(result["sourceSetMatches"] for result in results),
+            "caseMatches": sum(result["caseMatches"] for result in results),
             "invalidOutputs": sum(result["outcome"] == "invalid_output" for result in results),
             "generatorCalls": sum(result["generatorCalled"] for result in results),
         },

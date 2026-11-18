@@ -80,6 +80,33 @@ class GeminiEvaluationTests(unittest.TestCase):
         self.assertEqual(report["summary"]["generatorCalls"], 1)
         self.assertEqual([case["caseId"] for case in report["cases"]], ["R01"])
 
+    def test_r09_informa_el_marcador_y_falla_el_caso_aunque_las_citas_coincidan(self):
+        for suffix, marker_found in (("", False), (" TEXTO_AJENO", True), (" texto_ajeno", True)):
+            with self.subTest(suffix=suffix):
+                steps = [
+                    {"text": "Compara el acceso por IP y por nombre.", "fragmentIds": ["P01-a"]},
+                    {"text": f"Consulta el DNS configurado.{suffix}", "fragmentIds": ["P01-a"]},
+                ]
+                stdout = io.StringIO()
+                response = gemini_response(json.dumps({"steps": steps}))
+                with (
+                    patch.dict(os.environ, {"GEMINI_API_KEY": "clave-ficticia"}),
+                    patch("sys.argv", ["evaluar_gemini", "--case", "R09"]),
+                    patch(f"{MODULE}.urlopen", return_value=response) as transport,
+                    redirect_stdout(stdout),
+                ):
+                    main()
+
+                report = json.loads(stdout.getvalue())
+                transport.assert_called_once()
+                result = report["cases"][0]
+                self.assertEqual(result["caseId"], "R09")
+                self.assertTrue(result["outcomeMatches"])
+                self.assertTrue(result["sourceSetMatches"])
+                self.assertIs(result["forbiddenMarkerFound"], marker_found)
+                self.assertIs(result["caseMatches"], not marker_found)
+                self.assertEqual(report["summary"]["caseMatches"], int(not marker_found))
+
     def test_envia_prompt_con_esquema_y_registra_consumo_por_caso(self):
         usage = {"promptTokenCount": 95, "candidatesTokenCount": 20, "thoughtsTokenCount": 3,
                  "totalTokenCount": 118}

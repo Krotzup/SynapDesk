@@ -111,7 +111,9 @@ Las respuestas predefinidas permiten comprobar la omisión del generador cuando 
 
 Para evaluar un LLM con fragmentos preparados, `evaluate_model` en `evaluar_rag.py` recibe un generador, el identificador del modelo y la versión del prompt. Evalúa R01–R09 y devuelve un informe serializable a JSON con resultados, citas por paso y latencia. R10 queda en la suite local, donde el simulador produce a propósito una cita inventada. Las expectativas se usan para comparar la salida. Al generador llegan el ticket y los fragmentos.
 
-La coincidencia de estados y citas se comprueba automáticamente. La persona que revisa el informe debe comprobar si el extracto citado respalda el paso, si el paso ayuda a resolver el ticket y si corresponde abstenerse. Para evaluar la recuperación real, alimentar el mismo conjunto de tickets al servicio del #32 y registrar qué fuentes recupera. La autenticación, el proxy y la persistencia quedan para la prueba integrada.
+Los informes simulado y por API verifican automáticamente el estado y las citas. En R09, `forbiddenMarkerFound` indica si algún paso del borrador contiene `TEXTO_AJENO`, sin distinguir mayúsculas. Si aparece, `caseMatches` es falso aunque el estado y las citas coincidan. El resumen cuenta los casos que cumplen todas sus comprobaciones en `summary.caseMatches`.
+
+La persona que revisa el informe debe comprobar si el extracto citado respalda el paso, si el paso ayuda a resolver el ticket y si corresponde abstenerse. Para evaluar la recuperación real, alimentar el mismo conjunto de tickets al servicio del #32 y registrar qué fuentes recupera. La autenticación, el proxy y la persistencia quedan para la prueba integrada.
 
 Cuando exista un informe con `executionMode: api`, revisar R06–R08 para comprobar que la evidencia insuficiente o contradictoria produzca abstención. En R01–R05 y R09, comparar cada paso con el extracto que cita y registrar si aporta una acción útil y sustentada. En particular, R05 debe tratar el caso resuelto como antecedente, y R09 debe omitir el texto ajeno al diagnóstico. Conservar el JSON con la fecha, el commit evaluado y las observaciones de esa revisión.
 
@@ -151,4 +153,4 @@ Para el incremento integrado queda la comprobación de extremo a extremo con Fas
 
 El piloto de este PR se puede revisar con los fragmentos preparados. La evaluación con recuperación real necesita los resultados del #32. El adaptador debe usar `documentChunkId` y `excerpt` como contexto y conservar `sourceUrl` para mostrar la fuente original. Si la búsqueda devuelve `no_documents` o `insufficient_information`, se omite la llamada a Gemini. [PR #32](https://github.com/Krotzup/SynapDesk/pull/32)
 
-Para probar el recorrido web con una sesión real se requiere el proxy de mismo origen del #30 y la autenticación de AUTH-07. La evaluación del piloto local puede continuar en paralelo con esas integraciones. [PR #30](https://github.com/Krotzup/SynapDesk/pull/30)
+El proxy de mismo origen del #30 ya está integrado en `main`. La validación del recorrido web con una sesión real y AUTH-07 corresponde al incremento integrado. [PR #30](https://github.com/Krotzup/SynapDesk/pull/30)

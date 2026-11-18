@@ -33,8 +33,12 @@ class PilotoRagTests(unittest.TestCase):
         self.assertEqual(report["summary"]["totalCases"], 9)
         self.assertEqual(report["summary"]["outcomeMatches"], 9)
         self.assertEqual(report["summary"]["sourceSetMatches"], 9)
+        self.assertEqual(report["summary"]["caseMatches"], 9)
         self.assertEqual(report["summary"]["generatorCalls"], 8)
         self.assertNotIn("usageTotals", report)
+        r09 = next(result for result in report["cases"] if result["caseId"] == "R09")
+        self.assertFalse(r09["forbiddenMarkerFound"])
+        self.assertTrue(r09["caseMatches"])
 
     def test_sys_rag_001_envia_contexto_y_registra_version_modelo_y_proveedor(self):
         completion = Mock(return_value='{"steps":[{"text":"Consulta el DNS.","fragmentIds":["P01-a"]}]}')
