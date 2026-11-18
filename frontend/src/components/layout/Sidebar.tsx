@@ -121,7 +121,7 @@ interface SidebarProps {
 export function Sidebar({ statusSummary, open, onClose }: SidebarProps) {
   const pathname = usePathname();
   const isDrawer = !useMediaQuery("(min-width: 1024px)");
-  const panelRef = useRef<HTMLElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const modal = isDrawer && open;
   useDialog({ active: modal, onClose, containerRef: panelRef, initialFocusRef: closeRef });
@@ -136,10 +136,12 @@ export function Sidebar({ statusSummary, open, onClose }: SidebarProps) {
           aria-hidden="true"
         />
       )}
-      <aside
+      {/* div con rol explícito: role="dialog" no se admite en <aside>. El elemento no cambia al
+          abrir o cerrar, así que el contenido no se vuelve a montar. */}
+      <div
         id="menu-principal"
         ref={panelRef}
-        role={modal ? "dialog" : undefined}
+        role={modal ? "dialog" : "complementary"}
         aria-modal={modal || undefined}
         aria-label={modal ? "Menú principal" : undefined}
         // Al elegir un enlace (también los del resumen por estado) el Drawer se cierra.
@@ -212,12 +214,12 @@ export function Sidebar({ statusSummary, open, onClose }: SidebarProps) {
         <div className="mx-5 my-6 h-px bg-[#1E293B]/60" />
 
         <div className="px-6">
-          <p className="mb-4 text-[10px] font-bold uppercase tracking-wider text-[#64748B]">
+          <p className="mb-4 text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">
             ESTADO
           </p>
           {statusSummary}
         </div>
-      </aside>
+      </div>
     </>
   );
 }

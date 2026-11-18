@@ -13,7 +13,7 @@ import { useMediaQuery } from "@/lib/use-media-query";
 export function AssistantPanel({ children }: { children: ReactNode }) {
   const isInline = useMediaQuery("(min-width: 1280px)");
   const [open, setOpen] = useState(false);
-  const panelRef = useRef<HTMLElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const close = useCallback(() => setOpen(false), []);
   // Al pasar a 1280 px o más el panel deja de ser un Drawer: se cierra, para que no reaparezca
@@ -46,10 +46,12 @@ export function AssistantPanel({ children }: { children: ReactNode }) {
         />
       )}
 
-      <aside
+      {/* div con rol explícito: role="dialog" no se admite en <aside>. El elemento no cambia al
+          abrir o cerrar, así que el contenido no se vuelve a montar. */}
+      <div
         id="asistente-ia"
         ref={panelRef}
-        role={modal ? "dialog" : undefined}
+        role={modal ? "dialog" : "complementary"}
         aria-modal={modal || undefined}
         aria-labelledby="asistente-ia-titulo"
         className={[
@@ -96,7 +98,7 @@ export function AssistantPanel({ children }: { children: ReactNode }) {
           </button>
         </div>
         {children}
-      </aside>
+      </div>
     </>
   );
 }
