@@ -1,4 +1,5 @@
 import type { TicketsService } from "@/services/tickets";
+import { TICKET_STATUSES } from "@/lib/ticket-filters";
 import { validateNewTicket } from "@/lib/ticket-rules";
 import { Ticket } from "@/types";
 import { mockCurrentUser, mockUsers } from "./users";
@@ -210,6 +211,14 @@ const tickets: Ticket[] = [
 ];
 
 /** Tickets de ejemplo actuales, para calcular métricas coherentes con el listado. */
+/**
+ * Tickets de ejemplo en los que cambiar el estado simula un error, para ver cómo se muestra:
+ * un conflicto con el estado actual (409) y el servicio no disponible (503). No son reglas de
+ * transición: el frontend no valida transiciones.
+ */
+export const MOCK_CONFLICT_TICKET_ID = "b8c9d0e1-f2a3-4b4c-9d5e-6f7a8b9c0d08";
+export const MOCK_UNAVAILABLE_TICKET_ID = "c1d2e3f4-a5b6-4c7d-8e8f-9a0b1c2d3e09";
+
 export function getMockTickets(): readonly Ticket[] {
   return tickets;
 }
@@ -296,18 +305,28 @@ export const ticketsMock: TicketsService = {
     return simulateLatency(ticket);
   },
 
-  update: (id, data) => {
+  // PATCH /tickets/{id} con { status } exclusivamente (MVP02). Solo cambia el estado y
+  // updatedAt: resolvedAt y las transiciones siguen pendientes en el contrato.
+  updateStatus: (id, data) => {
+    if (!TICKET_STATUSES.includes(data.status)) {
+      return rejectWithApiError("VALIDATION_ERROR", "Los datos del ticket no son válidos.", [
+        { field: "status", message: "El estado no es válido." },
+      ]);
+    }
     const ticket = tickets.find((item) => item.id === id);
     if (!ticket) return notFound();
-
-    const { assignedToId, ...fields } = data;
-    Object.assign(ticket, fields, { updatedAt: new Date().toISOString() });
-    if (assignedToId !== undefined) {
-      ticket.assignedTo = mockUsers.find((user) => user.id === assignedToId) ?? null;
+    if (id === MOCK_CONFLICT_TICKET_ID) {
+      // El contrato define 409 pero no su código; el frontend lo reconoce por estado HTTP.
+      return rejectWithApiError("CONFLICT", "El ticket cambió mientras se editaba.", null, 409);
     }
-    if (fields.status === "resolved" && !ticket.resolvedAt) {
-      ticket.resolvedAt = ticket.updatedAt;
+    if (id === MOCK_UNAVAILABLE_TICKET_ID) {
+      return rejectWithApiError(
+        "SERVICE_UNAVAILABLE",
+        "El servicio no está disponible en este momento. Intenta nuevamente."
+      );
     }
+    ticket.status = data.status;
+    ticket.updatedAt = new Date().toISOString();
     return simulateLatency(ticket);
   },
 

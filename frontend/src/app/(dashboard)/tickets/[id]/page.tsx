@@ -3,8 +3,12 @@ import { notFound } from "next/navigation";
 import { AssistantPanel } from "@/components/recommendations/AssistantPanel";
 import { AssistantRecommendation } from "@/components/recommendations/AssistantRecommendation";
 import { RecommendationHistory } from "@/components/recommendations/RecommendationHistory";
-import { PriorityBadge, StatusBadge } from "@/components/ui/Badge";
+import { CurrentTicketStatus } from "@/components/tickets/CurrentTicketStatus";
+import { TicketStatusControl } from "@/components/tickets/TicketStatusControl";
+import { PriorityBadge } from "@/components/ui/Badge";
+import { USE_MOCKS } from "@/lib/config";
 import { isApiError } from "@/lib/errors";
+import { MOCK_CONFLICT_TICKET_ID, MOCK_UNAVAILABLE_TICKET_ID } from "@/mocks/tickets";
 import { formatDateTime, shortId } from "@/lib/format";
 import { splitRecommendations } from "@/lib/recommendation-history";
 import { recommendationsService } from "@/services/recommendations";
@@ -54,7 +58,7 @@ export default async function TicketDetailPage({ params }: TicketDetailPageProps
               #{shortId(ticket.id)}
             </span>
             <h1 className="text-xl font-bold text-[#0F172A]">{ticket.title}</h1>
-            <StatusBadge status={ticket.status} />
+            <CurrentTicketStatus ticketId={ticket.id} status={ticket.status} />
             <PriorityBadge priority={ticket.priority} />
           </div>
 
@@ -98,6 +102,27 @@ export default async function TicketDetailPage({ params }: TicketDetailPageProps
               </div>
             )}
           </div>
+
+          {/* Cambio de estado (HU04): lo único editable del ticket en el MVP. */}
+          <section
+            aria-labelledby="estado-ticket"
+            className="space-y-3 pt-4 border-t border-[#F1F5F9]"
+          >
+            <h2 id="estado-ticket" className="text-sm font-bold text-[#0F172A]">
+              Estado del ticket
+            </h2>
+            {USE_MOCKS && (
+              <p className="text-xs text-[#92400E] bg-[#FEF3C7] border border-[#FDE68A] rounded-xl px-3 py-2">
+                <strong>Datos de ejemplo:</strong> el cambio de estado solo dura en esta pestaña y
+                no aparece en el listado. Para ver los errores, cambia el estado de «Solicitud de
+                notebook para nuevo integrante» (#{shortId(MOCK_CONFLICT_TICKET_ID)}, conflicto 409)
+                o de «Impresora de recepción sin responder» (#
+                {shortId(MOCK_UNAVAILABLE_TICKET_ID)}, servicio no disponible).
+              </p>
+            )}
+            {/* La clave reinicia el control cuando el servidor entrega otro estado. */}
+            <TicketStatusControl key={ticket.status} ticketId={ticket.id} status={ticket.status} />
+          </section>
         </div>
 
         {/* Panel derecho: Asistente IA */}

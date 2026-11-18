@@ -6,7 +6,8 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/Button";
 import { SESSION_CHANGED } from "@/lib/api";
 import { USE_MOCKS } from "@/lib/config";
-import { getFieldErrors, isApiError, isAuthenticationRequired } from "@/lib/errors";
+import { ErrorReference } from "@/components/ui/ErrorReference";
+import { errorRequestId, getFieldErrors, isApiError, isAuthenticationRequired } from "@/lib/errors";
 import { recommendationsService } from "@/services/recommendations";
 import { HumanReview, Recommendation, RecommendationStatus, ReviewDecision } from "@/types";
 import { RecommendationSources } from "./RecommendationSources";
@@ -31,6 +32,7 @@ type Action = "edit" | "discard" | "generate";
 interface ActionError {
   message: string;
   needsLogin: boolean;
+  requestId: string | null;
 }
 
 const actionFallback: Record<Action, string> = {
@@ -234,6 +236,7 @@ export function AssistantRecommendation({
     setActionError({
       message: actionErrorMessage(error, action),
       needsLogin: isAuthenticationRequired(error),
+      requestId: errorRequestId(error),
     });
   }
 
@@ -297,6 +300,7 @@ export function AssistantRecommendation({
           Ir al inicio de sesión
         </Link>
       )}
+      <ErrorReference requestId={actionError.requestId} />
     </div>
   );
 

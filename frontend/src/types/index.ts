@@ -172,6 +172,11 @@ export interface ApiErrorBody {
 
 export interface ApiError {
   error: ApiErrorBody;
+  /**
+   * Estado HTTP de la respuesta. No viene en el cuerpo: lo agrega el cliente HTTP (y los datos de
+   * ejemplo) para distinguir casos que el contrato define por estado, como 409 y 503.
+   */
+  status?: number;
 }
 
 // Elemento de details en un 422 VALIDATION_ERROR (propuesta de Felipe del 03-11-2026).
