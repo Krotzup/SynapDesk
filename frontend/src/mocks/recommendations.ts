@@ -1,9 +1,38 @@
 import type { RecommendationsService } from "@/services/recommendations";
 import { Recommendation, RecommendationStatus, ReviewDecision } from "@/types";
-import { rejectWithApiError, simulateLatency } from "./utils";
+import { MOCK_ERROR_QUERY, rejectWithApiError, simulateLatency } from "./utils";
 
 // Recomendaciones ficticias. El score es similitud coseno (rango -1 a 1), no un porcentaje.
 const recommendations: Recommendation[] = [
+  // Dos recomendaciones anteriores del mismo ticket, para ver el historial en el detalle.
+  // El contenido es el original de la IA: la revisión no lo sobrescribe.
+  {
+    id: "2f4e6a8c-1b3d-4e5f-9a7b-8c9d0e1f2a01",
+    ticketId: "64f10aed-c41c-46a3-91dd-f2cbcd5eb79f",
+    content:
+      "Reinicia el equipo del usuario y vuelve a intentar la conexión a la base de datos desde la aplicación.",
+    status: "rejected",
+    sources: [],
+    createdAt: "2026-10-28T11:05:00Z",
+  },
+  {
+    id: "2f4e6a8c-1b3d-4e5f-9a7b-8c9d0e1f2a02",
+    ticketId: "64f10aed-c41c-46a3-91dd-f2cbcd5eb79f",
+    content:
+      "Comprueba que el servicio de base de datos esté en ejecución y que la aplicación use el puerto correcto.",
+    status: "modified",
+    sources: [
+      {
+        documentId: "5e923ab0-5cee-4c50-b0dc-35fa54ca54aa",
+        documentChunkId: "77223789-bd19-4642-a550-b4f52210320c",
+        title: "Manual de PostgreSQL",
+        excerpt:
+          "Verifique el estado del servicio PostgreSQL y que el puerto 5432 esté habilitado en el firewall.",
+        score: 0.71,
+      },
+    ],
+    createdAt: "2026-10-28T12:10:00Z",
+  },
   {
     id: "459235aa-e33a-4e19-9055-b085319ff895",
     ticketId: "64f10aed-c41c-46a3-91dd-f2cbcd5eb79f",
@@ -55,6 +84,21 @@ export function getMockRecommendations(): readonly Recommendation[] {
   return recommendations;
 }
 
+/**
+ * Revisión humana registrada por el mock, separada de la recomendación (modelo de dominio:
+ * `reviewerId` lo pondrá el backend desde la sesión). No es parte de la API pública.
+ */
+interface MockReview {
+  id: string;
+  recommendationId: string;
+  decision: ReviewDecision;
+  modifiedContent: string | null;
+  feedback: string | null;
+  reviewedAt: string;
+}
+
+const reviews: MockReview[] = [];
+
 const statusByDecision: Record<ReviewDecision, RecommendationStatus> = {
   accepted: "accepted",
   modified: "modified",
@@ -65,15 +109,27 @@ function notFound() {
   return rejectWithApiError("RECOMMENDATION_NOT_FOUND", "La recomendación solicitada no existe.");
 }
 
+function includesMockError(...values: (string | undefined)[]): boolean {
+  return values.some((value) => value?.toLowerCase().includes(MOCK_ERROR_QUERY));
+}
+
 export const recommendationsMock: RecommendationsService = {
   generate: (ticketId) => {
     const recommendation: Recommendation = {
       id: crypto.randomUUID(),
       ticketId,
       content:
-        "Recomendación de ejemplo generada sin LLM. Se reemplazará por la respuesta real del backend.",
+        "Recomendación de ejemplo generada sin LLM. Se reemplazará por la respuesta real del backend, que incluirá las fuentes recuperadas para este ticket.",
       status: "pending",
-      sources: [],
+      sources: [
+        {
+          documentId: crypto.randomUUID(),
+          documentChunkId: crypto.randomUUID(),
+          title: "Documento de ejemplo",
+          excerpt: "Fragmento ficticio: la similitud y el texto no provienen de una búsqueda real.",
+          score: 0.5,
+        },
+      ],
       createdAt: new Date().toISOString(),
     };
     recommendations.push(recommendation);
@@ -96,10 +152,38 @@ export const recommendationsMock: RecommendationsService = {
     const recommendation = recommendations.find((item) => item.id === id);
     if (!recommendation) return notFound();
 
-    recommendation.status = statusByDecision[data.decision];
-    if (data.decision === "modified" && data.modifiedContent) {
-      recommendation.content = data.modifiedContent;
+    // Código propuesto al backend: una recomendación se revisa una sola vez.
+    if (recommendation.status !== "pending") {
+      return rejectWithApiError(
+        "RECOMMENDATION_ALREADY_REVIEWED",
+        "La recomendación ya tiene una revisión registrada."
+      );
     }
+    if (includesMockError(data.modifiedContent, data.feedback)) {
+      return rejectWithApiError(
+        "SERVICE_UNAVAILABLE",
+        "El servicio no está disponible en este momento."
+      );
+    }
+    const modifiedContent = data.modifiedContent?.trim();
+    if (data.decision === "modified" && !modifiedContent) {
+      return rejectWithApiError("VALIDATION_ERROR", "Los datos enviados no son válidos.", [
+        { field: "modifiedContent", message: "Escribe el texto de la recomendación." },
+      ]);
+    }
+
+    // El contenido generado no se toca: la versión editada y el comentario quedan en la
+    // revisión, como indica el modelo de dominio.
+    const feedback = data.feedback?.trim();
+    reviews.push({
+      id: crypto.randomUUID(),
+      recommendationId: recommendation.id,
+      decision: data.decision,
+      modifiedContent: data.decision === "modified" ? (modifiedContent ?? null) : null,
+      feedback: feedback || null,
+      reviewedAt: new Date().toISOString(),
+    });
+    recommendation.status = statusByDecision[data.decision];
     return simulateLatency(undefined);
   },
 };

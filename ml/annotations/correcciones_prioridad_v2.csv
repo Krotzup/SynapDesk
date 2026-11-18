@@ -1,0 +1,144 @@
+numero_fila,prioridad_original,prioridad_corregida,motivo
+5,medium,medium,"dudoso: La conectividad intermitente perjudica compartir pantalla, pero no se precisa bloqueo total, alcance por usuarios ni alternativa."
+10,medium,high,Varios miembros del equipo no pueden recibir asignaciones de tickets; interrupción severa del flujo de trabajo del equipo.
+31,low,medium,Congelamientos ocasionales interrumpen el trabajo de una persona; corresponde a incidencia con degradacion y no a consulta sin impacto.
+80,medium,medium,"dudoso: Se describe conectividad intermitente y menor productividad, sin precisar caida total ni usuarios o departamentos bloqueados."
+96,medium,high,El router dejo de responder y produjo una interrupcion del servicio de red; se requiere restablecer un servicio caido.
+131,medium,high,Servidor inactivo y servicio de consultoría afectado; se requiere restaurar su funcionalidad.
+133,medium,medium,"Errores persistentes en la configuracion y consultas de base de datos, sin caida de servicio ni bloqueo colectivo descritos."
+158,medium,medium,"dudoso: problemas de permisos sin acceso indebido confirmado, caída del servicio ni alcance del bloqueo acreditado."
+161,medium,medium,dudoso: error 403 individual; no se acredita bloqueo de todo el trabajo ni ausencia de alternativa.
+239,medium,medium,dudoso: solicita optimización de configuración y recursos; no acredita caída ni impacto operativo inmediato; texto incompleto.
+263,medium,high,El router dejo de proporcionar Internet y afecta a numerosos usuarios de un entorno corporativo.
+313,medium,medium,"dudoso: Las dificultades de acceso afectan configuracion y despliegue, pero no se confirma bloqueo total ni ausencia de alternativa."
+331,medium,medium,"dudoso: El acceso y la gestion de tickets resultan afectados, pero la descripcion incompleta no precisa un bloqueo del servicio."
+351,medium,high,Inactividad significativa del servidor con interrupciones importantes para el equipo y las operaciones.
+367,medium,medium,dudoso: conectividad de un dispositivo con alcance e impacto sin detallar; texto incompleto.
+370,medium,medium,Problema de conectividad de una impresora individual sin evidencia de paralizacion de un area ni falta de alternativa.
+378,medium,high,Se informa tiempo de inactividad del servicio AWS; el impacto descrito es indisponibilidad del servicio.
+397,medium,high,Varios usuarios sufren desconexiones durante reuniones activas; afectación colectiva del trabajo.
+399,medium,high,La infraestructura AWS se cayo e interrumpio operaciones; se solicita restaurar el servicio completo.
+465,medium,high,"Las interrupciones de red afectan a varios departamentos, por lo que el alcance excede una incidencia individual."
+470,medium,medium,"dudoso: fallos intermitentes de estabilidad sin caída efectiva, alcance colectivo ni bloqueo operativo concretado."
+475,medium,medium,"dudoso: Se describen retrasos al crear tickets, pero no se indica imposibilidad de operar ni alternativa disponible."
+509,medium,medium,dudoso: parpadeo de pantalla de un equipo individual sin imposibilidad de trabajar ni ausencia de alternativa acreditadas.
+549,medium,high,"Varios integrantes del equipo no pueden asignar tareas, bloqueando una funcion necesaria de su flujo de trabajo."
+561,medium,medium,"dudoso: Las interrupciones de AWS son intermitentes y no se especifican alcance, duracion ni bloqueo operativo."
+562,medium,high,Errores recurrentes del servidor interrumpen las operaciones y la gestión del flujo de trabajo del equipo.
+566,medium,high,El sistema Jira se cayo y afecta la gestion de proyectos de varios equipos.
+605,medium,medium,dudoso: apagados de un equipo individual con productividad afectada; no se acredita bloqueo total sin alternativa.
+607,medium,medium,"dudoso: Hay una cuenta sin acceso a la consola AWS, pero el texto breve no permite determinar paralizacion del trabajo o alternativa."
+609,medium,medium,"dudoso: El equipo no funciona correctamente, sin descripcion del fallo, impacto laboral o alcance."
+627,low,low,Consulta sobre servicios y una posible configuracion futura; el texto declara expresamente que no hay plazo urgente.
+633,medium,high,"Se reporta tiempo de inactividad del servidor, que afecta la continuidad del servicio contratado."
+640,low,low,dudoso: retrasos en respuestas de soporte sin caída ni bloqueo operativo concreto; no basta la solicitud de urgencia.
+644,medium,medium,dudoso: problema limitado a impresión móvil de un equipo; no se acredita impacto colectivo ni imposibilidad de trabajar.
+657,medium,medium,dudoso: falla de impresión inalámbrica individual sin evidencia de que no exista otro medio de impresión.
+670,medium,medium,"dudoso: equipo individual no enciende; aunque es importante para tareas diarias, no se acredita ausencia de alternativa laboral."
+672,medium,high,Discrepancias de facturación con impacto financiero significativo expresamente reportado.
+681,medium,medium,dudoso: error individual de gestión de proyectos con retrasos; no se acredita caída ni bloqueo laboral sin alternativa.
+683,medium,medium,dudoso: Se mencionan interrupciones significativas del sistema de tickets sin concretar indisponibilidad total ni alcance.
+686,medium,high,Problemas de despliegue afectan al equipo y provocan retrasos significativos del proyecto.
+687,medium,medium,"Problema individual al conectar un teclado desmontable, sin evidencia de bloqueo total del puesto de trabajo."
+711,medium,medium,dudoso: dificultad de configuración e integración de correo de un cliente sin caída ni bloqueo operativo precisado.
+718,medium,high,La base de datos se bloquea repetidamente y requiere restaurar su disponibilidad.
+750,medium,high,Interrupción del sistema de tickets tras mantenimiento afecta al servicio de consultoría.
+772,low,low,dudoso: El cuerpo solo solicita ayuda inmediata; el titulo no aporta suficiente contexto sobre el problema de acceso o su impacto.
+775,medium,high,Dificultades de provisión de recursos en la nube afectan la capacidad de despliegue del equipo.
+776,medium,high,La aplicación no responde como se espera y se informa impacto significativo en las operaciones.
+782,low,low,"dudoso: La peticion de ayuda inmediata no describe el fallo de acceso, alcance ni consecuencias operativas."
+830,medium,medium,"dudoso: Se informan problemas persistentes de arranque, pero no se confirma equipo inutilizable ni ausencia de alternativa laboral."
+855,medium,high,El equipo no puede seguir adecuadamente sus asignaciones; afectación colectiva de la gestión del proyecto.
+878,low,low,"Solicitud de instrucciones o asistencia para configurar una impresora nueva, sin interrupcion de servicio acreditada."
+880,medium,high,Funcionamiento defectuoso del sistema afecta a múltiples equipos de desarrollo y sus tareas de gestión.
+888,low,high,Las caidas frecuentes de conectividad del router ya interrumpen significativamente las operaciones.
+953,medium,medium,dudoso: petición de cambio de configuración para mejorar el proceso; no demuestra caída ni bloqueo operativo inmediato.
+954,medium,high,Fallo del tablero obstaculiza el seguimiento de tareas del proyecto para el equipo.
+991,low,low,"Solicitud de una guia de instalacion de Windows, sin bloqueo operativo inmediato descrito."
+1010,low,low,"Consulta del estado de una devolucion y sus siguientes pasos, sin impacto operativo inmediato."
+1045,medium,medium,dudoso: La descripcion de la television termina antes de identificar el fallo concreto y no permite evaluar su gravedad.
+1059,medium,medium,dudoso: El texto anuncia varios problemas del portatil pero se interrumpe antes de detallarlos.
+1067,medium,high,Problemas al desplegar una instancia causan interrupciones del servicio y afectan la atención a clientes.
+1075,medium,medium,dudoso: dificultad de carga de un equipo individual sin imposibilidad de trabajar ni ausencia de alternativa acreditadas.
+1164,low,medium,"Existe una discrepancia de facturacion con asignaciones de costos incorrectas; es una incidencia individual, sin suspension del servicio descrita."
+1181,medium,medium,Incidencia individual de compatibilidad de Windows sin evidencia de caida de servicio ni bloqueo colectivo.
+1194,medium,high,Fallo de pago impide completar la compra de una suscripción; impacto directo sobre una transacción de venta.
+1225,medium,high,Corte de servicio durante mantenimiento interrumpe aplicaciones en la nube y su disponibilidad.
+1226,medium,high,Una interrupcion inesperada del servicio afecta a varios clientes durante mantenimiento; prevalece ese impacto sobre la prioridad autodeclarada.
+1228,medium,high,Interrupción inesperada de AWS afecta la accesibilidad en la nube y la productividad general.
+1235,medium,high,Todos los dispositivos de la oficina quedan sin red; inactividad generalizada y operaciones interrumpidas.
+1248,medium,high,Caída no programada del servicio afecta significativamente el acceso a un servidor virtual.
+1263,medium,high,Un error de configuración deja el sitio web sin disponibilidad durante varias horas.
+1342,medium,medium,dudoso: solicita optimizar permisos y eficiencia; no describe acceso bloqueado ni incidente de seguridad activo.
+1376,medium,medium,"dudoso: El portatil funciona incorrectamente, pero faltan sintoma concreto, alcance y grado de bloqueo."
+1387,medium,high,El personal de la organizacion no puede iniciar sesion en Outlook y las comunicaciones internas estan gravemente afectadas.
+1390,medium,high,La aplicación principal de nómina falla durante el procesamiento; operación de negocio interrumpida.
+1412,medium,medium,dudoso: La descripcion mezcla PostgreSQL y MySQL y no aclara el alcance del error o un bloqueo completo de la aplicacion.
+1416,medium,medium,dudoso: Se mezclan dos motores de base de datos y no se concreta el grado de indisponibilidad de la aplicacion.
+1441,medium,high,La planificacion de webinares esta bloqueada en todos los navegadores y se describe un problema de toda la plataforma.
+1482,medium,medium,"dudoso: Compartir pantalla se degrada por intermitencias, sin confirmar caida de la videoconferencia ni alcance operativo total."
+1489,medium,medium,dudoso: fallos de navegador individuales; la afectación a otros es referida sin confirmar y no se acredita ausencia de alternativas.
+1508,medium,medium,"dudoso: La interfaz se bloquea en el navegador mas reciente, pero no se aclaran usuarios afectados o alternativas de acceso."
+1514,medium,medium,Problema persistente de conectividad de un router sin indisponibilidad completa o alcance colectivo concretados.
+1523,medium,high,Un fallo del servidor afecta el servicio de asesoramiento TI y se requiere restaurar su funcionalidad.
+1530,medium,medium,Atasco de papel en una impresora individual sin evidencia de paralizacion de un area.
+1557,medium,medium,"dudoso: solicitud de configuración para mejorar recursos, sin caída ni impacto inmediato descritos."
+1560,medium,high,Fallo de servidor afecta el servicio de consultoría y requiere restaurar su funcionamiento.
+1574,medium,medium,dudoso: El texto sobre errores de consultas MySQL esta incompleto y no confirma una caida operativa.
+1595,medium,high,El router esta en reinicios continuos con perdidas continuas de conexion; el servicio de red no permanece disponible.
+1605,medium,medium,"dudoso: El bloqueo de la interfaz se limita al navegador mas reciente en la descripcion, sin precisar alcance o alternativa."
+1616,medium,high,Los fallos frecuentes del servicio AWS afectan explicitamente todo el proceso de negocio y la eficiencia operativa.
+1633,medium,high,El equipo sufre inactividad y problemas de acceso intermitentes en infraestructura AWS.
+1647,medium,medium,dudoso: El problema de permisos termina antes de describir que ocurre a los miembros del equipo; no se confirma brecha o bloqueo.
+1654,medium,high,"El equipo no puede crear nuevas tareas en Jira, bloqueando una funcion central de gestion de proyectos."
+1681,medium,medium,"Cierres inesperados afectan la productividad de un portatil individual, sin afirmar imposibilidad total de trabajar."
+1687,low,medium,El teclado de un equipo individual funciona mal; es una incidencia de hardware y no una consulta sin impacto.
+1706,medium,medium,"dudoso: Hay incoherencias de recursos y costos mayores, pero no se concreta magnitud, caida del servicio o bloqueo de operaciones."
+1720,medium,medium,"dudoso: se mencionan vulnerabilidades sin compromiso, explotación ni caída acreditados; impacto sin concretar."
+1724,medium,medium,"Cierres inesperados de un equipo individual degradan el trabajo, sin evidencia de paralizacion completa o colectiva."
+1736,medium,medium,dudoso: inconsistencias y consulta de tarifas sin impacto financiero cuantificado ni bloqueo operativo precisado.
+1751,medium,medium,"dudoso: Se informan fallos intermitentes de AWS sin alcance, duracion ni consecuencias suficientes para elevar prioridad."
+1763,medium,high,Fallos recurrentes del servidor interrumpen significativamente los procesos del negocio.
+1774,medium,medium,dudoso: afectación del flujo de una persona sin caída de servicio ni bloqueo total sin alternativa acreditado.
+1779,medium,medium,"Ruido anormal de una impresora durante la impresion, sin que se afirme que dejo de imprimir o bloqueo un area."
+1786,low,low,dudoso: petición genérica de ayuda sin describir los problemas ni su impacto; la inmediatez solicitada no basta.
+1800,medium,high,El fallo de licencia impide al equipo acceder a funciones basicas de Jira y reanudar su operacion normal.
+1808,low,medium,El arranque lento degrada un equipo individual; corresponde a incidencia de rendimiento sin bloqueo total acreditado.
+1812,medium,medium,"Problema persistente de audio durante videoconferencias, sin caida total del servicio ni alcance organizacional descritos."
+1831,medium,high,Fallo del sistema de tickets tras mantenimiento afecta al servicio de asesoramiento de TI.
+1852,medium,high,Fallos inesperados del servidor afectan considerablemente a los procesos del negocio.
+1854,medium,high,Fallos inesperados del servidor tienen impacto significativo en procesos del negocio.
+1856,medium,medium,"dudoso: Se menciona afectacion de contratos por dificultades con tickets, pero no se describe bloqueo, magnitud o causa concreta."
+1859,medium,medium,"dudoso: Las intermitencias de red perturban procesos, sin concretar usuarios afectados, caida total o alternativa."
+1861,low,low,dudoso: El cuerpo solo pide ayuda inmediata y no desarrolla el problema de acceso anunciado en el titulo.
+1863,medium,medium,dudoso: diferencias de facturación de un cliente sin impacto económico concretado ni operación bloqueada.
+1868,low,low,"dudoso: La solicitud urgente no precisa el fallo de acceso, su alcance ni su impacto en el trabajo."
+1874,medium,high,Fallos inesperados del servidor afectan significativamente a los procesos del negocio.
+1891,low,low,dudoso: La peticion de apoyo rapido no explica el problema de acceso ni permite valorar consecuencias operativas.
+1898,medium,high,La configuracion AWS incorrecta causa tiempos de inactividad e interrupciones de servicios que afectan los procesos operativos.
+1904,medium,high,La configuracion AWS incorrecta produce tiempos de inactividad imprevistos con impacto considerable en la operacion.
+1915,medium,medium,dudoso: problema individual de impresión inalámbrica sin afectación colectiva ni falta de alternativa acreditada.
+1920,low,medium,"Equipo individual que no arranca tras actualizar, con uso profesional afectado; incidencia efectiva, sin alcance colectivo ni ausencia de alternativa acreditados."
+1929,medium,medium,"dudoso: Una cuenta no puede acceder a Jira, pero no se confirma paralizacion del trabajo ni falta de una alternativa."
+1934,low,low,"dudoso: Se solicita reemplazo o reembolso de un equipo recibido danado, sin describir impacto laboral inmediato o funcionalidad restante."
+1939,medium,medium,Atasco de papel de una impresora individual sin impacto colectivo o bloqueo de un proceso acreditados.
+1943,medium,medium,"dudoso: dificultades para actualizar configuración de seguridad sin incidente, compromiso ni caída del servicio descritos."
+1948,medium,medium,"Fallo de conexion inalambrica de una impresora, con solicitud de diagnostico y sin alcance masivo indicado."
+1979,medium,medium,dudoso: El texto sobre varios problemas del portatil no llega a identificar sintomas o grado de bloqueo.
+1982,medium,medium,"Fallos frecuentes de una aplicacion afectan el flujo de trabajo individual, sin confirmar imposibilidad total de realizarlo."
+1994,low,medium,El touchpad de un portatil no responde; se describe una incidencia individual de hardware sin paralizacion colectiva.
+2000,medium,medium,La bateria presenta rendimiento reducido y se consulta reparacion o sustitucion; no se indica equipo inutilizable.
+2002,medium,high,El sistema de seguimiento falla y retrasa significativamente a varios equipos de desarrollo.
+2010,medium,medium,"Problemas individuales de rendimiento y una aplicacion sin respuesta, sin alcance colectivo o bloqueo completo descritos."
+2023,medium,high,Problemas de instancia AWS provocan interrupciones de servicio en la empresa.
+2025,medium,high,La provisión de AWS provoca interrupciones en procesos operativos y en el servicio a clientes.
+2059,medium,medium,dudoso: La descripcion de la television se corta antes de identificar el problema y su impacto.
+2063,medium,medium,La bateria carga parcialmente hasta el 50 por ciento; se informa degradacion individual y no indisponibilidad total.
+2078,medium,medium,"dudoso: Una cuenta no permite acceso despues del cambio de contrasena, sin datos sobre funciones bloqueadas o alternativas."
+2097,medium,high,Se reportan cargos inesperados de importe considerable en facturación AWS; impacto financiero directo.
+2109,medium,medium,El teclado defectuoso reduce el uso eficiente de un equipo individual; no se acredita bloqueo laboral total sin alternativa.
+2121,medium,high,Todos los equipos de la oficina pierden conectividad y se interrumpen sus procesos.
+2122,medium,high,Fallo de recursos de cómputo afecta a varios usuarios y perturba considerablemente los procesos.
+2139,medium,high,Se informa interrupcion inesperada de servicios AWS que afecta accesibilidad en la nube y productividad general.
+2145,medium,high,Inactividad no programada de AWS afecta el acceso a servidores virtuales de clientes.
+2236,medium,medium,Problemas de audio reducen la claridad de una llamada de equipo; no se informa caida general del servicio o paralizacion del area.

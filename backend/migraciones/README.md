@@ -6,6 +6,12 @@ Alembic utiliza la configuración de PostgreSQL del backend. No guardes credenci
 
 Existe una revisión inicial: `0001_usuarios_tickets`, que crea `usuarios` y `tickets`, sus relaciones, restricciones e índices. La revisión `0002_autenticacion_persistencia` agrega sesiones opacas, contextos y tokens CSRF, estado persistente de límites y eventos de auditoría.
 
+La revisión `0003_retirar_prioridad_critical` convierte las prioridades
+`critical` existentes a `high` y restringe el catálogo a `low`, `medium`,
+`high`. No elimina tickets. Su downgrade restaura el catálogo anterior, pero no
+puede reconstruir qué registros eran `critical`. Requiere aplicar Alembic
+explícitamente; no se ejecuta al arrancar FastAPI.
+
 `upgrade head` crea las tablas y registra la revisión en `alembic_version`. No inserta registros de usuarios o tickets ni crea columnas vectoriales. La revisión AUTH-05 no almacena credenciales portadoras, tokens ni contraseñas en texto plano y no fija cuotas ni retención.
 
 ## Comandos
@@ -18,7 +24,20 @@ python -m alembic heads
 python -m alembic history
 ```
 
-Los comandos `heads` y `history` no requieren PostgreSQL. `heads` debe mostrar `0002_autenticacion_persistencia (head)`.
+Los comandos `heads` y `history` no requieren PostgreSQL. `heads` debe mostrar `0006_user_created (head)`.
+
+`0005_actor_bootstrap` añade actor externo opcional a auditoría y lo exige para
+admin_bootstrap. Conserva los eventos anteriores y no crea usuarios. Su downgrade
+rechaza retirar esos campos cuando existe auditoría administrativa, para no perder
+identidad del operador. No altera las revisiones anteriores.
+
+`0006_user_created` amplía actor_id a 36 caracteres para el UUID del admin
+SynapDesk y añade rol_asignado para user_created. Reutiliza sujeto, fecha,
+resultado y correlación. La restricción conserva admin_bootstrap y los eventos
+anteriores; exige actor interno, rol admin/agent, éxito y motivo cerrado para
+user_created. No inserta cuentas ni modifica 0001–0005. El downgrade a 0005
+conserva los eventos previos, pero rechaza ejecutarse si existen altas auditadas;
+no elimina evidencia ni trunca UUID. El bootstrap exige ahora el head 0006.
 
 Para verificar primero contra `db_test`:
 

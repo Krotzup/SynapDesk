@@ -5,8 +5,10 @@ from app.persistencia.modelos.ticket import Ticket
 from app.persistencia.modelos.sesion import Sesion
 from app.persistencia.modelos.csrf import ContextoCsrf, TokenCsrf
 from app.persistencia.modelos.seguridad import LimiteAutenticacion, EventoAutenticacion
+from app.persistencia.modelos.bootstrap_csrf import CuotaBootstrapCsrf
 
 __all__ = [
+    "CuotaBootstrapCsrf",
     "Usuario",
     "Ticket",
     "Sesion",

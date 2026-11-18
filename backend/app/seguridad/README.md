@@ -1,5 +1,15 @@
 # Servicios internos de seguridad
 
+## AUTH-07B.2: coordinador interno de login
+
+[ServicioLogin](login.py) compone las primitivas existentes con reservas de cuota
+confirmadas antes de Argon2 y sesión/CSRF/auditoría confirmados atómicamente después.
+No registra rutas HTTP ni crea cookies. Exige credenciales tipadas, una prueba
+CSRF validada por el propio coordinador e IpVerificada de procedencia acreditada.
+El [diseño interno](../../../docs/arquitectura/login-interno-v1.md) documenta las
+transacciones, el reemplazo ligado a CSRF de sesión, los errores y las decisiones
+todavía provisionales. El login HTTP y la emisión HTTP CSRF permanecen cerrados.
+
 ## Alcance
 
 [ServicioSesiones](sesiones.py) y [ServicioCsrf](csrf.py) reutilizan los [modelos](../persistencia/modelos/) y las migraciones existentes. No autentican contraseñas, verifican Origin, emiten cookies ni implementan login/logout HTTP, proxy, cuotas de login o auditoría operativa. Los [fundamentos criptográficos](../../README.md#fundamentos-de-seguridad) permanecen independientes de esta orquestación.

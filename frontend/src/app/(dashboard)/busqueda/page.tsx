@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { ReactNode, Suspense } from "react";
-import { RetryButton } from "@/components/search/RetryButton";
+import { RetryButton } from "@/components/ui/RetryButton";
 import { SearchForm } from "@/components/search/SearchForm";
 import { SearchResultCard } from "@/components/search/SearchResultCard";
 import { USE_MOCKS } from "@/lib/config";
@@ -96,7 +96,7 @@ export default async function BusquedaPage({ searchParams }: BusquedaPageProps) 
   const { query, limit, tooLong } = parseSemanticSearchParams(await searchParams);
 
   return (
-    <div className="p-8 bg-[#F8FAFC] min-h-screen">
+    <div className="px-4 py-6 sm:p-6 lg:p-8 bg-[#F8FAFC] min-h-screen">
       <div className="max-w-4xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-[#0F172A]">Búsqueda semántica</h1>

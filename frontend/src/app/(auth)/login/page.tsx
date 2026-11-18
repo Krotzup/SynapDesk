@@ -23,7 +23,7 @@ export default function LoginPage() {
       )}
 
       {/* Tarjeta */}
-      <div className="rounded-xl border border-[#E2E8F0] bg-white p-8 shadow-sm">
+      <div className="rounded-xl border border-[#E2E8F0] bg-white p-6 sm:p-8 shadow-sm">
         <LoginForm />
       </div>
     </div>

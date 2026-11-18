@@ -2,7 +2,7 @@
 
 ## Estado
 
-**Provisional**
+**Provisional por módulo; autenticación formalizada en el alcance aprobado AUTH-07D.3.** El resto del contrato conserva sus estados y acuerdos propios.
 
 ## Propósito
 
@@ -61,7 +61,7 @@ Los nombres de cookies (C02), el nombre de la variable de la credencial (C07), e
 
 ## Autenticación
 
-El Product Owner aprobó sesiones opacas persistidas en PostgreSQL, administradas por FastAPI y transportadas mediante cookie HttpOnly, con acceso público a través de un proxy del mismo origen. La especificación, sus propuestas y decisiones pendientes se concentran en el [contrato de autenticación V1](autenticacion-v1.md). La autenticación todavía no está implementada.
+El Product Owner aprobó sesiones opacas persistidas en PostgreSQL, administradas por FastAPI y transportadas mediante cookie HttpOnly, con acceso público a través de un proxy del mismo origen. La especificación, sus propuestas y decisiones pendientes se concentran en el [contrato de autenticación V1](autenticacion-v1.md). Los servicios internos y adaptadores están implementados; GET csrf está registrado con cierre seguro, sin emisión, y login/me/logout HTTP siguen sin registrar (404). No hay administración HTTP. La [especificación HTTP V1](autenticacion-http-adaptadores-v1.md) separa aprobación, implementación y evidencia.
 
 Rutas iniciales previstas:
 
@@ -78,11 +78,17 @@ El [contrato de seguridad](autenticacion-v1.md#6-cookies-y-csrf) formaliza como 
 
 Para V1, las mutaciones autenticadas de negocio se realizan con fetch desde componentes o servicios cliente a `/api/v1/*`, incluido login/logout con sus respectivos requisitos, creación/modificación de tickets y acciones mutables del asistente. No se usan Server Actions o Server Functions para esas mutaciones. Las lecturas SSR conservan el adaptador por petición y la ausencia de caché compartida. El proxy transporta cookies/cabeceras permitidas y múltiples Set-Cookie separados; no fabrica Origin ni confía en cabeceras de proxy arbitrarias.
 
-Se permite renovar CSRF preventivamente cerca de expiresAt, solo en memoria del contexto cliente y coordinando solicitudes; no se extiende por ello la inactividad ni se expulsan tokens vigentes en uso. Solo tras un 403 explícito con error.code CSRF_INVALID garantizado antes de efectos de negocio puede obtenerse otro token y reintentarse una vez, confirmando que sigue el contexto esperado. Si cambió sesión/contexto, la continuidad no se puede confirmar o vuelve a fallar, se devuelve el error. No se reintentan automáticamente otros 403, timeouts, fallos de red, 500/503 ni resultados desconocidos. Los valores de duración y capacidad siguen provisionales.
+**AUTH-07D.3, APPROVED P1–P10:** cookies malformadas/duplicadas/perfiles mezclados se rechazan antes de filtrarlos, sin convertirlas en anónimas. No recuperación automática de sesión vencida/revocada/inválida. /me no renueva treinta minutos de inactividad ni ocho horas absolutas. Logout puede únicamente revocar una sesión verificable de cuenta inactiva con controles restantes, sin acceso/identidad activa/contexto privilegiado nuevo; este último caso aún requiere un ajuste interno de backend.
+
+Arquitectura B aprobada: navegador → Next.js público → FastAPI privado → PostgreSQL, Render pendiente de evidencia. SEC-01B usa credencial opaca por entorno solo servidor, TLS con CA/hostname y rotación controlada; servicio, usuario, IP, Origin y CSRF son controles independientes. No existe cabecera IP interna aprobada. Falta de control obligatorio mantiene cierre, sin bypass local. Cuotas productivas necesarias deben aprobarse/configurarse: ensayo no equivale a producción.
+
+Se conserva renovación preventiva coordinada CSRF, solo en memoria y sin ampliar actividad/expulsar tokens vigentes. **P8 sustituye el reenvío automático de escrituras anteriormente permitido tras CSRF_INVALID:** renovar prueba no repite la mutación. Tampoco retry automático ante 429, timeout/red/TLS, 500/503 o resultado incierto. Presupuestos numéricos por operación/tramo pendientes de medición/decisión, sin cambios de consumo de cuotas.
+
+Los [atributos de cookies](autenticacion-http-adaptadores-v1.md#cookies-y-tratamiento-de-credenciales-obsoletas) quedan formalizados: HttpOnly, Secure producción, SameSite=Lax, Path=/ y sin Domain __Host-. Nombres/mapeo concreto, 200/DTO CSRF/cuerpo logout y códigos adicionales siguen como propuestas C01–C04, según [matriz D.3](auth07d3-compatibilidad-y-plan-integracion.md). AuthUser no incorpora name.
 
 Origin es obligatorio en mutaciones públicas: debe coincidir exactamente con un origen permitido configurado. Origin ausente, null, ambiguo/múltiple o externo no permitido produce HTTP 403 ORIGIN_INVALID con ApiErrorBody antes de efectos, incluso en logout sin sesión. No hay excepciones implícitas para Server Actions, scripts o clientes externos; las reglas de solo lectura/SSR no son un bypass para mutaciones.
 
-Logout es idempotente respecto al cierre y conserva validación de origen: devuelve 204 cuando no existe sesión válida que revocar. Si la sesión es válida, exige CSRF válido antes de confirmar su revocación; CSRF inválido devuelve 403 sin revocar ni borrar la cookie. Si PostgreSQL impide verificar una cookie presentada o confirmar una revocación requerida, devuelve 503, no un 204 ficticio. Sin cookie no hay credencial que consultar o revocar. La [precedencia de logout](autenticacion-v1.md#post-apiv1authlogout) precisa los casos; la idempotencia no evita los controles. La estructura de AuthUser y ApiErrorBody permanece intacta. No se autoriza implementación; servicios, proxy y protección de rutas se adaptarán en otra tarea.
+Logout es idempotente respecto al cierre y conserva validación de origen: devuelve 204 cuando no existe sesión válida que revocar. Si la sesión es válida, exige CSRF válido antes de confirmar su revocación; CSRF inválido devuelve 403 sin revocar ni borrar la cookie. Si PostgreSQL impide verificar una cookie presentada o confirmar una revocación requerida, devuelve 503, no un 204 ficticio. Sin cookie no hay credencial que consultar o revocar. La [precedencia de logout](autenticacion-v1.md#post-apiv1authlogout) precisa los casos; la idempotencia no evita los controles. La estructura de AuthUser y ApiErrorBody permanece intacta. D.3 no autoriza registrar rutas. ServicioLogout actual rechaza cuenta inactiva: debe implementar la excepción estrecha P4 en otra tarea y conservar rechazo de /me/administración. Las [especificaciones PR30/PR32](integracion-http-pr30-pr32-v1.md) indican responsabilidades y aceptación sin modificar sus ramas.
 
 ## Usuarios
 
@@ -148,11 +154,63 @@ Respuesta resumida:
   },
   "assignedTo": null,
   "createdAt": "2026-09-11T18:30:00Z",
-  "updatedAt": "2026-09-11T18:30:00Z"
+  "updatedAt": "2026-09-11T18:30:00Z",
+  "resolvedAt": null
 }
 ```
 
 Los valores predichos mediante Machine Learning deberán identificarse claramente y no confundirse con decisiones validadas.
+
+### Creación de tickets (`POST /api/v1/tickets`)
+
+Reglas acordadas entre frontend y backend el 03-11-2026. El frontend ya las aplica con datos de ejemplo (PR #27); el endpoint todavía no está implementado en el backend.
+
+**Solicitud.** El cliente envía únicamente `title` y `description`. El servidor asigna los demás campos: `id`, `status`, `priority`, `createdBy`, fechas y, más adelante, la clasificación.
+
+**Normalización.** Se eliminan los espacios en blanco al inicio y al final de `title` y `description` **antes de validar**, y se guarda el valor recortado. El frontend envía los valores ya recortados, pero el backend debe recortarlos igualmente y no confiar en el cliente.
+
+**Validación.** Las longitudes se cuentan sobre el valor recortado:
+
+| Campo         | Tipo  | Obligatorio | Mínimo | Máximo |
+| ------------- | ----- | ----------- | -----: | -----: |
+| `title`       | texto | Sí          |      5 |    150 |
+| `description` | texto | Sí          |     10 |   5000 |
+
+Un valor vacío, o que quede vacío tras recortar, es inválido.
+
+**Valores iniciales.** Un ticket recién creado tiene `status: "open"`, `priority: "medium"`, `category: null`, `area: null`, `assignedTo: null` y `resolvedAt: null`. `createdBy` corresponde al usuario autenticado que crea el ticket.
+
+**Respuesta exitosa.** `201 Created`, con el ticket completo en el mismo formato de `GET /api/v1/tickets/{id}`, como en el ejemplo anterior. El frontend navega al detalle del ticket con el `id` recibido.
+
+**Clasificación.** La creación es independiente de la clasificación ML: primero se guarda el ticket y la clasificación se ejecuta en un flujo separado. Una falla del clasificador no impide crear el ticket ni cambia la respuesta `201`. El endpoint de clasificación sigue pendiente ([contrato backend–ML](backend-ml.md)).
+
+**Autenticación y permisos.** Requiere sesión válida. Pueden crear tickets los roles `admin` y `agent`. Como toda mutación de V1, se envía con `fetch` desde el cliente, a través del proxy de mismo origen, con `X-CSRF-Token` y `Origin` válido, según el [contrato de autenticación V1](autenticacion-v1.md). La asignación, la modificación y la visibilidad de tickets quedan para la matriz de permisos.
+
+**Errores.**
+
+| HTTP  | `error.code`                     | Caso                                                     |
+| ----: | -------------------------------- | -------------------------------------------------------- |
+| `401` | `AUTHENTICATION_REQUIRED`        | Sin sesión válida                                        |
+| `403` | `CSRF_INVALID`, `ORIGIN_INVALID` | Token CSRF u `Origin` inválidos (rechazo previo a efectos) |
+| `403` | `FORBIDDEN`                      | El rol no puede crear tickets                            |
+| `422` | `VALIDATION_ERROR`               | `title` o `description` no cumplen las reglas            |
+| `503` | `SERVICE_UNAVAILABLE`            | Servicio temporalmente no disponible                     |
+
+Ejemplo de `422`, con el formato descrito en [Errores de validación](#errores-de-validación):
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Los datos del ticket no son válidos.",
+    "details": [
+      { "field": "title", "message": "Debe tener al menos 5 caracteres." },
+      { "field": "description", "message": "Ingresa una descripción." }
+    ],
+    "requestId": "8d1f3c52-7a4e-4b9a-9c2d-5e6f7a8b9c0d"
+  }
+}
+```
 
 ## Documentos
 
@@ -198,7 +256,7 @@ Respuesta inicial:
 }
 ```
 
-El significado y rango del campo `score` deberán documentarse cuando se seleccione la estrategia de recuperación.
+En el [prototipo experimental de recuperación](embeddings-recuperacion.md), `score = 1 - distancia_coseno` expresa similitud en [-1, 1], no probabilidad ni confianza calibrada. El CLI admite perfiles experimentales de relevancia asociados al modelo y corpus, con abstención mediante `items: []`; esto no establece un umbral ni campos nuevos para la API pública. La estrategia definitiva del producto y su perfil de relevancia para producción siguen pendientes de evaluación. La ruta HTTP todavía no está implementada por este prototipo.
 
 ## Recomendaciones
 
@@ -321,6 +379,15 @@ Códigos HTTP principales:
 
 Los errores internos no deberán revelar contraseñas, consultas SQL, rutas del servidor, variables de entorno ni trazas completas.
 
+### Errores de validación
+
+Acordado el 03-11-2026 para todos los endpoints que validan datos de entrada. Un error de validación responde `422` con `error.code: "VALIDATION_ERROR"`, dentro de la misma envoltura `error` de los demás errores. `error.details` es una lista de objetos `{ field, message }`:
+
+* `field`: nombre del campo en la solicitud JSON, en `camelCase`, igual que en el contrato (por ejemplo, `title`);
+* `message`: mensaje en español que el frontend puede mostrar junto a ese campo.
+
+El backend debe adaptar la respuesta de validación predeterminada de FastAPI (`{"detail": [...]}`), que no cumple este formato. Si `details` no trae la lista esperada, el frontend muestra un mensaje general. Si un campo trae varios mensajes, se muestra el primero.
+
 ### Servicio temporalmente no disponible
 
 HTTP 503 significa indisponibilidad temporal. Se aprueba SERVICE_UNAVAILABLE como código general de operaciones de aplicación cuando la causa específica no sea parte del contrato público. GET `/api/v1/ready` conserva DATABASE_UNAVAILABLE cuando falla su comprobación PostgreSQL, con la misma estructura error.code, error.message, error.details y error.requestId. Ese comportamiento existente no se modifica. El frontend maneja 503 por estado HTTP sin asumir un único error.code y sin revelar detalles de infraestructura ni reintentar mutaciones automáticamente. Un fallo PostgreSQL que impide comprobar o confirmar una revocación requerida debe devolver 503, nunca un 204 ficticio.
@@ -350,9 +417,10 @@ Cuando se apruebe este contrato, los servicios de `frontend/src/services/` deber
 * límite de tamaño y formatos de documentos;
 * códigos definitivos de errores;
 * filtros disponibles para tickets;
+* en la creación de tickets: unidad de conteo de las longitudes (el frontend cuenta unidades de JavaScript `string.length`, que pueden diferir de los caracteres de Python en emojis y otros símbolos) y respuesta ante campos no previstos en la solicitud;
 * forma de representar categorías y áreas;
 * estrategia para operaciones de IA que requieran procesamiento prolongado;
-* política de reintentos y tiempos máximos;
+* presupuestos numéricos por operación/tramo pendientes; P8 ya prohíbe reintentos automáticos de escrituras de autenticación;
 * métricas definitivas del MVP.
 
 ## Criterios de aceptación

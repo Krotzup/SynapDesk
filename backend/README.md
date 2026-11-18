@@ -27,6 +27,8 @@ Los [servicios internos de seguridad](app/seguridad/README.md) reutilizan las ta
 
 ## Fundamentos de seguridad
 
+Los [fundamentos HTTP AUTH-07A](app/api/README.md) preparan esquemas, errores saneados, cookies con perfiles explícitos propuestos, Origin y sesiones ORM por petición. No registran endpoints de autenticación. La IP HTTP permanece cerrada hasta resolver la autenticidad del proxy; el comando local desactiva la interpretación de forwarded headers.
+
 [ServicioContrasenas](app/seguridad/contrasenas.py) utiliza `argon2-cffi==25.1.0` y Argon2id con sal aleatoria individual de 16 bytes y hash de 32 bytes. Genera hashes codificados, verifica y detecta necesidad de rehash; no consulta usuarios, cambia contraseñas ni inicia sesión. La contraseña no se recorta ni normaliza. Una verificación correcta devuelve true; `VerifyMismatchError` devuelve false. Un hash almacenado malformado/incompatible o `InvalidHashError` produce [ErrorContrasena](app/seguridad/contrasenas.py), al igual que un `VerificationError` interno (por ejemplo, fallo de asignación de memoria), con mensajes saneados distintos y sin detalles de Argon2. Estos errores no son credenciales incorrectas ni deben convertirse en ellas por el llamador; no se implementa su traducción HTTP aquí. `necesita_rehash` conserva su comportamiento y debe consultarse solo tras una verificación correcta. Solo se aceptan hashes del almacenamiento confiable, nunca hashes enviados por un cliente: sus parámetros controlan trabajo criptográfico. Los errores propios están saneados y el servicio no escribe logs.
 
 Se reutiliza [Configuracion](app/configuracion.py), su carga de variables y su validación inicial:
@@ -140,7 +142,7 @@ La configuración se carga al crear la aplicación. El punto de entrada `app.mai
 Con el entorno activo y ubicado en `backend/`:
 
 ```cmd
-python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000 --no-proxy-headers
 ```
 
 - API: <http://127.0.0.1:8000/api/v1/health>
@@ -255,7 +257,13 @@ python -m alembic heads
 python -m alembic history
 ```
 
-La revisión actual es `0002_autenticacion_persistencia`; `heads` debe mostrarla como `(head)`, con `0001_usuarios_tickets` como revisión anterior.
+La revisión actual es `0006_user_created`, posterior a `0005_actor_bootstrap`; `heads` debe mostrarla como `(head)`. La revisión de prioridades descrita a continuación es `0003_retirar_prioridad_critical`.
+
+Esta revisión convierte las prioridades `critical` existentes a `high` y
+restringe el catálogo a `low`, `medium`, `high`. No elimina tickets. Su
+downgrade restaura el catálogo anterior, pero no puede reconstruir qué registros
+eran `critical`. Requiere aplicar Alembic explícitamente; no se ejecuta al
+arrancar FastAPI.
 
 Para aplicar primero la revisión en `db_test`, con Docker funcionando:
 
@@ -272,7 +280,7 @@ python -m alembic current
 python -m alembic check
 ```
 
-`current` debe mostrar `0002_autenticacion_persistencia (head)`. `check` debe informar que no se detectaron nuevas operaciones de actualización: compara modelos registrados y estructura de la base, sin generar revisiones.
+`current` debe mostrar `0006_user_created (head)`. `check` debe informar que no se detectaron nuevas operaciones de actualización: compara modelos registrados y estructura de la base, sin generar revisiones.
 
 Las revisiones no insertan usuarios ni tickets. La autenticación y las rutas de estos módulos siguen pendientes. Los campos y relaciones se documentan en [Persistencia relacional inicial](../docs/arquitectura/persistencia-inicial.md); los [modelos de persistencia](app/persistencia/modelos/) comparten la misma base declarativa y la [revisión de autenticación](migraciones/versiones/0002_autenticacion_persistencia.py) depende de la revisión inicial.
 
@@ -305,3 +313,5 @@ Consulta el [procedimiento de migraciones](migraciones/README.md) antes de incor
 - [Modelo inicial del dominio](../docs/arquitectura/modelo-dominio.md)
 - [Persistencia relacional inicial](../docs/arquitectura/persistencia-inicial.md)
 - [Infraestructura y PostgreSQL](../infra/README.md)
+- [Bootstrap administrativo explícito](../docs/arquitectura/bootstrap-administrador-interno-v1.md): alta inicial y auditoría atómicas; requiere destino, canal y principal de mantenimiento verificados. No se ejecuta al arrancar.
+- [Altas administrativas internas](../docs/arquitectura/creacion-usuarios-interna-v1.md): AUTH-07C.2B permite a admin vigente crear admin/agent activos con Argon2id y user_created atómico. Captura protegida y entrega privada externa son requisitos operativos; sin rutas HTTP o sesión automática.

@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/Button";
+
 const usersList = [
   {
     name: "Valentina González",
@@ -31,7 +33,7 @@ const usersList = [
 
 export default function AdminPage() {
   return (
-    <div className="p-8 bg-[#F8FAFC] min-h-screen">
+    <div className="px-4 py-6 sm:p-6 lg:p-8 bg-[#F8FAFC] min-h-screen">
       <div className="max-w-5xl mx-auto space-y-6">
         {/* Encabezado */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -41,9 +43,9 @@ export default function AdminPage() {
               Gestión de acceso, roles y estado de las cuentas del equipo.
             </p>
           </div>
-          <button className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-sm font-semibold rounded-xl transition-colors shadow-sm self-start sm:self-auto">
+          <Button type="button" variant="primary" className="self-start sm:self-auto">
             + Invitar usuario
-          </button>
+          </Button>
         </div>
 
         {/* Tabla de usuarios */}
@@ -53,7 +55,7 @@ export default function AdminPage() {
             <input
               type="text"
               placeholder="Buscar por nombre o correo..."
-              className="w-full sm:w-64 bg-[#F8FAFC] border border-[#E2E8F0] text-xs rounded-xl px-3 py-2 text-[#0F172A] placeholder-[#94A3B8] outline-none focus:border-[#2563EB]"
+              className="w-full sm:w-64 min-h-11 sm:min-h-0 bg-[#F8FAFC] border border-[#E2E8F0] text-xs rounded-xl px-3 py-2 text-[#0F172A] placeholder-[#94A3B8] outline-none focus:border-[#2563EB]"
             />
           </div>
 
@@ -92,13 +94,23 @@ export default function AdminPage() {
                         </span>
                       )}
                     </td>
-                    <td className="py-3.5 px-6 text-right space-x-3">
-                      <button className="text-xs font-semibold text-[#2563EB] hover:underline">
+                    <td className="py-3.5 px-6 text-right whitespace-nowrap space-x-3">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Editar ${user.name}`}
+                      >
                         Editar
-                      </button>
-                      <button className="text-xs font-semibold text-[#EF4444] hover:underline">
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={user.isActive ? "danger" : "ghost"}
+                        size="sm"
+                        aria-label={`${user.isActive ? "Desactivar" : "Activar"} ${user.name}`}
+                      >
                         {user.isActive ? "Desactivar" : "Activar"}
-                      </button>
+                      </Button>
                     </td>
                   </tr>
                 ))}

@@ -36,7 +36,6 @@ def crear_ticket(sesion, usuario: Usuario, **cambios) -> Ticket:
 def test_persistir_usuario_y_ticket_con_valores_iniciales(sesion_bd_test) -> None:
     usuario = crear_usuario(sesion_bd_test)
     ticket = crear_ticket(sesion_bd_test, usuario)
-    critico = crear_ticket(sesion_bd_test, usuario, prioridad="critical")
 
     assert isinstance(usuario.id, UUID)
     assert isinstance(ticket.id, UUID)
@@ -44,7 +43,6 @@ def test_persistir_usuario_y_ticket_con_valores_iniciales(sesion_bd_test) -> Non
     assert usuario.activo is True
     assert ticket.estado == "open"
     assert ticket.prioridad == "medium"
-    assert critico.prioridad == "critical"
     assert ticket.asignado_a_id is None
     assert ticket.categoria is None and ticket.area is None
     assert ticket.resuelto_en is None
@@ -76,6 +74,7 @@ def test_ticket_rechaza_usuario_inexistente(sesion_bd_test, campo) -> None:
         ("usuario", "rol", "superadmin"),
         ("ticket", "estado", "pending"),
         ("ticket", "prioridad", "urgent"),
+        ("ticket", "prioridad", "critical"),
     ],
 )
 def test_base_rechaza_rol_estado_o_prioridad_fuera_del_contrato(
