@@ -88,7 +88,7 @@ export default async function TicketsPage({ searchParams }: TicketsPageProps) {
           <div>
             <h1 className="text-2xl font-bold text-[#0F172A]">Gestión de tickets</h1>
             <p className="text-sm text-[#64748B] mt-1">
-              Visualiza, filtra y gestiona las solicitudes de soporte.
+              Visualiza y gestiona las solicitudes de soporte.
             </p>
           </div>
           <Link
