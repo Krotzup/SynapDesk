@@ -81,6 +81,54 @@ def test_cinco_adaptadores_con_sesion_y_csrf_persistidos(candidato_pg, actor):
     assert leido == cambiado  # Otra Session/conexión tras commit.
 
 
+@pytest.mark.parametrize("actor", [0, 1], ids=["admin", "agent"])
+@pytest.mark.parametrize("cantidad", [0, 3], ids=["vacio", "con_datos"])
+@pytest.mark.parametrize("page_size", [1, 100])
+@pytest.mark.parametrize("posicion", ["bigint_anterior", "bigint_maximo", "bigint_excedido", "enorme"])
+def test_pagina_extrema_conserva_contrato_y_snapshot(candidato_pg, actor, cantidad, page_size, posicion):
+    e = candidato_pg
+    for n in range(cantidad):
+        e["servicio"].crear(e["referencias"][0], TicketCreate(
+            title=f"Ticket extremo {n}", description="Datos para paginación extrema."))
+    maximo = 2**63 - 1
+    paginas = {"bigint_anterior": maximo // page_size,
+               "bigint_maximo": maximo // page_size + 1,
+               "bigint_excedido": maximo // page_size + 2,
+               "enorme": 10**100}
+    page = paginas[posicion]
+    consultas = []
+
+    def registrar(_, __, statement, parameters, *___):
+        if "total_tickets" in statement:
+            consultas.append((statement, parameters))
+
+    event.listen(e["motor"], "before_cursor_execute", registrar)
+    try:
+        respuesta = cuerpo(e["adaptador"].listar(peticion(e, actor=actor),
+            TicketPagination(page=page, pageSize=page_size)))
+    finally:
+        event.remove(e["motor"], "before_cursor_execute", registrar)
+    assert respuesta == {"items": [], "page": page, "pageSize": page_size,
+        "totalItems": cantidad, "totalPages": (cantidad + page_size - 1) // page_size}
+    assert len(consultas) == 1  # Página y total comparten una sentencia/snapshot.
+    sql, parametros = consultas[0]
+    assert all(type(v) is not int or v <= maximo for v in parametros.values())
+    if (page - 1) * page_size > maximo:
+        assert "OFFSET" not in sql.upper()
+
+
+@pytest.mark.parametrize("actor", [0, 1], ids=["admin", "agent"])
+def test_pagina_en_rango_e_inmediatamente_fuera_con_totales(candidato_pg, actor):
+    e = candidato_pg
+    creados = [e["servicio"].crear(e["referencias"][0], TicketCreate(
+        title=f"Ticket de página {n}", description="Listado contractual de prueba.")) for n in range(3)]
+    for page, esperado in ((2, [creados[0].model_dump(mode="json")]), (3, [])):
+        respuesta = cuerpo(e["adaptador"].listar(peticion(e, actor=actor),
+            TicketPagination(page=page, pageSize=2)))
+        assert respuesta == {"items": esperado, "page": page, "pageSize": 2,
+            "totalItems": 3, "totalPages": 2}
+
+
 @pytest.mark.parametrize("caso", ["ausente", "duplicado", "otra_sesion", "desconocido", "vencido"])
 def test_csrf_invalido_no_escribe(candidato_pg, caso):
     e = candidato_pg
@@ -119,7 +167,8 @@ def test_csrf_vence_durante_escritura_revierte_sin_reintento(candidato_pg):
 
 
 @pytest.mark.parametrize("caso", ["inactivo", "revocada", "credencial_servicio"])
-def test_lectura_exige_usuario_activo_y_sesion_real(candidato_pg, caso):
+@pytest.mark.parametrize("page", [1, 10**100])
+def test_lectura_exige_usuario_activo_y_sesion_real(candidato_pg, caso, page):
     e = candidato_pg
     with e["motor"].begin() as db:
         if caso == "inactivo":
@@ -127,7 +176,8 @@ def test_lectura_exige_usuario_activo_y_sesion_real(candidato_pg, caso):
         elif caso == "revocada":
             db.execute(update(Sesion).where(Sesion.usuario_id == e["usuarios"][0]).values(
                 revocada_en=func.clock_timestamp(), motivo_revocacion="individual"))
-    r = e["adaptador"].listar(peticion(e, sesion=e["clave"] if caso == "credencial_servicio" else None))
+    r = e["adaptador"].listar(peticion(e, sesion=e["clave"] if caso == "credencial_servicio" else None),
+        TicketPagination(page=page, pageSize=100))
     comprobar_error(r, 401, "AUTHENTICATION_REQUIRED")
 
 

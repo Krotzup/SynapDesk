@@ -25,6 +25,9 @@ No cierra el motor recibido: su ciclo de vida pertenece a la aplicación.
 - Listar: page desde 1, pageSize=20, máximo interno candidato 100; orden fijo
   createdAt DESC, id DESC. Un SELECT devuelve total, página y usuarios con el
   mismo snapshot, incluso cuando no hay registros o la página está fuera de rango.
+  Si la posición calculada supera `bigint` de PostgreSQL, la subconsulta de filas
+  se vacía sin enviar OFFSET; el conteo sigue en la misma sentencia. Se conservan
+  `page` y `pageSize` solicitados, sin límites nuevos ni cambios del DTO.
   No hay consultas N+1 ni lectura de hashes por las proyecciones de tickets.
 - Detalle: misma representación que listado; ausencia tiene código interno
   NO_ENCONTRADO, distinto de infraestructura/transacción.

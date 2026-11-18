@@ -7,7 +7,7 @@ debe validar sesión/autorización y abarcar la operación con una transacción.
 from enum import StrEnum
 from uuid import UUID
 
-from sqlalchemy import func, select, true
+from sqlalchemy import false, func, select, true
 from sqlalchemy.orm import Session, aliased, joinedload, raiseload
 
 from app.persistencia.modelos import Ticket as TicketORM, Usuario
@@ -89,9 +89,18 @@ class RepositorioTickets:
             # vacía o fuera de rango; dos SELECT separados bajo READ COMMITTED
             # podrían devolver un total y una página de instantes diferentes.
             total = select(func.count(TicketORM.id).label("cantidad")).cte("total_tickets")
+            posicion = (pagina.page - 1) * pagina.pageSize
             filas = select(TicketORM).order_by(
                 TicketORM.creado_en.desc(), TicketORM.id.desc(),
-            ).offset((pagina.page - 1) * pagina.pageSize).limit(pagina.pageSize).subquery()
+            )
+            if posicion > 2**63 - 1:
+                # OFFSET y count() son bigint en PostgreSQL. Una posición mayor
+                # no puede contener filas; no enviar ese entero al controlador.
+                # El total conserva el mismo snapshot y page no se trunca.
+                filas = filas.where(false())
+            else:
+                filas = filas.offset(posicion)
+            filas = filas.limit(pagina.pageSize).subquery()
             ticket = aliased(TicketORM, filas)
             resultado = self.db.execute(select(total.c.cantidad, ticket).select_from(total)
                 .outerjoin(ticket, true()).options(*_relaciones(ticket)).order_by(
