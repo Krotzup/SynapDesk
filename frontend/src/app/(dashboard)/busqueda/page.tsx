@@ -96,7 +96,7 @@ export default async function BusquedaPage({ searchParams }: BusquedaPageProps) 
   const { query, limit, tooLong } = parseSemanticSearchParams(await searchParams);
 
   return (
-    <div className="p-8 bg-[#F8FAFC] min-h-screen">
+    <div className="px-4 py-6 sm:p-6 lg:p-8 bg-[#F8FAFC] min-h-screen">
       <div className="max-w-4xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-[#0F172A]">Búsqueda semántica</h1>

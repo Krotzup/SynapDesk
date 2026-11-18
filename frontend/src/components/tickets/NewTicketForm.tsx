@@ -144,11 +144,11 @@ export function NewTicketForm() {
           <strong>Datos de ejemplo:</strong> este ticket solo existe en esta pestaña y no aparece en
           el listado ni en el detalle. Con el backend real se abrirá el detalle del ticket creado.
         </p>
-        <div className="flex flex-wrap gap-3">
-          <Button type="button" variant="primary" onClick={startOver}>
+        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3">
+          <Button type="button" variant="primary" className="w-full sm:w-auto" onClick={startOver}>
             Crear otro ticket
           </Button>
-          <Link href="/tickets" className={buttonClassName("secondary")}>
+          <Link href="/tickets" className={buttonClassName("secondary", false, "w-full sm:w-auto")}>
             Volver al listado
           </Link>
         </div>
@@ -229,11 +229,11 @@ export function NewTicketForm() {
         clasificación se realiza por separado y la prioridad podrá ajustarse después.
       </p>
 
-      <div className="flex flex-wrap gap-3">
-        <Button type="submit" variant="primary" disabled={submitting}>
+      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3">
+        <Button type="submit" variant="primary" className="w-full sm:w-auto" disabled={submitting}>
           {submitting ? "Creando ticket…" : "Crear ticket"}
         </Button>
-        <Link href="/tickets" className={buttonClassName("secondary")}>
+        <Link href="/tickets" className={buttonClassName("secondary", false, "w-full sm:w-auto")}>
           Cancelar
         </Link>
       </div>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AssistantPanel } from "@/components/recommendations/AssistantPanel";
 import { AssistantRecommendation } from "@/components/recommendations/AssistantRecommendation";
 import { PriorityBadge, StatusBadge } from "@/components/ui/Badge";
 import { isApiError } from "@/lib/errors";
@@ -30,10 +31,12 @@ export default async function TicketDetailPage({ params }: TicketDetailPageProps
   const recommendation = recommendations.at(-1) ?? null;
 
   return (
-    <div className="p-6 bg-[#F8FAFC] min-h-screen">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start max-w-7xl mx-auto">
+    // Bajo 1280 px, el margen derecho deja libre el botón fijo del Asistente IA.
+    <div className="pl-4 pr-14 py-6 sm:pl-6 sm:pr-16 xl:p-6 bg-[#F8FAFC] min-h-screen">
+      {/* Desde 1280 px, detalle y Asistente IA lado a lado; antes, una columna y el Asistente en un Drawer. */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start max-w-7xl mx-auto">
         {/* Panel central: Detalle del ticket */}
-        <div className="lg:col-span-2 space-y-6 bg-white p-6 rounded-2xl border border-[#E2E8F0] shadow-sm">
+        <div className="xl:col-span-2 space-y-6 bg-white p-4 sm:p-6 rounded-2xl border border-[#E2E8F0] shadow-sm">
           <Link
             href="/tickets"
             className="inline-flex items-center gap-2 text-sm text-[#2563EB] font-medium hover:underline"
@@ -96,11 +99,7 @@ export default async function TicketDetailPage({ params }: TicketDetailPageProps
         </div>
 
         {/* Panel derecho: Asistente IA */}
-        <div className="bg-[#EEF2FF] p-6 rounded-2xl border border-[#818CF8] shadow-sm space-y-5">
-          <div className="flex items-center gap-2 text-[#4338CA] font-bold text-lg">
-            <span>🤖</span> Asistente IA
-          </div>
-
+        <AssistantPanel>
           {/* La predicción ML depende de las decisiones pendientes del contrato backend-ML */}
           <div className="p-3 bg-white border border-dashed border-[#C7D2FE] rounded-xl text-xs text-[#64748B]">
             La clasificación automática (categoría y prioridad estimadas) se mostrará cuando se
@@ -113,7 +112,7 @@ export default async function TicketDetailPage({ params }: TicketDetailPageProps
             ticketId={ticket.id}
             initialRecommendation={recommendation}
           />
-        </div>
+        </AssistantPanel>
       </div>
     </div>
   );

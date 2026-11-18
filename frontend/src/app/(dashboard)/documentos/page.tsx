@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/Button";
+
 const categories = [
   { name: "Todas las áreas", count: 18, active: true },
   { name: "Base de Datos", count: 5, active: false },
@@ -62,7 +64,7 @@ const documents = [
 
 export default function DocumentosPage() {
   return (
-    <div className="p-8 bg-[#F8FAFC] min-h-screen">
+    <div className="px-4 py-6 sm:p-6 lg:p-8 bg-[#F8FAFC] min-h-screen">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Encabezado */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -72,9 +74,9 @@ export default function DocumentosPage() {
               Documentación indexada para el motor RAG del Asistente IA y consultas del equipo.
             </p>
           </div>
-          <button className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-sm font-semibold rounded-xl transition-colors shadow-sm self-start sm:self-auto">
+          <Button type="button" variant="primary" className="self-start sm:self-auto">
             📤 Subir documento
-          </button>
+          </Button>
         </div>
 
         {/* Métricas rápidas */}
@@ -118,22 +120,22 @@ export default function DocumentosPage() {
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-sm">
           <div className="flex items-center gap-2 overflow-x-auto">
             {categories.map((cat) => (
-              <button
+              <Button
                 key={cat.name}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
-                  cat.active
-                    ? "bg-[#2563EB] text-white"
-                    : "bg-[#F1F5F9] text-[#64748B] hover:bg-[#E2E8F0]"
-                }`}
+                type="button"
+                variant={cat.active ? "primary" : "ghost"}
+                size="sm"
+                aria-pressed={cat.active}
+                className="whitespace-nowrap"
               >
                 {cat.name} ({cat.count})
-              </button>
+              </Button>
             ))}
           </div>
           <input
             type="text"
             placeholder="Buscar por nombre o contenido..."
-            className="w-full md:w-64 bg-[#F8FAFC] border border-[#E2E8F0] text-xs rounded-xl px-3.5 py-2 text-[#0F172A] placeholder-[#94A3B8] outline-none focus:border-[#2563EB]"
+            className="w-full md:w-64 min-h-11 sm:min-h-0 bg-[#F8FAFC] border border-[#E2E8F0] text-xs rounded-xl px-3.5 py-2 text-[#0F172A] placeholder-[#94A3B8] outline-none focus:border-[#2563EB]"
           />
         </div>
 
@@ -179,13 +181,23 @@ export default function DocumentosPage() {
                         {doc.ragHits} veces usado
                       </span>
                     </td>
-                    <td className="py-4 px-6 text-right space-x-2">
-                      <button className="text-xs font-semibold text-[#2563EB] hover:underline">
+                    <td className="py-4 px-6 text-right whitespace-nowrap space-x-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Ver ${doc.title}`}
+                      >
                         Ver
-                      </button>
-                      <button className="text-xs font-semibold text-[#64748B] hover:text-[#0F172A]">
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Descargar ${doc.title}`}
+                      >
                         Descargar
-                      </button>
+                      </Button>
                     </td>
                   </tr>
                 ))}

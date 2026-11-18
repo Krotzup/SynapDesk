@@ -57,8 +57,31 @@ export default async function TicketsPage({ searchParams }: TicketsPageProps) {
     },
   ];
 
+  // Mensaje cuando la página no tiene tickets; lo usan la tabla y las tarjetas.
+  const emptyMessage =
+    result.totalItems > 0 ? (
+      <>
+        Esta página no tiene tickets.{" "}
+        <Link
+          href={`/tickets${buildQuery(filtersForUrl(filters))}`}
+          className="text-[#2563EB] hover:underline"
+        >
+          Ir a la primera página
+        </Link>
+      </>
+    ) : filtered ? (
+      <>
+        No hay tickets que coincidan con los filtros.{" "}
+        <Link href="/tickets" className="text-[#2563EB] hover:underline">
+          Limpiar filtros
+        </Link>
+      </>
+    ) : (
+      "No hay tickets registrados."
+    );
+
   return (
-    <div className="p-8 bg-[#F8FAFC] min-h-screen">
+    <div className="px-4 py-6 sm:p-6 lg:p-8 bg-[#F8FAFC] min-h-screen">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Encabezado */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -68,17 +91,20 @@ export default async function TicketsPage({ searchParams }: TicketsPageProps) {
               Visualiza, filtra y gestiona las solicitudes de soporte.
             </p>
           </div>
-          <Link href="/tickets/nuevo" className={buttonClassName("primary")}>
+          <Link
+            href="/tickets/nuevo"
+            className={buttonClassName("primary", false, "w-full sm:w-auto")}
+          >
             + Nuevo ticket
           </Link>
         </div>
 
-        {/* Métricas rápidas */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Métricas rápidas: 2 × 2 hasta 1024 px, en una fila desde ahí */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {summaryCards.map((card) => (
             <div
               key={card.label}
-              className="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-sm flex items-center justify-between"
+              className="bg-white p-4 sm:p-5 rounded-2xl border border-[#E2E8F0] shadow-sm flex items-center justify-between gap-2"
             >
               <div>
                 <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">
@@ -87,7 +113,8 @@ export default async function TicketsPage({ searchParams }: TicketsPageProps) {
                 <p className={`text-2xl font-bold mt-1 ${card.text}`}>{card.value}</p>
               </div>
               <div
-                className={`h-10 w-10 ${card.bg} ${card.text} rounded-xl flex items-center justify-center text-lg`}
+                className={`hidden sm:flex h-10 w-10 shrink-0 ${card.bg} ${card.text} rounded-xl items-center justify-center text-lg`}
+                aria-hidden="true"
               >
                 {card.icon}
               </div>
@@ -97,7 +124,7 @@ export default async function TicketsPage({ searchParams }: TicketsPageProps) {
 
         {/* Tabla de tickets */}
         <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm overflow-hidden">
-          <div className="p-5 border-b border-[#F1F5F9] flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="p-4 sm:p-5 border-b border-[#F1F5F9] flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <h2 className="text-base font-bold text-[#0F172A]">
               {filtered ? "Resultados" : "Todos los tickets"}
             </h2>
@@ -105,50 +132,63 @@ export default async function TicketsPage({ searchParams }: TicketsPageProps) {
             <TicketFilters key={buildQuery(filtersForUrl(filters))} {...filters} />
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Teléfono: tarjetas. Desde 768 px: tabla. */}
+          <ul className="md:hidden divide-y divide-[#F1F5F9]" aria-label="Tickets">
+            {tickets.length === 0 && (
+              <li className="py-10 px-4 text-center text-sm text-[#94A3B8]">{emptyMessage}</li>
+            )}
+            {tickets.map((ticket) => (
+              <li key={ticket.id}>
+                <Link
+                  href={`/tickets/${ticket.id}`}
+                  className="block space-y-2 px-4 py-4 hover:bg-[#F8FAFC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2563EB]"
+                >
+                  <span className="flex items-center justify-between gap-2 text-xs">
+                    <span className="font-bold text-[#2563EB]" title={ticket.id}>
+                      #{shortId(ticket.id)}
+                    </span>
+                    <span className="text-[#94A3B8]">{formatDateTime(ticket.createdAt)}</span>
+                  </span>
+                  <span className="block text-sm font-semibold text-[#0F172A] line-clamp-2">
+                    {ticket.title}
+                  </span>
+                  <span className="flex flex-wrap items-center gap-2">
+                    <StatusBadge status={ticket.status} />
+                    <PriorityBadge priority={ticket.priority} />
+                    <span className="text-xs text-[#64748B]">{ticket.area ?? "Sin asignar"}</span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+
+          {/* Para que la tabla quepa sin desplazamiento lateral: Usuario y Fecha aparecen desde
+              1280 px y Acción desde 1536 px (el ID y el asunto ya enlazan al detalle). */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[#F8FAFC] text-[11px] font-bold text-[#64748B] uppercase tracking-wider border-b border-[#E2E8F0]">
-                  <th className="py-3.5 px-6">ID</th>
-                  <th className="py-3.5 px-6">Asunto</th>
-                  <th className="py-3.5 px-6">Usuario</th>
-                  <th className="py-3.5 px-6">Área</th>
-                  <th className="py-3.5 px-6">Estado</th>
-                  <th className="py-3.5 px-6">Prioridad</th>
-                  <th className="py-3.5 px-6">Fecha</th>
-                  <th className="py-3.5 px-6 text-right">Acción</th>
+                  <th className="py-3.5 px-4">ID</th>
+                  <th className="py-3.5 px-4">Asunto</th>
+                  <th className="py-3.5 px-4 hidden xl:table-cell">Usuario</th>
+                  <th className="py-3.5 px-4">Área</th>
+                  <th className="py-3.5 px-4">Estado</th>
+                  <th className="py-3.5 px-4">Prioridad</th>
+                  <th className="py-3.5 px-4 hidden xl:table-cell">Fecha</th>
+                  <th className="py-3.5 px-4 text-right hidden 2xl:table-cell">Acción</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#F1F5F9] text-xs text-[#475569]">
                 {tickets.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="py-10 px-6 text-center text-sm text-[#94A3B8]">
-                      {result.totalItems > 0 ? (
-                        <>
-                          Esta página no tiene tickets.{" "}
-                          <Link
-                            href={`/tickets${buildQuery(filtersForUrl(filters))}`}
-                            className="text-[#2563EB] hover:underline"
-                          >
-                            Ir a la primera página
-                          </Link>
-                        </>
-                      ) : filtered ? (
-                        <>
-                          No hay tickets que coincidan con los filtros.{" "}
-                          <Link href="/tickets" className="text-[#2563EB] hover:underline">
-                            Limpiar filtros
-                          </Link>
-                        </>
-                      ) : (
-                        "No hay tickets registrados."
-                      )}
+                    <td colSpan={8} className="py-10 px-4 text-center text-sm text-[#94A3B8]">
+                      {emptyMessage}
                     </td>
                   </tr>
                 )}
                 {tickets.map((ticket) => (
                   <tr key={ticket.id} className="hover:bg-[#F8FAFC] transition-colors">
-                    <td className="py-4 px-6 font-bold text-[#2563EB]">
+                    <td className="py-4 px-4 font-bold text-[#2563EB]">
                       <Link
                         href={`/tickets/${ticket.id}`}
                         className="hover:underline"
@@ -157,23 +197,28 @@ export default async function TicketsPage({ searchParams }: TicketsPageProps) {
                         #{shortId(ticket.id)}
                       </Link>
                     </td>
-                    <td className="py-4 px-6 font-semibold text-[#0F172A] max-w-xs truncate">
-                      <Link href={`/tickets/${ticket.id}`} className="hover:text-[#2563EB]">
+                    <td className="py-4 px-4 font-semibold text-[#0F172A]">
+                      {/* El recorte necesita un bloque con ancho máximo: en la celda no funciona. */}
+                      <Link
+                        href={`/tickets/${ticket.id}`}
+                        title={ticket.title}
+                        className="block max-w-56 truncate hover:text-[#2563EB]"
+                      >
                         {ticket.title}
                       </Link>
                     </td>
-                    <td className="py-4 px-6">{ticket.createdBy.name}</td>
-                    <td className="py-4 px-6 text-[#64748B]">{ticket.area ?? "Sin asignar"}</td>
-                    <td className="py-4 px-6 whitespace-nowrap">
+                    <td className="py-4 px-4 hidden xl:table-cell">{ticket.createdBy.name}</td>
+                    <td className="py-4 px-4 text-[#64748B]">{ticket.area ?? "Sin asignar"}</td>
+                    <td className="py-4 px-4 whitespace-nowrap">
                       <StatusBadge status={ticket.status} />
                     </td>
-                    <td className="py-4 px-6 whitespace-nowrap">
+                    <td className="py-4 px-4 whitespace-nowrap">
                       <PriorityBadge priority={ticket.priority} />
                     </td>
-                    <td className="py-4 px-6 text-[#94A3B8] whitespace-nowrap">
+                    <td className="py-4 px-4 text-[#94A3B8] whitespace-nowrap hidden xl:table-cell">
                       {formatDateTime(ticket.createdAt)}
                     </td>
-                    <td className="py-4 px-6 text-right whitespace-nowrap">
+                    <td className="py-4 px-4 text-right whitespace-nowrap hidden 2xl:table-cell">
                       <Link
                         href={`/tickets/${ticket.id}`}
                         className="inline-flex items-center text-xs font-semibold text-[#2563EB] hover:text-[#1D4ED8] bg-[#EFF6FF] hover:bg-[#DBEAFE] px-3 py-1.5 rounded-lg transition-colors"

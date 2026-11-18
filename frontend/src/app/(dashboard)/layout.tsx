@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import { AuthProvider } from "@/components/auth/AuthProvider";
-import { Header } from "@/components/layout/Header";
-import { Sidebar } from "@/components/layout/Sidebar";
+import { DashboardShell } from "@/components/layout/DashboardShell";
 import {
   SidebarStatusSummary,
   SidebarStatusSummaryFallback,
@@ -11,19 +10,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     // El panel se muestra solo después de que /me confirme la sesión.
     <AuthProvider>
-      <div className="flex h-screen overflow-hidden bg-[#F8FAFC]">
-        <Sidebar
-          statusSummary={
-            <Suspense fallback={<SidebarStatusSummaryFallback />}>
-              <SidebarStatusSummary />
-            </Suspense>
-          }
-        />
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <Header />
-          <main className="flex-1 overflow-y-auto bg-[#F8FAFC]">{children}</main>
-        </div>
-      </div>
+      <DashboardShell
+        statusSummary={
+          <Suspense fallback={<SidebarStatusSummaryFallback />}>
+            <SidebarStatusSummary />
+          </Suspense>
+        }
+      >
+        {children}
+      </DashboardShell>
     </AuthProvider>
   );
 }

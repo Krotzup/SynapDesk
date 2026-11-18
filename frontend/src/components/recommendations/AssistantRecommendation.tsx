@@ -491,12 +491,12 @@ export function AssistantRecommendation({
                 </p>
               )}
               {errorBox}
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
                 <Button
                   type="submit"
                   variant={mode === "edit" ? "primary" : "danger"}
                   disabled={busy}
-                  className={mode === "discard" ? "border-[#FECACA]" : ""}
+                  className={`w-full sm:w-auto ${mode === "discard" ? "border-[#FECACA]" : ""}`}
                 >
                   {mode === "edit"
                     ? pending === "edit"
@@ -506,7 +506,13 @@ export function AssistantRecommendation({
                       ? "Descartando…"
                       : "Descartar"}
                 </Button>
-                <Button type="button" variant="ghost" disabled={busy} onClick={cancel}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full sm:w-auto"
+                  disabled={busy}
+                  onClick={cancel}
+                >
                   Cancelar
                 </Button>
               </div>
