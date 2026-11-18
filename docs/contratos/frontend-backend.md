@@ -380,8 +380,6 @@ Requiere sesión válida. Errores: `401 AUTHENTICATION_REQUIRED`, `403 FORBIDDEN
 * tiempo promedio de resolución (depende de la regla de `resolvedAt`);
 * recomendaciones aceptadas, modificadas y rechazadas.
 
-Si se aprueban, se agregarán como campos nuevos sin cambiar los cinco conteos.
-
 ## Paginación
 
 Las operaciones de listado deberán admitir, cuando corresponda:
