@@ -44,6 +44,8 @@ const responses = {
   "/api/v1/delete": [DELETE],
   "/api/v1/duplicate": [SESSION, "synapdesk_session_dev=otro; Path=/"],
   "/api/v1/prod": [PROD_SESSION, SESSION, PROD_CONTEXT],
+  // U+00A0 junto al nombre: no es la cookie autorizada aunque se parezca.
+  "/api/v1/nbsp": [`\u00A0${SESSION}`, "synapdesk_session_dev\u00A0=x; Path=/", CONTEXT],
 };
 function handle(req, res) {
   hits += 1;
@@ -345,6 +347,47 @@ describe("4. Cookies hacia el backend", () => {
   test("las cookies no reservadas no se reenvían", async () => {
     assert.equal(await sent("otra=1; tracker=2"), undefined);
   });
+  // Solo espacio y tabulador son separadores: U+00A0 no se recorta (antes trim() lo quitaba y la
+  // cookie no canónica llegaba limpia, como si fuera la reservada).
+  test("U+00A0 antes del nombre: no se confunde con la reservada ni llega limpia", async () => {
+    assert.equal(await sent("\u00A0synapdesk_session_dev=abc"), undefined);
+    assert.equal(
+      await sent("\u00A0synapdesk_session_dev=x; synapdesk_csrf_context_dev=ctx"),
+      "synapdesk_csrf_context_dev=ctx"
+    );
+  });
+  test("U+00A0 entre el nombre y el '=': no es la cookie reservada", async () => {
+    assert.equal(await sent("synapdesk_session_dev\u00A0=abc"), undefined);
+  });
+  test("U+00A0 al final del valor: la cookie reservada llega sin cambios", async () => {
+    assert.equal(await sent("synapdesk_session_dev=abc\u00A0"), "synapdesk_session_dev=abc\u00A0");
+  });
+  test("espacios y tabuladores alrededor del ';' siguen siendo separadores", async () => {
+    assert.equal(
+      await sent("synapdesk_session_dev=a;\tsynapdesk_csrf_context_dev=b ;  otra=1"),
+      "synapdesk_session_dev=a; synapdesk_csrf_context_dev=b"
+    );
+  });
+  test("SSR: U+00A0 junto al nombre tampoco se recorta", async () => {
+    globalThis.__requestCookie =
+      "\u00A0synapdesk_session_dev=a; synapdesk_session_dev\u00A0=b; synapdesk_csrf_context_dev=ctx";
+    await api.get("/echo");
+    assert.equal(lastHeaders.cookie, "synapdesk_csrf_context_dev=ctx");
+  });
+  // Otros espacios Unicode no pueden viajar en una cabecera HTTP (Node rechaza valores sobre
+  // U+00FF); igual se comprueba el filtro directamente, como defensa adicional.
+  test("filtro: U+2003, U+3000 y U+FEFF junto al nombre no se recortan", () => {
+    assert.equal(
+      proxy.filterCookieHeader(
+        "\u2003synapdesk_session_dev=a; \u3000synapdesk_session_dev=b; \uFEFFsynapdesk_session_dev=c"
+      ),
+      null
+    );
+    assert.equal(
+      proxy.filterCookieHeader("\uFEFFsynapdesk_session_dev=a; synapdesk_csrf_context_dev=ctx"),
+      "synapdesk_csrf_context_dev=ctx"
+    );
+  });
   test("SSR reenvía las cookies reservadas de la petición, también las ambiguas", async () => {
     globalThis.__requestCookie =
       "synapdesk_session_dev; otra=b; __Host-synapdesk_session=c; synapdesk_session_dev=d";
@@ -382,6 +425,9 @@ describe("5. Set-Cookie del backend", () => {
   });
   test("borrado de una cookie autorizada conserva Max-Age=0 y atributos", async () => {
     assert.deepEqual(cookiesOf(await call("delete")), [DELETE]);
+  });
+  test("U+00A0 junto al nombre en Set-Cookie: no pasa como autorizada", async () => {
+    assert.deepEqual(cookiesOf(await call("nbsp")), [CONTEXT]);
   });
   test("cookie autorizada repetida: pasan ambas, sin normalizar", async () => {
     assert.equal(cookiesOf(await call("duplicate")).length, 2);

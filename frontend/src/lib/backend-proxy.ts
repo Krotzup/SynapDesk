@@ -123,6 +123,15 @@ export function getBackendConfig(source: "proxy" | "ssr"): BackendConfig | null 
 }
 
 /**
+ * Espacio opcional de las cabeceras Cookie y Set-Cookie: solo espacio y tabulador (RFC 6265 y
+ * RFC 9110). No se usa trim(), que también quita U+00A0 y otros espacios Unicode: convertiría una
+ * cookie no canónica (por ejemplo, "\u00A0synapdesk_session_dev=…") en una reservada válida.
+ */
+function stripOws(value: string): string {
+  return value.replace(/^[ \t]+|[ \t]+$/g, "");
+}
+
+/**
  * Cabecera Cookie hacia FastAPI: solo las cookies con nombre reservado (de los dos perfiles), con
  * todas sus apariciones y sin modificarlas. Una cookie reservada sin "=", repetida, vacía o de
  * otro perfil no se descarta ni se elige un valor: llega al backend, que la rechaza (P1). Las
@@ -132,10 +141,10 @@ export function filterCookieHeader(cookieHeader: string | null): string | null {
   if (!cookieHeader) return null;
   const kept = cookieHeader
     .split(";")
-    .map((part) => part.trim())
+    .map(stripOws)
     .filter((part) => {
       const separator = part.indexOf("=");
-      const name = (separator === -1 ? part : part.slice(0, separator)).trim();
+      const name = stripOws(separator === -1 ? part : part.slice(0, separator));
       return RESERVED_COOKIE_NAMES.has(name);
     });
   return kept.length > 0 ? kept.join("; ") : null;
@@ -144,7 +153,7 @@ export function filterCookieHeader(cookieHeader: string | null): string | null {
 /** Nombre de la cookie de una cabecera Set-Cookie ("nombre=valor; atributos"). */
 function setCookieName(setCookie: string): string {
   const separator = setCookie.indexOf("=");
-  return separator > 0 ? setCookie.slice(0, separator).trim() : "";
+  return separator > 0 ? stripOws(setCookie.slice(0, separator)) : "";
 }
 
 /**
