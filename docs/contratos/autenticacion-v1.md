@@ -427,17 +427,19 @@ El [modelo de dominio](../arquitectura/modelo-dominio.md) describe responsabilid
 
 **Actualización acotada AUTH-07C.2B:** el [contrato de creación administrativa](creacion-administrativa-usuarios-v1.md) formaliza P1–P15 ya aprobadas: admin activo con sesión vigente puede crear admin/agent activos y exige user_created atómico con actor SynapDesk. Sustituye el estado pendiente solo para esas altas internas y su política de credenciales/entrega externa. No aprueba el resto de la matriz, cambios posteriores de rol/estado, retención o rutas HTTP administrativas.
 
-### Matriz para decisión del equipo — PROPOSAL_PENDING_TEAM_REVIEW
+### Matriz: aprobación acotada de tickets y propuestas restantes
 
-Toda celda expresa una propuesta, no un permiso ya concedido ni una obligación de implementación. La política general es denegar por defecto operaciones sin autorización definida. El alcance deberá comprobarse también en listados, recomendaciones y conteos, sin confiar en el filtro que envíe el cliente; esta regla no aprueba ninguna celda de la matriz.
+**APPROVED MVP02, Product Owner, 16-11-2026:** admin y agent con sesión vigente, cuenta activa y rol consultado en PostgreSQL pueden crear, listar, consultar detalle, actualizar estado y consultar conteos globales de tickets. Anónimo: ninguna operación. SEC-01B solo autentica el canal. No se autoriza por UUID ni por roles del cliente. Las escrituras revalidan identidad/autorización en la misma transacción y conservan los bloqueos existentes. Esta decisión sustituye el alcance restringido del agente que solo estaba propuesto; cualquier restricción contractual previa aprobada más específica prevalecería.
 
-| Recurso/operación | admin propuesto | agent propuesto | Decisión que debe confirmar el Product Owner |
+Las demás celdas/operaciones conservan **PROPOSAL_PENDING_TEAM_REVIEW** salvo sus aprobaciones especializadas existentes. Se deniega por defecto lo no autorizado. No se conceden asignación, borrado, edición libre, permisos administrativos nuevos, recomendaciones ni métricas completas. La aprobación no habilita rutas HTTP ni resuelve C01–C09, P4 o acreditación IP.
+
+| Recurso/operación | admin: permiso o propuesta indicada | agent: permiso o propuesta indicada | Alcance aprobado / decisión pendiente |
 | --- | --- | --- | --- |
 | Usuarios | Consultar y administrar altas, roles y desactivaciones mediante flujos administrativos. | Identidad propia por me; sin administración ni listado general por defecto. | Acceso al directorio mínimo para asignaciones, administración de la propia cuenta y protección del último admin activo. No habilitar registro público. |
-| Tickets | Consultar y gestionar todos, incluida asignación. | Crear; consultar los creados por él o asignados a él; modificar los asignados dentro de transiciones autorizadas. | Alcance de lectura del equipo, reasignación, cierre y edición de tickets creados pero no asignados. No aprobar borrado físico. |
+| Tickets — APPROVED MVP02 | Crear, listar, detalle, actualizar estado y conteos globales. | Las mismas cinco operaciones y alcance global. | Pendientes transiciones/resolvedAt/actividad y representación pública; asignación, edición libre y borrado siguen fuera. |
 | Recomendaciones | Consultar, generar y revisar dentro del ámbito de tickets administrables. | Consultar, generar y revisar en tickets sobre los que tenga el permiso correspondiente. | Separar lectura, generación y revisión; decidir quién puede modificar una revisión previa. |
 | Sesiones | me y logout individual de la sesión propia. | me y logout individual de la sesión propia. | Mantener fuera de este incremento administración o revocación de sesiones ajenas; no se añaden endpoints. |
-| Métricas | Resumen global del ámbito autorizado. | Resumen limitado a sus tickets accesibles, si se aprueba habilitarlo. | Aprobar acceso de agent y coherencia de conteos/paginación con los tickets visibles; el mock actual no concede acceso global. |
+| Métricas | Conteos globales de tickets aprobados MVP02; restantes métricas propuestas. | Los mismos conteos aprobados; restantes métricas propuestas. | `TicketSummary` interno no equivale a `Metrics` completo; falta conciliar su representación HTTP sin inventar datos. |
 
 La comprobación de usuario activo y rol vigente es aprobada; la invalidación masiva de sesiones por cambios administrativos no está aprobada. Usuario desactivado no obtiene acceso; P4 exceptúa exclusivamente revocación verificada de su sesión mediante logout, sin identidad activa. Reevaluar rol por petición; retención o revocación administrativa adicional requiere decisión. Este documento no modifica los contratos de recursos ni sus endpoints existentes/propuestos.
 

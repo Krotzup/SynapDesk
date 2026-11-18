@@ -199,6 +199,14 @@ Desde `backend/`, con el entorno activo y dependencias de desarrollo instaladas:
 python -m pytest pruebas -q
 ```
 
+[pytest.ini](pytest.ini) fija `--import-mode=importlib` para recolectar juntas
+las suites unitarias y de integración aunque compartan nombres de módulos.
+El ajuste se limita al backend y no excluye pruebas ni altera fixtures/plugins.
+También corrige las colisiones heredadas de `main`; los runners separados no
+las detectaban. [La regresión de recolección](pruebas/test_recoleccion_pytest.py)
+ejecuta `python -m pytest pruebas --collect-only -q` y verifica que todos los
+módulos con nombres repetidos se descubran en la misma ejecución, incluida CI.
+
 Las pruebas locales importan la fábrica desde `app.aplicacion`, utilizan configuración explícita y sustituyen el acceso a PostgreSQL cuando corresponde. El fixture de [conftest.py](pruebas/conftest.py) desactiva la lectura del `.env` real y aísla las variables de configuración del proceso para estas pruebas; las pruebas de integración conservan su selección explícita de `db_test`. No necesitan una base funcionando.
 
 Las regresiones de [test_configuracion.py](pruebas/test_configuracion.py) utilizan archivos ficticios en directorios temporales. Comprueban importaciones frente a configuración inválida, carga y validación habituales al invocar la fábrica sin parámetros y el punto de entrada `app.main:app` sin creación de motor al importarse. También se comprueban CORS, salud, disponibilidad, errores públicos sin datos internos y liberación del motor al finalizar el ciclo de vida, incluso ante excepciones.
