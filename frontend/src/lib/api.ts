@@ -66,6 +66,10 @@ async function send<TResponse, TBody>(
 
   const response = await transport.fetch(`${transport.baseUrl}${API_PREFIX}${endpoint}`, config);
 
+  return readResponse<TResponse>(response);
+}
+
+async function readResponse<TResponse>(response: Response): Promise<TResponse> {
   if (!response.ok) {
     // Si la respuesta no trae el formato del contrato, se genera un error con requestId propio.
     const errorBody: ApiError = await response.json().catch(() => ({
@@ -89,8 +93,7 @@ async function send<TResponse, TBody>(
 
 const fetchCsrfToken = () => send<CsrfToken, never>("/auth/csrf", { method: "GET" });
 
-// Solo un 403 con código CSRF_INVALID permite el reintento: el mismo código con otro estado,
-// u otro código con 403, no se reintentan.
+// P8: descartar un token rechazado para que la próxima acción manual lo renueve.
 function isCsrfInvalid(error: unknown): boolean {
   return (
     error instanceof HttpError && error.status === 403 && error.body.error.code === "CSRF_INVALID"
@@ -115,13 +118,8 @@ async function request<TResponse, TBody = unknown>(
     try {
       return await send<TResponse, TBody>(endpoint, options, token);
     } catch (error) {
-      // Único reintento permitido por el contrato: solo ante HTTP 403 + CSRF_INVALID y si la
-      // sesión no cambió. Si el reintento también falla, se devuelve ese error sin reintentar más.
-      if (!isCsrfInvalid(error) || getAuthGeneration() !== generation) throw error;
-      clearCsrfToken();
-      const freshToken = await getCsrfToken(fetchCsrfToken);
-      if (getAuthGeneration() !== generation) throw sessionChangedError();
-      return await send<TResponse, TBody>(endpoint, options, freshToken);
+      if (isCsrfInvalid(error) && getAuthGeneration() === generation) clearCsrfToken();
+      throw error;
     }
   } catch (error) {
     // Hacia afuera se mantiene el formato del contrato ({ error: { code, message, ... } }) y se

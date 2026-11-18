@@ -13,6 +13,7 @@ import xml.etree.ElementTree as ET
 
 BACKEND = Path(__file__).resolve().parents[1]
 TLS = "pruebas/integracion/test_intermediario_tls.py"
+BUSQUEDA = "pruebas/integracion/test_busqueda_semantica.py"
 
 
 def comprobar_importaciones():
@@ -94,8 +95,10 @@ def ejecutar(modo):
                 # no de los recursos sujetos a la guarda estricta del arnés.
                 with TemporaryDirectory(prefix="synapdesk-ci-postgresql-") as ruta:
                     temporal_pytest = Path(ruta)
+                    # La búsqueda prepara sus bases semánticas y su perfil V2 en otro ensayo.
                     evidencia["passed"] = ejecutar_pytest(
-                        ["pruebas/integracion", "--ignore=" + TLS], temporal_pytest, env)
+                        ["pruebas/integracion", "--ignore=" + TLS, "--ignore=" + BUSQUEDA],
+                        temporal_pytest, env)
                 evidencia["pytest_temporary_deleted"] = not temporal_pytest.exists()
                 if not evidencia["pytest_temporary_deleted"]:
                     raise RuntimeError("No se eliminó el temporal propio de pytest.")

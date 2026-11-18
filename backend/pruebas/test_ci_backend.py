@@ -243,7 +243,11 @@ def test_postgresql_pytest_real_con_current_limpia_sin_relajar_guarda(
 
     def ejecutar_ensayo(argumentos, temporal, env):
         observado["pytest"] = temporal
-        assert argumentos == ["pruebas/integracion", "--ignore=" + ci_backend.TLS]
+        assert argumentos == [
+            "pruebas/integracion",
+            "--ignore=" + ci_backend.TLS,
+            "--ignore=" + ci_backend.BUSQUEDA,
+        ]
         assert env["EJECUTAR_PRUEBAS_BD"] == "1"
         assert env["POSTGRES_TEST_DB"] == "synapdesk_base_simulada"
         return ejecutar_real([str(script)], temporal, env)

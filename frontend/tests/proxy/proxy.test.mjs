@@ -87,6 +87,14 @@ function handle(req, res) {
           },
         })
       );
+    } else if (path === "/api/v1/search") {
+      if (req.headers.cookie === "synapdesk_session_dev=credencial-sesion ;") {
+        res.writeHead(401, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: { code: "AUTHENTICATION_REQUIRED" } }));
+        return;
+      }
+      res.writeHead(200, { "Content-Type": "application/json", "Set-Cookie": [SESSION] });
+      res.end(JSON.stringify({ status: "no_documents", items: [] }));
     } else if (path === "/api/v1/echo") {
       res.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify(req.headers));
     } else {
@@ -272,6 +280,59 @@ describe("2. Destino y TLS", () => {
   test("con CA y nombre válidos responde el backend", async () => {
     assert.equal((await call("one")).status, 200);
   });
+});
+
+test("la ruta específica de búsqueda comparte SEC-01B y conserva sus validaciones", async (t) => {
+  const { POST } = await import("@/app/api/v1/search/route");
+  const origin = "https://desk.invalid";
+  const previousOrigin = process.env.SEARCH_PUBLIC_ORIGIN;
+  process.env.SEARCH_PUBLIC_ORIGIN = origin;
+  t.after(() => {
+    if (previousOrigin === undefined) delete process.env.SEARCH_PUBLIC_ORIGIN;
+    else process.env.SEARCH_PUBLIC_ORIGIN = previousOrigin;
+  });
+  const search = (extra = {}) =>
+    POST(
+      new Request(`${origin}/api/v1/search`, {
+        method: "POST",
+        body: JSON.stringify({ query: "DNS", limit: 3 }),
+        headers: {
+          Origin: origin,
+          Cookie: "tracker=otro; synapdesk_session_dev=credencial-sesion",
+          "Content-Type": "application/json",
+          "X-CSRF-Token": "token-de-prueba",
+          Authorization: "Bearer enviado-por-navegador",
+          "X-Forwarded-For": "127.0.0.1",
+          ...extra,
+        },
+      })
+    );
+
+  const beforeSearch = hits;
+  const response = await search();
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { status: "no_documents", items: [] });
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal(response.headers.get("set-cookie"), null);
+  assert.equal(lastHeaders.authorization, `Bearer ${CREDENTIAL}`);
+  assert.equal(lastHeaders.cookie, "synapdesk_session_dev=credencial-sesion");
+  assert.equal(lastHeaders.origin, origin);
+  assert.equal(lastHeaders["x-csrf-token"], "token-de-prueba");
+  assert.equal(lastHeaders["x-forwarded-for"], undefined);
+  const malformed = await search({
+    Cookie: "synapdesk_session_dev=credencial-sesion ; tracker=otro",
+  });
+  assert.equal(malformed.status, 401);
+  assert.equal((await malformed.json()).error.code, "AUTHENTICATION_REQUIRED");
+  assert.equal(lastHeaders.cookie, "synapdesk_session_dev=credencial-sesion ;");
+  assert.equal((await search({ Cookie: "" })).status, 401);
+  assert.equal((await search({ Origin: "https://other.invalid" })).status, 403);
+  assert.equal((await search({ "X-CSRF-Token": "" })).status, 403);
+  for (const url of [otherNameUrl, foreignCaUrl]) {
+    process.env.BACKEND_INTERNAL_URL = url;
+    assert.equal((await search()).status, 503);
+  }
+  assert.equal(hits, beforeSearch + 2);
 });
 
 // ── AUTH_COOKIE_PROFILE obligatoria ──

@@ -5,6 +5,10 @@ import math
 from .config import EMBEDDING_DIMENSIONS, MODEL_ID, MODEL_NAME, MODEL_REVISION
 
 
+class TokenLimitExceeded(ValueError):
+    """Entrada válida que excede el contexto del modelo; no es un fallo de vectores."""
+
+
 class LocalEmbedder:
     model_id = MODEL_ID
     dimensions = EMBEDDING_DIMENSIONS
@@ -32,7 +36,7 @@ class LocalEmbedder:
         for position, text in enumerate(texts, 1):
             tokens = self.tokenizer.encode(text, add_special_tokens=True, truncation=False)
             if len(tokens) > self.max_tokens:
-                raise ValueError(
+                raise TokenLimitExceeded(
                     f"El texto {position} supera el límite de {self.max_tokens} tokens "
                     "del modelo, incluidos los tokens especiales; acórtalo antes de continuar."
                 )

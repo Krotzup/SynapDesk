@@ -51,12 +51,12 @@ export function SearchForm({ query, limit }: SearchFormProps) {
         type="search"
         maxLength={MAX_QUERY_LENGTH}
         defaultValue={query}
-        placeholder="Describe el problema, por ejemplo: no puedo conectarme a la VPN desde casa"
+        placeholder="Describe un problema concreto, por ejemplo: no puedo conectarme a la red"
         className={`${fieldClass} flex-1 placeholder-[#94A3B8]`}
       />
 
       <label htmlFor="semantic-limit" className="sr-only">
-        Cantidad de resultados
+        Cantidad de fragmentos
       </label>
       <select
         id="semantic-limit"
@@ -67,7 +67,7 @@ export function SearchForm({ query, limit }: SearchFormProps) {
       >
         {SEARCH_LIMITS.map((option) => (
           <option key={option} value={option}>
-            {option} resultados
+            {option} fragmentos
           </option>
         ))}
       </select>

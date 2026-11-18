@@ -15,6 +15,7 @@ Cada contrato deberá incluir datos de entrada, datos de salida, validaciones, e
 
 - [Contrato inicial entre frontend y backend](frontend-backend.md)
 - [Contrato experimental de embeddings y recuperación](embeddings-recuperacion.md)
+- [Recuperación semántica V1 y estados de búsqueda](recuperacion-semantica-v1.md)
 - [Contrato inicial entre backend y Machine Learning](backend-ml.md)
 - [Contrato API de autenticación V1](autenticacion-v1.md)
 - [Bootstrap administrativo V1](bootstrap-administrador-v1.md): P1–P10 y evento aprobados para implementación; verificación operativa del entorno pendiente.

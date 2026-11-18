@@ -1,22 +1,19 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { ReactNode, Suspense } from "react";
-import { RetryButton } from "@/components/ui/RetryButton";
+import type { ReactNode } from "react";
 import { SearchForm } from "@/components/search/SearchForm";
-import { SearchResultCard } from "@/components/search/SearchResultCard";
+import { SearchResults } from "@/components/search/SearchResults";
 import { USE_MOCKS } from "@/lib/config";
-import { isApiError } from "@/lib/errors";
 import { buildQuery } from "@/lib/params";
-import { MAX_QUERY_LENGTH, parseSemanticSearchParams, SearchLimit } from "@/lib/search-params";
-import { searchService, SearchResponse } from "@/services/search";
+import { MAX_QUERY_LENGTH, parseSemanticSearchParams } from "@/lib/search-params";
 
 interface BusquedaPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 const EXAMPLE_QUERIES = [
-  "No puedo conectarme a la VPN desde casa",
-  "Cómo restablecer mi contraseña",
+  "No tengo conexión a la red",
+  "Cómo revisar la dirección IP de Windows",
   "La impresora no imprime y los documentos quedan en cola",
 ];
 
@@ -29,64 +26,6 @@ function Notice({ icon, title, children }: { icon: string; title: string; childr
       <h2 className="text-base font-semibold text-[#0F172A]">{title}</h2>
       <div className="text-sm text-[#64748B] space-y-3">{children}</div>
     </div>
-  );
-}
-
-function ResultsSkeleton() {
-  return (
-    <div className="space-y-4 animate-pulse" aria-busy="true" aria-live="polite">
-      {Array.from({ length: 3 }, (_, index) => (
-        <div key={index} className="h-32 bg-white border border-[#E2E8F0] rounded-2xl" />
-      ))}
-      <span className="sr-only">Buscando fragmentos…</span>
-    </div>
-  );
-}
-
-async function SearchResults({ query, limit }: { query: string; limit: SearchLimit }) {
-  let response: SearchResponse;
-  try {
-    response = await searchService.semantic(query, limit);
-  } catch (error) {
-    // Solo se muestra el mensaje del contrato; otros errores (red, CORS) usan uno genérico.
-    const message = isApiError(error)
-      ? error.error.message
-      : "No fue posible comunicarse con el servicio de búsqueda.";
-    return (
-      <Notice icon="⚠️" title="No se pudo completar la búsqueda">
-        <p>{message}</p>
-        <RetryButton />
-      </Notice>
-    );
-  }
-
-  if (response.items.length === 0) {
-    return (
-      <Notice icon="🔍" title="Sin resultados">
-        <p>
-          No se encontraron fragmentos relacionados con la consulta. Prueba describiendo el problema
-          con otras palabras.
-        </p>
-      </Notice>
-    );
-  }
-
-  return (
-    <section className="space-y-4" aria-label="Resultados de la búsqueda">
-      <p className="text-sm text-[#475569]">
-        {response.items.length === 1
-          ? "1 fragmento encontrado"
-          : `${response.items.length} fragmentos encontrados`}
-        , ordenados por similitud.
-      </p>
-      <p className="text-xs text-[#3730A3] bg-[#EEF2FF] border border-[#C7D2FE] rounded-xl px-4 py-2.5">
-        ℹ️ La similitud indica qué tan cercano es el significado del fragmento a la consulta. No es
-        una probabilidad ni un porcentaje de acierto: revisa el contenido antes de aplicarlo.
-      </p>
-      {response.items.map((result) => (
-        <SearchResultCard key={result.documentChunkId} result={result} />
-      ))}
-    </section>
   );
 }
 
@@ -140,9 +79,7 @@ export default async function BusquedaPage({ searchParams }: BusquedaPageProps) 
             <p>Usa como máximo {MAX_QUERY_LENGTH} caracteres.</p>
           </Notice>
         ) : (
-          <Suspense key={`${query}|${limit}`} fallback={<ResultsSkeleton />}>
-            <SearchResults query={query} limit={limit} />
-          </Suspense>
+          <SearchResults key={`${query}|${limit}`} query={query} limit={limit} />
         )}
       </div>
     </div>

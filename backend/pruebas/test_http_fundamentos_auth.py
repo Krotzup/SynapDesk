@@ -359,7 +359,7 @@ def test_respuesta_usuario_es_no_store_y_no_expone_campos_internos():
 def test_sesion_sin_motor_falla_cerrada_y_rutas_reales_siguen_intactas():
     app = aplicacion()
     assert set(app.openapi()["paths"]) == {
-        "/api/v1/health", "/api/v1/ready", "/api/v1/auth/csrf",
+        "/api/v1/health", "/api/v1/ready", "/api/v1/auth/csrf", "/api/v1/search",
     }
 
     @app.get("/prueba")

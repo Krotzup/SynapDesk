@@ -1,0 +1,362 @@
+{
+  "corpusId": "synapdesk-procedures-piloto-v1",
+  "distributionStatus": "local_evaluation_only_pending_review",
+  "sources": [
+    {
+      "id": "P01",
+      "title": "Diagnosticar fallos de resolución DNS",
+      "url": "https://learn.microsoft.com/es-es/troubleshoot/windows-client/networking/troubleshoot-dns-client-resolution-issues",
+      "section": null,
+      "applies": "Windows cliente compatible",
+      "category": "networking",
+      "queries": [
+        "Puedo conectarme por IP, pero el nombre del servidor no se resuelve. ¿Qué debo revisar?",
+        "Las consultas DNS expiran; necesito comprobar el servidor configurado y el archivo hosts."
+      ],
+      "documentId": "be5e3aff-fcc8-5346-8a36-9d9cbd1551ee",
+      "contentLanguage": "es",
+      "sourceSnapshot": "sources/source_01.html",
+      "sourceSha256": "c41ee1f26f17719dc04e548337e228684bcadd03a907b9296092d3ee8863c33d",
+      "expectedTextSha256": "ffdf5d7f6ac4e8f82c486104164a43e79e412df03272c864a0319b648254cc0c",
+      "publisher": "Microsoft y colaboradores",
+      "licenseId": "CC-BY-4.0",
+      "sourceGitUrl": "https://github.com/MicrosoftDocs/SupportArticles-docs/blob/main/support/windows-client/networking/troubleshoot-dns-client-resolution-issues.md",
+      "sourceGitCommit": "63017aecf99ce46fc89302444a1b2f4537698ae4"
+    },
+    {
+      "id": "P02",
+      "title": "Revisar IP y renovar una concesión DHCP",
+      "url": "https://learn.microsoft.com/es-es/windows-server/administration/windows-commands/ipconfig",
+      "section": null,
+      "applies": "Windows 11 y Windows Server indicados en la fuente; renovación solo para interfaces DHCP",
+      "category": "networking",
+      "queries": [
+        "¿Cómo reviso la IP completa y renuevo la concesión DHCP del adaptador?",
+        "Quiero consultar con ipconfig la configuración de todas las interfaces y renovar la dirección automática."
+      ],
+      "documentId": "f149bcc1-c82b-501e-ae98-b1fa9a613eba",
+      "contentLanguage": "es",
+      "sourceSnapshot": "sources/source_02.html",
+      "sourceSha256": "022915ceff713d410d4289d8349553840a21af0414484be4752ee2e8b2e09c0a",
+      "expectedTextSha256": "1f36b17a4d3f7dc1119c41e2b24af789c7c8571045526a6bc7038924d4deb022",
+      "publisher": "Microsoft y colaboradores",
+      "licenseId": "CC-BY-4.0",
+      "sourceGitUrl": "https://github.com/MicrosoftDocs/windowsserverdocs/blob/main/WindowsServerDocs/administration/windows-commands/ipconfig.md",
+      "sourceGitCommit": "1dde3f071fa8b65476a0f278d15ed67c19b07896"
+    },
+    {
+      "id": "P03",
+      "title": "Diagnosticar desconexiones Wi-Fi",
+      "url": "https://learn.microsoft.com/es-es/troubleshoot/windows-client/networking/wireless-network-connectivity-issues-troubleshooting",
+      "section": null,
+      "applies": "Windows 11 y versiones compatibles de Windows 10; diagnóstico profesional",
+      "category": "networking",
+      "queries": [
+        "El Wi-Fi se desconecta a ratos y quiero identificar en qué fase falla la conexión.",
+        "No aparece el adaptador inalámbrico o la red Wi-Fi; ¿qué evidencias debo recopilar?"
+      ],
+      "documentId": "27ae639c-47b7-5650-bc98-6fcdbb0a4076",
+      "contentLanguage": "es",
+      "sourceSnapshot": "sources/source_03.html",
+      "sourceSha256": "66ca900c665848797c0c62e5bcbcca07bd142dd01c7b0164d67a5f9d41f97272",
+      "expectedTextSha256": "be001a08f099fdd6591843f2d11158e7f5e282c2248e853a0041d6472c49df6c",
+      "publisher": "Microsoft y colaboradores",
+      "licenseId": "CC-BY-4.0",
+      "sourceGitUrl": "https://github.com/MicrosoftDocs/SupportArticles-docs/blob/main/support/windows-client/networking/wireless-network-connectivity-issues-troubleshooting.md",
+      "sourceGitCommit": "3cc9f68112d181246d78e1e7ad0d9fa31cef49fc"
+    },
+    {
+      "id": "P04",
+      "title": "Investigar errores y tiempos de espera TCP/IP",
+      "url": "https://learn.microsoft.com/es-es/troubleshoot/windows-client/networking/tcp-ip-connectivity-issues-troubleshooting",
+      "section": null,
+      "applies": "Windows cliente y servidor compatibles; análisis de red avanzado",
+      "category": "networking",
+      "queries": [
+        "Una aplicación pierde la conexión TCP con el servidor; quiero analizar los paquetes y los reinicios de conexión.",
+        "En una captura veo paquetes TCP RESET y necesito localizar si el fallo está en la red o la aplicación."
+      ],
+      "documentId": "874b9b68-478b-5b7b-8bfe-4574310d77e4",
+      "contentLanguage": "es",
+      "sourceSnapshot": "sources/source_04.html",
+      "sourceSha256": "609d1377643c21e4978b6625f141e16643f2348182400e01fe7a7c2a63d3fdb2",
+      "expectedTextSha256": "458e2c687c551e23b6bc5ce4ff0f86ba93669a471329c3a60ee2cfc8cf0db5f3",
+      "publisher": "Microsoft y colaboradores",
+      "licenseId": "CC-BY-4.0",
+      "sourceGitUrl": "https://github.com/MicrosoftDocs/SupportArticles-docs/blob/main/support/windows-client/networking/tcp-ip-connectivity-issues-troubleshooting.md",
+      "sourceGitCommit": "63017aecf99ce46fc89302444a1b2f4537698ae4"
+    },
+    {
+      "id": "P05",
+      "title": "Comprobar acceso a un puerto o servicio",
+      "url": "https://learn.microsoft.com/es-es/powershell/module/nettcpip/test-netconnection?view=windowsserver2025-ps",
+      "section": null,
+      "applies": "Windows PowerShell con NetTCPIP; referencia windowsserver2025-ps",
+      "category": "networking",
+      "queries": [
+        "Quiero comprobar desde PowerShell si el puerto TCP 443 de un servidor responde.",
+        "¿Cómo uso Test-NetConnection para diagnosticar un puerto y mostrar información detallada?"
+      ],
+      "contentLanguage": "en",
+      "documentId": "06907ab6-604a-50cf-bdc3-bf9f14413fbd",
+      "sourceSnapshot": "sources/source_05.html",
+      "sourceSha256": "fc632df3466b5bf88f9dfff1888ec9e7bfc035b36ba593ed04d36cc281d463e2",
+      "expectedTextSha256": "c44478c52b1bb597856376ddb2c9db1fd992d35c61b49d2dbdd01dae27905d97",
+      "publisher": "Microsoft y colaboradores",
+      "licenseId": "CC-BY-4.0",
+      "sourceGitUrl": "https://github.com/MicrosoftDocs/windows-powershell-docs/blob/main/docset/winserver2025-ps/NetTCPIP/Test-NetConnection.md",
+      "sourceGitCommit": "0ef3f225d29e26d1cf3119f37dfff70bb6165746"
+    },
+    {
+      "id": "P06",
+      "title": "Diagnosticar una aplicación bloqueada al imprimir",
+      "url": "https://learn.microsoft.com/es-es/troubleshoot/windows-server/printing/troubleshoot-printing-scenarios",
+      "section": "failed-print-job",
+      "applies": "Entorno de impresión Windows Server; diagnóstico en el cliente según la fuente",
+      "category": "printing",
+      "queries": [
+        "La aplicación deja de responder al enviar un documento a imprimir; quiero aislar el controlador o la cola.",
+        "Necesito comparar la impresión desde Bloc de notas y otra cola porque una aplicación se bloquea al imprimir."
+      ],
+      "documentId": "93e16a3a-2590-5907-a865-20f66d0c727e",
+      "contentLanguage": "es",
+      "sourceSnapshot": "sources/source_06.html",
+      "sourceSha256": "7d32de359ecca18dd1f39c7726afacc3737b3a3d5a97eead04f43de7d4bb259a",
+      "expectedTextSha256": "8a20c0604baabb05c3bac67ea09f9d132ec6b161bee769d57964629ceeb504d5",
+      "publisher": "Microsoft y colaboradores",
+      "licenseId": "CC-BY-4.0",
+      "sourceGitUrl": "https://github.com/MicrosoftDocs/SupportArticles-docs/blob/main/support/windows-server/printing/troubleshoot-printing-scenarios.md",
+      "sourceGitCommit": "30e6a97899d7e7f4dcd60d30d25ed609424788e9"
+    },
+    {
+      "id": "P07",
+      "title": "Diagnosticar el servicio Print Spooler detenido",
+      "url": "https://learn.microsoft.com/es-es/troubleshoot/windows-server/printing/print-spooler-service-not-running",
+      "section": null,
+      "applies": "Windows Server compatible; tareas de administración autorizadas",
+      "category": "printing",
+      "queries": [
+        "El servicio Print Spooler está detenido y no puedo conectar las impresoras.",
+        "No se pueden instalar impresoras; necesito comprobar si el servicio de cola está iniciado."
+      ],
+      "documentId": "cce574ee-1671-5f08-9939-9279104c37e8",
+      "contentLanguage": "es",
+      "sourceSnapshot": "sources/source_07.html",
+      "sourceSha256": "7c74740c08d5e552c4912107e7d09ae00c6ae8307237b60ef4d62180c3121e7a",
+      "expectedTextSha256": "69fcc3867a55c29b9db864851e6e78bd8ead356e629920f705f28be2921dbeef",
+      "publisher": "Microsoft y colaboradores",
+      "licenseId": "CC-BY-4.0",
+      "sourceGitUrl": "https://github.com/MicrosoftDocs/SupportArticles-docs/blob/main/support/windows-server/printing/print-spooler-service-not-running.md",
+      "sourceGitCommit": "30e6a97899d7e7f4dcd60d30d25ed609424788e9"
+    },
+    {
+      "id": "P08",
+      "title": "Investigar trabajos sin salida de impresión",
+      "url": "https://learn.microsoft.com/es-es/troubleshoot/windows-server/printing/troubleshoot-printing-scenarios",
+      "section": "no-print-output",
+      "applies": "Entorno de impresión Windows Server; revisar requisitos de la fuente",
+      "category": "printing",
+      "queries": [
+        "El trabajo se envía a la impresora pero no sale ninguna página; necesito revisar cola y controlador.",
+        "No hay salida de impresión y quiero probar una cola nueva y revisar archivos antiguos del spool."
+      ],
+      "documentId": "426b9d35-2156-5165-8ae5-6771d115d912",
+      "contentLanguage": "es",
+      "sourceSnapshot": "sources/source_06.html",
+      "sourceSha256": "7d32de359ecca18dd1f39c7726afacc3737b3a3d5a97eead04f43de7d4bb259a",
+      "expectedTextSha256": "7e8d24c7626aa1e5fcaaef0ef87f4a7556a9bb709120e7d277e4cba158d18870",
+      "publisher": "Microsoft y colaboradores",
+      "licenseId": "CC-BY-4.0",
+      "sourceGitUrl": "https://github.com/MicrosoftDocs/SupportArticles-docs/blob/main/support/windows-server/printing/troubleshoot-printing-scenarios.md",
+      "sourceGitCommit": "30e6a97899d7e7f4dcd60d30d25ed609424788e9"
+    },
+    {
+      "id": "P09",
+      "title": "Diagnosticar conexión RPC con impresoras compartidas",
+      "url": "https://learn.microsoft.com/es-es/troubleshoot/windows-client/printing/windows-11-rpc-connection-updates-for-print",
+      "section": null,
+      "applies": "Windows 11 22H2 y posteriores; cambios de políticas requieren administrador",
+      "category": "printing",
+      "queries": [
+        "Después de actualizar Windows 11 22H2 falla la conexión RPC a una impresora compartida.",
+        "¿Qué cambió en RPC sobre TCP para imprimir por red en Windows 11 y qué debo comprobar?"
+      ],
+      "documentId": "a96ee4b3-10af-5b82-92e4-4c27d0c90ade",
+      "contentLanguage": "es",
+      "sourceSnapshot": "sources/source_08.html",
+      "sourceSha256": "6f709841cc973acdb94e765d429dcfebb0e16f1161867d693c8b00b9f7ea52af",
+      "expectedTextSha256": "9470eae74acb29265ab00cc47d5200ea07a05cc883bdf67095d8cd1f3ef22774",
+      "publisher": "Microsoft y colaboradores",
+      "licenseId": "CC-BY-4.0",
+      "sourceGitUrl": "https://github.com/MicrosoftDocs/SupportArticles-docs/blob/main/support/windows-client/printing/windows-11-rpc-connection-updates-for-print.md",
+      "sourceGitCommit": "fce751df6aa554d549ad304a77f6529fa2000408"
+    },
+    {
+      "id": "P10",
+      "title": "Localizar la causa de impresión lenta",
+      "url": "https://learn.microsoft.com/es-es/troubleshoot/windows-server/printing/troubleshoot-printing-scenarios",
+      "section": "slow-printing-or-unexpected-output",
+      "applies": "Entorno de impresión Windows Server; diagnóstico cliente-cola-servidor-dispositivo",
+      "category": "printing",
+      "queries": [
+        "Imprimir tarda varios minutos; quiero medir si la lentitud está en el cliente, el servidor o la impresora.",
+        "¿Cómo uso la prueba de pausa de cola para localizar un retraso de impresión?"
+      ],
+      "documentId": "85cad008-8227-5f32-bce4-23c2c27e22a3",
+      "contentLanguage": "es",
+      "sourceSnapshot": "sources/source_06.html",
+      "sourceSha256": "7d32de359ecca18dd1f39c7726afacc3737b3a3d5a97eead04f43de7d4bb259a",
+      "expectedTextSha256": "30318c1bac4811cf71ff6dc4b7151a636dc72b4ff5a53c8b8d4e8881a75b4a8b",
+      "publisher": "Microsoft y colaboradores",
+      "licenseId": "CC-BY-4.0",
+      "sourceGitUrl": "https://github.com/MicrosoftDocs/SupportArticles-docs/blob/main/support/windows-server/printing/troubleshoot-printing-scenarios.md",
+      "sourceGitCommit": "30e6a97899d7e7f4dcd60d30d25ed609424788e9"
+    },
+    {
+      "id": "P11",
+      "title": "Preparar WSL y sus requisitos de instalación",
+      "url": "https://learn.microsoft.com/es-es/windows/wsl/install",
+      "section": null,
+      "applies": "Windows 10 2004/build 19041 o superior y Windows 11; revisar requisitos vigentes",
+      "category": "environment",
+      "queries": [
+        "Quiero instalar WSL en Windows y saber los requisitos y cuándo reiniciar.",
+        "¿Cómo preparo por primera vez WSL con una distribución de Linux desde PowerShell de administrador?"
+      ],
+      "documentId": "988e335e-f30a-5319-bf38-8aaeda412795",
+      "contentLanguage": "es",
+      "sourceSnapshot": "sources/source_09.html",
+      "sourceSha256": "ce33e5dcab0902880b472b1ac3028f4422c0de463c5fae301156a82441bd2255",
+      "expectedTextSha256": "131a94b718848a2d6db677259bd11aaeaa3fa89b1aa8f3c061d1e87f4c4d6572",
+      "publisher": "Microsoft y colaboradores",
+      "licenseId": "CC-BY-4.0",
+      "sourceGitUrl": "https://github.com/MicrosoftDocs/wsl/blob/main/WSL/install.md",
+      "sourceGitCommit": "7b28cc1ee9b8ff672ada5e1c6c326d3573d703e5"
+    },
+    {
+      "id": "P12",
+      "title": "Consultar estado y actualizar WSL",
+      "url": "https://learn.microsoft.com/es-es/windows/wsl/basic-commands",
+      "section": [
+        "update-wsl",
+        "check-wsl-status",
+        "check-wsl-version"
+      ],
+      "applies": "Windows con WSL; comandos según versión instalada",
+      "category": "environment",
+      "queries": [
+        "Necesito consultar la versión de WSL y actualizar su kernel o sus componentes.",
+        "¿Qué comandos muestran el estado de WSL y permiten actualizarlo desde Microsoft Store o la web?"
+      ],
+      "documentId": "82e0bc57-593b-5b08-8bc0-2d62d103ea1e",
+      "contentLanguage": "es",
+      "sourceSnapshot": "sources/source_10.html",
+      "sourceSha256": "c9771e88de4acd48bccb02b896e03b0075e75001b83f9748f7df44691dca3244",
+      "expectedTextSha256": "7822bcdba7e1a89389a899afe3dbc6c1ef2bde2b94b80482ee79e79b7722be7a",
+      "publisher": "Microsoft y colaboradores",
+      "licenseId": "CC-BY-4.0",
+      "sourceGitUrl": "https://github.com/MicrosoftDocs/wsl/blob/main/WSL/basic-commands.md",
+      "sourceGitCommit": "7b28cc1ee9b8ff672ada5e1c6c326d3573d703e5"
+    },
+    {
+      "id": "P13",
+      "title": "Diagnosticar virtualización requerida por Docker Desktop",
+      "url": "https://docs.docker.com/desktop/troubleshoot-and-support/troubleshoot/topics/",
+      "section": "docker-desktop-fails-due-to-virtualization-not-working",
+      "applies": "Docker Desktop sobre Windows con WSL 2 o backend compatible; diagnóstico previo",
+      "category": "environment",
+      "queries": [
+        "Docker Desktop no arranca y muestra HCS_E_HYPERV_NOT_INSTALLED; necesito revisar virtualización.",
+        "Docker falla por virtualización; ¿qué funciones de Windows y reinicio debo comprobar?"
+      ],
+      "documentId": "5e6adaf1-80c3-5d36-8c05-0ea89c57a035",
+      "contentLanguage": "en",
+      "sourceSnapshot": "sources/source_11.html",
+      "sourceSha256": "e4e8c8670b151d0f5dbe9b81c96570cedd285f25a05031bcf23b013df9914ac2",
+      "expectedTextSha256": "263c078e54170d668810d9b6cfb77f80eff3d39a4ac31211578670f1ef22fa26",
+      "publisher": "Docker, Inc. y colaboradores",
+      "licenseId": "Apache-2.0",
+      "sourceGitUrl": null,
+      "sourceGitCommit": null
+    },
+    {
+      "id": "P14",
+      "title": "Resolver conflicto de puerto ocupado en Docker",
+      "url": "https://docs.docker.com/desktop/troubleshoot-and-support/troubleshoot/topics/",
+      "section": "port-already-allocated-errors",
+      "applies": "Docker Desktop; identificar proceso o contenedor antes de detenerlo",
+      "category": "environment",
+      "queries": [
+        "Docker dice port already allocated al iniciar un contenedor; necesito identificar qué ocupa el puerto.",
+        "No puedo publicar el puerto 8080 porque la dirección ya está en uso; ¿cómo lo diagnostico?"
+      ],
+      "documentId": "1235a5d6-0f6b-5d91-8326-94a8bb116d54",
+      "contentLanguage": "en",
+      "sourceSnapshot": "sources/source_11.html",
+      "sourceSha256": "e4e8c8670b151d0f5dbe9b81c96570cedd285f25a05031bcf23b013df9914ac2",
+      "expectedTextSha256": "13b03ec4d353ac315d785be0f1551dbc5f41a4ff6fc14f4428d3e825df042a44",
+      "publisher": "Docker, Inc. y colaboradores",
+      "licenseId": "Apache-2.0",
+      "sourceGitUrl": null,
+      "sourceGitCommit": null
+    },
+    {
+      "id": "P15",
+      "title": "Diagnosticar rutas de carpetas montadas en Windows",
+      "url": "https://docs.docker.com/desktop/troubleshoot-and-support/troubleshoot/topics/",
+      "section": "path-conversion-errors-on-windows",
+      "applies": "Docker Desktop sobre Windows; conversión de rutas, no permisos generales",
+      "category": "environment",
+      "queries": [
+        "Docker no monta bien una carpeta de Windows en un contenedor; ¿qué formato debe tener la ruta?",
+        "Necesito convertir una ruta de C: para montar un volumen desde CMD con Docker Desktop."
+      ],
+      "documentId": "b1942f68-9bd6-5db7-ac7e-d1b28368f257",
+      "contentLanguage": "en",
+      "sourceSnapshot": "sources/source_11.html",
+      "sourceSha256": "e4e8c8670b151d0f5dbe9b81c96570cedd285f25a05031bcf23b013df9914ac2",
+      "expectedTextSha256": "0cfdfcdc5bb09eff6019b9a11f6ddac91ede567ca497897cc66a9589f17d3c57",
+      "publisher": "Docker, Inc. y colaboradores",
+      "licenseId": "Apache-2.0",
+      "sourceGitUrl": null,
+      "sourceGitCommit": null
+    }
+  ],
+  "licenses": [
+    {
+      "repository": "docker/docs",
+      "licenseId": "Apache-2.0",
+      "url": "https://raw.githubusercontent.com/docker/docs/main/LICENSE",
+      "file": "licenses/docker__docs__LICENSE",
+      "sha256": "089009c932d3cc296355e429fa9d6faf80ac89597da866e2424b4ea09add64b1"
+    },
+    {
+      "repository": "MicrosoftDocs/SupportArticles-docs",
+      "licenseId": "CC-BY-4.0",
+      "url": "https://raw.githubusercontent.com/MicrosoftDocs/SupportArticles-docs/main/LICENSE",
+      "file": "licenses/MicrosoftDocs__SupportArticles-docs__LICENSE",
+      "sha256": "7183ef9749eb9b75e710a81a4c812a9405cc184f087500581a973e5929ac3f5e"
+    },
+    {
+      "repository": "MicrosoftDocs/windowsserverdocs",
+      "licenseId": "CC-BY-4.0",
+      "url": "https://raw.githubusercontent.com/MicrosoftDocs/windowsserverdocs/main/LICENSE",
+      "file": "licenses/MicrosoftDocs__windowsserverdocs__LICENSE",
+      "sha256": "9bbc1ea9fe5c96df01b311a2ac864d5b18fc87b9948bfd14770e4b44db755ee9"
+    },
+    {
+      "repository": "MicrosoftDocs/windows-powershell-docs",
+      "licenseId": "CC-BY-4.0",
+      "url": "https://raw.githubusercontent.com/MicrosoftDocs/windows-powershell-docs/main/LICENSE",
+      "file": "licenses/MicrosoftDocs__windows-powershell-docs__LICENSE",
+      "sha256": "7183ef9749eb9b75e710a81a4c812a9405cc184f087500581a973e5929ac3f5e"
+    },
+    {
+      "repository": "MicrosoftDocs/wsl",
+      "licenseId": "CC-BY-4.0",
+      "url": "https://raw.githubusercontent.com/MicrosoftDocs/wsl/main/LICENSE",
+      "file": "licenses/MicrosoftDocs__wsl__LICENSE",
+      "sha256": "7183ef9749eb9b75e710a81a4c812a9405cc184f087500581a973e5929ac3f5e"
+    }
+  ]
+}

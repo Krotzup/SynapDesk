@@ -49,6 +49,64 @@ La aplicación estará disponible en [http://localhost:3000](http://localhost:30
 > El puerto `3000` corresponde al frontend. El backend FastAPI corre en el puerto `8000`.
 > No uses `localhost:3000` como URL del backend.
 
+## Búsqueda semántica integrada
+
+La pantalla `/busqueda` realiza la consulta desde el navegador después de
+verificar sesión, mediante el servicio y el proxy de mismo origen
+`POST /api/v1/search`. No hace POST de búsqueda durante SSR sin cookies/CSRF.
+Con datos reales (`NEXT_PUBLIC_USE_MOCKS=false`) el proxy llama a FastAPI; con
+mocks se conserva el aviso explícito de datos de ejemplo y similitud simulada.
+
+Configurar exclusivamente en el servidor Next.js:
+
+| Variable                     | Uso                                                                                                                    |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `BACKEND_INTERNAL_URL`       | Origen HTTPS fijo de FastAPI. Nunca se acepta del cliente ni se expone mediante NEXT_PUBLIC.                           |
+| `BACKEND_SERVICE_CREDENTIAL` | Credencial privada SEC-01B, de 32 bytes codificados en base64url canónico. Debe coincidir con la política del backend. |
+| `SEARCH_PUBLIC_ORIGIN`       | Origen público exacto, coincidente con el permitido por el backend.                                                    |
+| `AUTH_COOKIE_PROFILE`        | Perfil obligatorio `local` o `production`. Usar el mismo valor en FastAPI y en Next.js.                                |
+| `SEARCH_SESSION_COOKIE_NAME` | Comprobación opcional del nombre. Si se configura, debe coincidir con la cookie de sesión del perfil.                  |
+
+Ejemplo de transporte local: frontend `http://localhost:3000` con perfil `local`,
+backend `https://localhost:8000` con certificado de confianza y origen permitido explícito. No mezclar hosts dentro del
+flujo de cookies. Los nombres concretos de cookies y el despliegue de autenticación
+requieren su configuración acordada; no se aprueban automáticamente propuestas.
+
+La ruta reenvía las cookies de autenticación reservadas, Origin, CSRF, Content-Type y
+Sec-Fetch-Site cuando existe. Descarta Authorization y las cabeceras de IP
+aportadas por el cliente y agrega su propio bearer SEC-01B. Rechaza destinos/redirecciones
+arbitrarios y usa no-store, plazo finito y errores saneados. FastAPI
+rechaza cookies ambiguas a partir de la representación original.
+No funciona como proxy genérico para otras rutas.
+
+El proxy general atiende `/auth/me` y `/auth/csrf`. La ruta específica de
+búsqueda usa el mismo canal SEC-01B que el proxy general y SSR. Conserva su
+límite de 8192 bytes y valida Origin. El
+plazo común cubre la lectura de la petición y la respuesta. Según P8, tras
+`CSRF_INVALID` la próxima acción manual obtiene un token nuevo.
+
+La pantalla diferencia resultados, base vacía e información insuficiente;
+muestra extractos, idioma y enlace HTTPS de la fuente cuando existen metadatos.
+Conserva el máximo de 1000 caracteres y comunica 422
+`QUERY_TOKEN_LIMIT_EXCEEDED` si se superan los 128 tokens del modelo, sin
+truncamiento silencioso. Un cambio de sesión descarta resultados en tránsito.
+
+La búsqueda requiere sesión y CSRF válidos. Para habilitarla a usuarios
+finales, el transporte de AUTH-07 debe ofrecer login, logout, `/auth/me` y el
+bootstrap de CSRF. Los ensayos E2E identifican cuándo simulan el bootstrap y
+cuándo usan sesión, CSRF y búsqueda reales.
+
+Ver [recuperación V1](../docs/contratos/recuperacion-semantica-v1.md). Para las
+pruebas de contrato y proxy, sin servidor externo ni nuevas librerías de test:
+
+```bash
+npm test
+```
+
+El comando compila solo los helpers de búsqueda y ejecuta `node:test`. Sus
+artefactos quedan excluidos de Git. Completar también `npm run lint` y
+`npm run build` al modificar la integración.
+
 ## Comandos disponibles
 
 | Comando                | Descripción                    |

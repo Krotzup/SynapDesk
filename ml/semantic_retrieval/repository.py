@@ -4,11 +4,23 @@ from pathlib import Path
 from uuid import UUID, uuid5
 import hashlib
 import json
+import re
+from urllib.parse import urlsplit
 
 from .relevance import validate_min_score
 
 
 SCHEMA = Path(__file__).with_name("schema.sql")
+
+
+class SemanticSchemaNotPrepared(ValueError):
+    pass
+
+
+def require_schema(connection: object) -> None:
+    row = connection.execute("SELECT to_regclass('semantic_prototype_chunks'), to_regtype('vector')").fetchone()
+    if row is None or row[0] is None or row[1] is None:
+        raise SemanticSchemaNotPrepared("El esquema semántico no está preparado; ejecuta init-db en la base semántica propia.")
 
 
 def init_schema(connection: object) -> None:
@@ -103,3 +115,64 @@ def corpus_fingerprint(connection: object, *, model_id: str) -> str:
         digest.update(json.dumps(row, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
         digest.update(b"\n")
     return digest.hexdigest()
+
+
+def corpus_state(connection: object, *, model_id: str) -> dict | None:
+    row = connection.execute(
+        "SELECT corpus_id::text, revision, EXISTS (SELECT 1 FROM semantic_prototype_chunks WHERE model_id = %s) "
+        "FROM semantic_prototype_corpus_versions WHERE model_id = %s", (model_id, model_id),
+    ).fetchone()
+    return {"corpusId": row[0], "revision": row[1], "hasDocuments": row[2]} if row else None
+
+
+def require_matching_profile(connection: object, profile: dict) -> None:
+    if profile["schemaVersion"] == 1:
+        matches = corpus_fingerprint(connection, model_id=profile["modelId"]) == profile["corpusSha256"]
+    else:
+        current = corpus_state(connection, model_id=profile["modelId"])
+        matches = (current is not None and current["corpusId"] == profile["corpusId"]
+                   and current["revision"] == profile["corpusRevision"])
+    if not matches:
+        raise ValueError("El corpus cambió o no coincide con el perfil de relevancia; se requiere recalibrar.")
+
+
+def validate_source_metadata(source_url: str | None, language: str | None) -> None:
+    if source_url is not None:
+        try:
+            url = urlsplit(source_url)
+            if (len(source_url) > 2000 or url.scheme != "https" or not url.hostname
+                    or url.username is not None or url.password is not None
+                    or any(char.isspace() or ord(char) < 32 for char in source_url)):
+                raise ValueError
+        except ValueError:
+            raise ValueError("La fuente debe ser una URL HTTPS pública sin credenciales ni espacios.") from None
+    if language is not None and not re.fullmatch(r"[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*", language):
+        raise ValueError("El idioma debe usar un código como es, en o es-CL.")
+
+
+def set_document_metadata(connection: object, *, document_id: UUID, model_id: str,
+                          source_url: str | None, language: str | None) -> None:
+    validate_source_metadata(source_url, language)
+    connection.execute(
+        "INSERT INTO semantic_prototype_document_metadata (document_id, model_id, source_url, language) "
+        "VALUES (%s,%s,%s,%s) ON CONFLICT (document_id,model_id) DO UPDATE "
+        "SET source_url=excluded.source_url, language=excluded.language",
+        (document_id, model_id, source_url, language),
+    )
+
+
+def source_metadata(connection: object, *, document_ids: list[str], model_id: str) -> dict:
+    if not document_ids:
+        return {}
+    rows = connection.execute(
+        "SELECT document_id::text, source_url, language FROM semantic_prototype_document_metadata "
+        "WHERE model_id=%s AND document_id=ANY(%s)", (model_id, [UUID(value) for value in document_ids]),
+    ).fetchall()
+    result = {}
+    for document_id, url, language in rows:
+        try:
+            validate_source_metadata(url, language)
+        except ValueError:
+            continue
+        result[document_id] = {"sourceUrl": url, "language": language}
+    return result

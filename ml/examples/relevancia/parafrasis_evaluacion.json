@@ -1,0 +1,149 @@
+{
+  "annotationStatus": "exploratory_pending_independent_review",
+  "queries": [
+    {
+      "queryId": "PAR-01",
+      "query": "Puedo hacer ping a la IP pero no resuelve el nombre del servidor",
+      "answerable": true,
+      "expectedDocumentId": "be5e3aff-fcc8-5346-8a36-9d9cbd1551ee"
+    },
+    {
+      "queryId": "PAR-02",
+      "query": "La conexión inalámbrica se corta a ratos aunque el equipo sigue viendo la red.",
+      "answerable": true,
+      "expectedDocumentId": "27ae639c-47b7-5650-bc98-6fcdbb0a4076"
+    },
+    {
+      "queryId": "PAR-03",
+      "query": "Docker dice que la dirección del puerto publicado ya está ocupada al iniciar el contenedor.",
+      "answerable": true,
+      "expectedDocumentId": "1235a5d6-0f6b-5d91-8326-94a8bb116d54"
+    },
+    {
+      "queryId": "PAR-04",
+      "query": "Quiero saber qué versión del subsistema Linux tengo y actualizar sus componentes.",
+      "answerable": true,
+      "expectedDocumentId": "82e0bc57-593b-5b08-8bc0-2d62d103ea1e"
+    },
+    {
+      "queryId": "PAR-05",
+      "query": "La cola de impresión desaparece porque el servicio de Windows que la administra se detuvo.",
+      "answerable": true,
+      "expectedDocumentId": "cce574ee-1671-5f08-9939-9279104c37e8"
+    },
+    {
+      "queryId": "PAR-06",
+      "query": "¿Cómo recupero una conversación borrada de Slack?",
+      "answerable": false
+    },
+    {
+      "queryId": "PAR-07",
+      "query": "¿Cómo exporto los mensajes archivados de Outlook a otro buzón?",
+      "answerable": false
+    },
+    {
+      "queryId": "PAR-08",
+      "query": "El micrófono no aparece durante las reuniones de Teams.",
+      "answerable": false
+    },
+    {
+      "queryId": "PAR-09",
+      "query": "Windows quedó con una dirección que parte por 169.254. ¿Cómo le pido al servidor DHCP que le entregue una nueva?",
+      "answerable": true,
+      "expectedDocumentId": "f149bcc1-c82b-501e-ae98-b1fa9a613eba"
+    },
+    {
+      "queryId": "PAR-10",
+      "query": "El servidor contesta al ping, pero necesito saber si desde PowerShell puedo comprobar que acepta conexiones por el puerto TCP del servicio.",
+      "answerable": true,
+      "expectedDocumentId": "06907ab6-604a-50cf-bdc3-bf9f14413fbd"
+    },
+    {
+      "queryId": "PAR-11",
+      "query": "La aplicación se queda pegada justo al mandar el documento a imprimir. El resto del equipo sigue funcionando.",
+      "answerable": true,
+      "expectedDocumentId": "93e16a3a-2590-5907-a865-20f66d0c727e"
+    },
+    {
+      "queryId": "PAR-12",
+      "query": "Al agregar una impresora compartida desde otro equipo con Windows aparece un error de comunicación RPC.",
+      "answerable": true,
+      "expectedDocumentId": "a96ee4b3-10af-5b82-92e4-4c27d0c90ade"
+    },
+    {
+      "queryId": "PAR-13",
+      "query": "Las páginas sí salen, pero cada trabajo demora varios minutos. ¿Cómo ubico en qué parte del proceso se atrasa la impresión?",
+      "answerable": true,
+      "expectedDocumentId": "85cad008-8227-5f32-bce4-23c2c27e22a3"
+    },
+    {
+      "queryId": "PAR-14",
+      "query": "Desde CMD, Docker interpreta mal la ruta de mi carpeta local cuando intento montarla dentro del contenedor.",
+      "answerable": true,
+      "expectedDocumentId": "b1942f68-9bd6-5db7-ac7e-d1b28368f257"
+    },
+    {
+      "queryId": "PAR-15",
+      "query": "Necesito autorizar transferencias AXFR únicamente al servidor DNS secundario y cambiar el número de serie de la zona.",
+      "answerable": false
+    },
+    {
+      "queryId": "PAR-16",
+      "query": "Necesito fijar una cuota mensual de páginas por persona y cobrar los trabajos a cada centro de costo.",
+      "answerable": false
+    },
+    {
+      "queryId": "PAR-17",
+      "query": "¿Cómo emito un token de acceso de solo lectura para un repositorio privado de imágenes en Docker Hub?",
+      "answerable": false
+    },
+    {
+      "queryId": "PAR-18",
+      "query": "Quiero compartir una GPU NVIDIA entre dos distribuciones WSL y fijar cuánta memoria de video puede usar cada una.",
+      "answerable": false
+    },
+    {
+      "queryId": "PAR-19",
+      "query": "Necesito configurar Wi-Fi corporativo con autenticación EAP-TLS y distribuir los certificados de cliente.",
+      "answerable": false
+    },
+    {
+      "queryId": "PAR-20",
+      "query": "Quiero configurar en Teams qué personas pueden compartir su pantalla durante una reunión.",
+      "answerable": false
+    },
+    {
+      "queryId": "PAR-21",
+      "query": "No tengo internet en mi computador",
+      "answerable": true
+    },
+    {
+      "queryId": "PUB-01",
+      "query": "En Windows puedo llegar a una IP y nslookup responde, pero los programas y el navegador fallan al buscar por nombre.",
+      "answerable": true,
+      "expectedDocumentId": "be5e3aff-fcc8-5346-8a36-9d9cbd1551ee",
+      "sourceUrl": "https://learn.microsoft.com/en-us/answers/questions/5972820/windows-11-internet-connection-problem-nslookup-wo"
+    },
+    {
+      "queryId": "PUB-02",
+      "query": "Los portátiles con Windows conectan a la red Wi-Fi después de ingresar la clave, pero a los pocos minutos se desconectan y vuelven a pedirla.",
+      "answerable": true,
+      "expectedDocumentId": "27ae639c-47b7-5650-bc98-6fcdbb0a4076",
+      "sourceUrl": "https://learn.microsoft.com/en-us/answers/questions/5771804/wifi-keeps-disconnecting-and-some-information-has"
+    },
+    {
+      "queryId": "PUB-03",
+      "query": "Reinicio el servicio de cola de impresión y funciona hasta que intento imprimir o agregar una impresora. Ahí vuelve a detenerse.",
+      "answerable": true,
+      "expectedDocumentId": "cce574ee-1671-5f08-9939-9279104c37e8",
+      "sourceUrl": "https://learn.microsoft.com/en-us/answers/questions/5723431/print-spooler-keeps-stopping"
+    },
+    {
+      "queryId": "PUB-04",
+      "query": "Después de actualizar Windows, WSL 2 no arranca y muestra 0x80370102. ¿Qué requisitos de virtualización debo comprobar?",
+      "answerable": true,
+      "expectedDocumentId": "988e335e-f30a-5319-bf38-8aaeda412795",
+      "sourceUrl": "https://github.com/microsoft/WSL/issues/10185"
+    }
+  ]
+}

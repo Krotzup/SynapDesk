@@ -1,0 +1,49 @@
+{
+  "annotationStatus": "exploratory_pending_independent_review",
+  "queries": [
+    {
+      "queryId": "SUP-01",
+      "query": "En el equipo de recepción la intranet abre por dirección numérica, pero Windows dice que no encuentra el sitio al usar su nombre. ¿Qué reviso primero?",
+      "answerable": true,
+      "expectedDocumentId": "be5e3aff-fcc8-5346-8a36-9d9cbd1551ee"
+    },
+    {
+      "queryId": "SUP-02",
+      "query": "Cambiamos el computador de punto de red y quedó con la dirección del segmento anterior. ¿Cómo hago que Windows vuelva a solicitar una dirección automáticamente?",
+      "answerable": true,
+      "expectedDocumentId": "f149bcc1-c82b-501e-ae98-b1fa9a613eba"
+    },
+    {
+      "queryId": "SUP-03",
+      "query": "El documento sale de la cola y la impresora no muestra ningún aviso, pero nunca aparece la hoja. ¿Por dónde empiezo a revisar?",
+      "answerable": true,
+      "expectedDocumentId": "426b9d35-2156-5165-8ae5-6771d115d912"
+    },
+    {
+      "queryId": "SUP-04",
+      "query": "Docker Desktop dejó de arrancar tras reinstalar Windows y avisa que no detecta virtualización. ¿Cómo compruebo si está habilitada?",
+      "answerable": true,
+      "expectedDocumentId": "5e6adaf1-80c3-5d36-8c05-0ea89c57a035"
+    },
+    {
+      "queryId": "SUP-05",
+      "query": "Necesito que los cambios en los registros DNS del dominio se reflejen en otro proveedor sin interrumpir el correo. ¿Cómo planifico el traspaso?",
+      "answerable": false
+    },
+    {
+      "queryId": "SUP-06",
+      "query": "La impresora funciona y las páginas salen bien. ¿Cómo configuro que el escáner del equipo multifunción guarde los archivos directamente en una carpeta de red?",
+      "answerable": false
+    },
+    {
+      "queryId": "SUP-07",
+      "query": "El contenedor ya funciona. Quiero automatizar la copia de sus volúmenes a otro servidor y conservar una copia diaria durante un mes.",
+      "answerable": false
+    },
+    {
+      "queryId": "SUP-08",
+      "query": "WSL abre correctamente. Necesito exportar una distribución completa y restaurarla en el portátil de reemplazo conservando mis archivos.",
+      "answerable": false
+    }
+  ]
+}

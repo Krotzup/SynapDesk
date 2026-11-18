@@ -5,10 +5,35 @@ import tempfile
 import unittest
 
 from ml.semantic_retrieval.config import MODEL_ID
-from ml.semantic_retrieval.relevance import build_profile, load_cases, load_profile, validate_min_score, write_profile
+from ml.semantic_retrieval.relevance import (build_profile, evaluate_observations, load_cases, load_profile,
+                                           query_fingerprint, validate_min_score, write_profile)
 
 
 class RelevanceTests(unittest.TestCase):
+    def test_ranking_distinguishes_coverage_from_correct_document(self):
+        profile = self.profile([
+            {"queryId": "p", "answerable": True, "score": 0.8, "topDocumentId": "wrong",
+             "expectedDocumentId": "expected", "expectedDocumentRank": 3},
+            {"queryId": "n", "answerable": False, "score": 0.2},
+        ])
+        self.assertEqual(profile["calibration"]["coveredAccepted"], 1)
+        self.assertEqual(profile["ranking"]["top1Correct"], 0)
+        self.assertEqual(profile["ranking"]["expectedDocumentWithinFive"], 1)
+        self.assertAlmostEqual(profile["ranking"]["mrrAtFiveFragments"], 1 / 3)
+
+    def test_evaluation_rejects_reused_queries_even_with_different_identifiers(self):
+        fingerprint = query_fingerprint("  La IMPRESORA no imprime ")
+        profile = self.profile([{"queryId": "old", "querySha256": fingerprint, "answerable": True, "score": 0.8},
+                                {"queryId": "old-n", "answerable": False, "score": 0.2}])
+        rows = [{"queryId": "new", "querySha256": query_fingerprint("La impresora no imprime"),
+                 "answerable": True, "score": 0.7}]
+        with self.assertRaisesRegex(ValueError, "distintas"):
+            evaluate_observations(rows, profile)
+        rows[0]["querySha256"] = query_fingerprint("Otra consulta")
+        report = evaluate_observations(rows, profile)
+        self.assertEqual(report["counts"]["coveredAccepted"], 1)
+        self.assertEqual(profile["minScore"], report["minScore"])
+
     def profile(self, rows):
         return build_profile(rows, corpus_sha256="a" * 64, cases_sha256="b" * 64)
 

@@ -34,7 +34,11 @@ jobs:
         if: ${{ hashFiles('ml/requirements-semantic.txt') != '' }}
         run: python -m pip install -r ml/requirements-semantic.txt -c ml/requirements.txt
 
-      - name: Compile ML scripts
+      - name: Install corpus preparation dependencies
+        # El preparador se prueba con HTML sintético, sin descargar fuentes.
+        run: python -m pip install -r ml/requirements-corpus.txt
+
+      - name: Compile ML sources
         run: python -m compileall -q ml tests
 
       - name: Run unit tests

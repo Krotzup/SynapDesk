@@ -1,0 +1,4 @@
+# Monolito con recuperación habilitada; las restricciones ML preservan NumPy.
+-r requirements.txt
+-r ../ml/requirements-semantic.txt
+-c ../ml/requirements.txt
