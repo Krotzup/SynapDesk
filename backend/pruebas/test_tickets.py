@@ -146,6 +146,7 @@ def test_conteos_no_inventan_metricas_y_son_inmutables():
 
 def test_aplicacion_conserva_exactamente_las_rutas_anteriores():
     app = crear_aplicacion(Configuracion(_env_file=None, app_env="testing"))
+    # La búsqueda de #32 ya está integrada; el núcleo de tickets no agrega rutas.
     assert set(app.openapi()["paths"]) == {
-        "/api/v1/health", "/api/v1/ready", "/api/v1/auth/csrf",
+        "/api/v1/health", "/api/v1/ready", "/api/v1/auth/csrf", "/api/v1/search",
     }
