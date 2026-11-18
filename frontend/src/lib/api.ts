@@ -4,6 +4,7 @@
 import { getTransport } from "#transport";
 import { ApiError, CsrfToken } from "@/types";
 import { getAuthGeneration } from "./auth-sync";
+import { SESSION_CHANGED } from "./errors";
 import { clearCsrfToken, getCsrfToken } from "./csrf";
 
 const API_PREFIX = "/api/v1";
@@ -25,9 +26,8 @@ class HttpError {
   ) {}
 }
 
-// Código solo del frontend (no viene del backend): la sesión cambió (login o logout, también en
-// otra pestaña) mientras se preparaba la mutación, así que no se envía con un contexto distinto.
-export const SESSION_CHANGED = "SESSION_CHANGED";
+// Se conserva la exportación desde aquí para los componentes que ya la importan de api.
+export { SESSION_CHANGED };
 
 const sessionChangedError = (): ApiError => ({
   error: {
@@ -124,8 +124,9 @@ async function request<TResponse, TBody = unknown>(
       return await send<TResponse, TBody>(endpoint, options, freshToken);
     }
   } catch (error) {
-    // Hacia afuera se mantiene el formato del contrato: { error: { code, message, ... } }.
-    throw error instanceof HttpError ? error.body : error;
+    // Hacia afuera se mantiene el formato del contrato ({ error: { code, message, ... } }) y se
+    // agrega el estado HTTP, que el cuerpo no trae (409 y 503 se distinguen por estado).
+    throw error instanceof HttpError ? { ...error.body, status: error.status } : error;
   }
 }
 

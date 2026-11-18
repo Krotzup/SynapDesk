@@ -7,7 +7,8 @@ import { PriorityBadge, StatusBadge } from "@/components/ui/Badge";
 import { Button, buttonClassName } from "@/components/ui/Button";
 import { USE_MOCKS } from "@/lib/config";
 import { SESSION_CHANGED } from "@/lib/api";
-import { getFieldErrors, isApiError, isAuthenticationRequired } from "@/lib/errors";
+import { ErrorReference } from "@/components/ui/ErrorReference";
+import { errorRequestId, getFieldErrors, isApiError, isAuthenticationRequired } from "@/lib/errors";
 import { shortId } from "@/lib/format";
 import { TICKET_DESCRIPTION_MAX, TICKET_TITLE_MAX, validateNewTicket } from "@/lib/ticket-rules";
 import { ticketsService } from "@/services/tickets";
@@ -69,6 +70,7 @@ export function NewTicketForm() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
   const [needsLogin, setNeedsLogin] = useState(false);
+  const [errorReference, setErrorReference] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [created, setCreated] = useState<Ticket | null>(null);
 
@@ -102,6 +104,7 @@ export function NewTicketForm() {
       setFieldErrors(serverErrors);
       // Si el 422 ya marca los campos, no hace falta repetirlo arriba.
       setGeneralError(Object.keys(serverErrors).length > 0 ? null : generalErrorMessage(error));
+      setErrorReference(errorRequestId(error));
       setNeedsLogin(isAuthenticationRequired(error));
       setSubmitting(false);
     }
@@ -169,6 +172,7 @@ export function NewTicketForm() {
               Ir al inicio de sesión
             </Link>
           )}
+          <ErrorReference requestId={errorReference} />
         </div>
       )}
 
