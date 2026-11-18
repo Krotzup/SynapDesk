@@ -1,4 +1,7 @@
-// Utilidades comunes de las pruebas de componentes.
+// Utilidades comunes de las pruebas de componentes. Las respuestas del backend se simulan
+// reemplazando los métodos de los servicios: las pruebas verifican la reacción de cada componente,
+// no que la API HTTP real devuelva esos códigos (ver «Alcance de las pruebas de componentes» en
+// frontend/README.md).
 import { cleanup } from "@testing-library/react";
 import { resetRouter } from "next/navigation";
 

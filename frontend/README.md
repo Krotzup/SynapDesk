@@ -121,6 +121,16 @@ artefactos quedan excluidos de Git. Completar también `npm run lint` y
 | `npm run test:unit`       | Pruebas de lógica (`tests/unit`)                                        |
 | `npm run test:components` | Pruebas de formularios con jsdom y Testing Library (`tests/components`) |
 
+### Alcance de las pruebas de componentes
+
+`npm run test:components` comprueba cómo reaccionan los formularios (`NewTicketForm`,
+`TicketStatusControl` y `LoginForm`) ante cada respuesta: éxito, 401, 409, 422, 429 y 503.
+Las respuestas se simulan reemplazando los métodos de los servicios, con la forma de error del
+contrato. **No acreditan que la API HTTP real entregue hoy esos códigos:** por ejemplo, el `409`
+del cambio de estado sigue «por definir» y el `422` por campos no previstos es una propuesta
+pendiente de aprobación. Esa comprobación corresponde a las pruebas del backend y al recorrido
+con las rutas reales.
+
 ## Estado de implementación
 
 - [x] Estructura de carpetas y configuración base
