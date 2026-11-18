@@ -1,13 +1,17 @@
 import Link from "next/link";
 import { connection } from "next/server";
+import { Suspense } from "react";
 import { TicketFilters } from "@/components/tickets/TicketFilters";
+import {
+  TicketListSummary,
+  TicketListSummaryFallback,
+} from "@/components/tickets/TicketListSummary";
 import { TicketPagination } from "@/components/tickets/TicketPagination";
 import { buttonClassName } from "@/components/ui/Button";
 import { StatusBadge, PriorityBadge } from "@/components/ui/Badge";
 import { formatDateTime, shortId } from "@/lib/format";
 import { buildQuery } from "@/lib/params";
 import { filtersForUrl, hasActiveFilters, parseTicketListParams } from "@/lib/ticket-filters";
-import { metricsService } from "@/services/metrics";
 import { ticketsService } from "@/services/tickets";
 
 interface TicketsPageProps {
@@ -19,43 +23,9 @@ export default async function TicketsPage({ searchParams }: TicketsPageProps) {
   await connection();
   const filters = parseTicketListParams(await searchParams);
   const filtered = hasActiveFilters(filters);
-  const [result, summary] = await Promise.all([
-    ticketsService.getAll(filters),
-    metricsService.getSummary(),
-  ]);
+  // Los conteos se cargan aparte (TicketListSummary): si fallan, el listado se sigue mostrando.
+  const result = await ticketsService.getAll(filters);
   const tickets = result.items;
-
-  // Conteos globales desde GET /metrics/summary, los mismos del menú lateral.
-  const summaryCards = [
-    {
-      label: "Total tickets",
-      value: summary.totalTickets,
-      icon: "📋",
-      bg: "bg-[#EFF6FF]",
-      text: "text-[#2563EB]",
-    },
-    {
-      label: "Abiertos",
-      value: summary.openTickets,
-      icon: "🔓",
-      bg: "bg-[#DBEAFE]",
-      text: "text-[#1E40AF]",
-    },
-    {
-      label: "En proceso",
-      value: summary.inProgressTickets,
-      icon: "⏳",
-      bg: "bg-[#FEF3C7]",
-      text: "text-[#D97706]",
-    },
-    {
-      label: "Resueltos",
-      value: summary.resolvedTickets,
-      icon: "✅",
-      bg: "bg-[#D1FAE5]",
-      text: "text-[#10B981]",
-    },
-  ];
 
   // Mensaje cuando la página no tiene tickets; lo usan la tabla y las tarjetas.
   const emptyMessage =
@@ -99,28 +69,10 @@ export default async function TicketsPage({ searchParams }: TicketsPageProps) {
           </Link>
         </div>
 
-        {/* Métricas rápidas: 2 × 2 hasta 1024 px, en una fila desde ahí */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {summaryCards.map((card) => (
-            <div
-              key={card.label}
-              className="bg-white p-4 sm:p-5 rounded-2xl border border-[#E2E8F0] shadow-sm flex items-center justify-between gap-2"
-            >
-              <div>
-                <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">
-                  {card.label}
-                </p>
-                <p className={`text-2xl font-bold mt-1 ${card.text}`}>{card.value}</p>
-              </div>
-              <div
-                className={`hidden sm:flex h-10 w-10 shrink-0 ${card.bg} ${card.text} rounded-xl items-center justify-center text-lg`}
-                aria-hidden="true"
-              >
-                {card.icon}
-              </div>
-            </div>
-          ))}
-        </div>
+        {/* Métricas rápidas */}
+        <Suspense fallback={<TicketListSummaryFallback />}>
+          <TicketListSummary />
+        </Suspense>
 
         {/* Tabla de tickets */}
         <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm overflow-hidden">

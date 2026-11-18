@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { AssistantPanel } from "@/components/recommendations/AssistantPanel";
-import { AssistantRecommendation } from "@/components/recommendations/AssistantRecommendation";
-import { RecommendationHistory } from "@/components/recommendations/RecommendationHistory";
+import {
+  TicketRecommendations,
+  TicketRecommendationsFallback,
+} from "@/components/recommendations/TicketRecommendations";
 import { CurrentTicketStatus } from "@/components/tickets/CurrentTicketStatus";
 import { TicketStatusControl } from "@/components/tickets/TicketStatusControl";
 import { PriorityBadge } from "@/components/ui/Badge";
@@ -10,8 +13,6 @@ import { USE_MOCKS } from "@/lib/config";
 import { isApiError } from "@/lib/errors";
 import { MOCK_CONFLICT_TICKET_ID, MOCK_UNAVAILABLE_TICKET_ID } from "@/mocks/tickets";
 import { formatDateTime, shortId } from "@/lib/format";
-import { splitRecommendations } from "@/lib/recommendation-history";
-import { recommendationsService } from "@/services/recommendations";
 import { ticketsService } from "@/services/tickets";
 import { Ticket } from "@/types";
 
@@ -30,11 +31,9 @@ async function getTicket(id: string): Promise<Ticket> {
 
 export default async function TicketDetailPage({ params }: TicketDetailPageProps) {
   const { id } = await params;
-  const [ticket, recommendations] = await Promise.all([
-    getTicket(id),
-    recommendationsService.getByTicket(id),
-  ]);
-  const { latest: recommendation, previous } = splitRecommendations(recommendations);
+  // Las recomendaciones se cargan aparte (TicketRecommendations): si fallan, el detalle se
+  // sigue mostrando.
+  const ticket = await getTicket(id);
 
   return (
     // Bajo 1280 px, el margen derecho deja libre el botón fijo del Asistente IA.
@@ -133,14 +132,9 @@ export default async function TicketDetailPage({ params }: TicketDetailPageProps
             apruebe el contrato backend–ML.
           </div>
 
-          {/* La clave reinicia el panel cuando el servidor entrega otra versión (router.refresh) */}
-          <AssistantRecommendation
-            key={recommendation ? `${recommendation.id}:${recommendation.status}` : "none"}
-            ticketId={ticket.id}
-            initialRecommendation={recommendation}
-          />
-
-          <RecommendationHistory recommendations={previous} />
+          <Suspense fallback={<TicketRecommendationsFallback />}>
+            <TicketRecommendations ticketId={ticket.id} />
+          </Suspense>
         </AssistantPanel>
       </div>
     </div>
