@@ -27,8 +27,9 @@ La petición requiere [SEC-01B](comunicacion-interna-segura-v1.md) con TLS direc
 una única cookie de sesión del nombre configurado, Origin
 público explícitamente permitido y un único `X-CSRF-Token` válido ligado a esa
 sesión. Las cookies de autenticación duplicadas, malformadas o de perfiles
-mezclados se rechazan con 401 en la búsqueda. El proxy solo reenvía la cookie
-de sesión y FastAPI valida la credencial. Se reutilizan las
+mezclados se rechazan con 401 al validar las cookies de la búsqueda. El proxy
+reenvía solo las cookies reservadas y preserva las apariciones ambiguas.
+FastAPI valida la representación y exige una sesión válida. Se reutilizan las
 verificaciones de usuario activo, rol admitido, revocación y vencimientos de los
 servicios existentes. La consulta no renueva actividad de sesión; su política
 general sigue pendiente. La transacción de autorización termina antes de emitir

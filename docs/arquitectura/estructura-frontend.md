@@ -12,8 +12,9 @@ fijo de servidor; no es un proxy abierto ni implementa las otras rutas de API.
 
 `lib/search-contract.ts` valida estados y fragmentos. La ruta de búsqueda aplica
 sus validaciones de dominio en `lib/server/search-proxy.ts` y usa el canal
-SEC-01B de `lib/backend-proxy.ts`, compartido con el proxy general y SSR. El
-proxy valida la representación de las cookies y FastAPI valida la sesión.
+SEC-01B de `lib/backend-proxy.ts`, compartido con el proxy general y SSR. La
+búsqueda filtra las cookies reservadas y preserva las representaciones
+ambiguas para que FastAPI valide las cookies y la sesión.
 Si FastAPI responde
 `429 RATE_LIMITED`, el proxy conserva el estado y un `Retry-After` válido.
 La interfaz distingue base vacía

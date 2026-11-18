@@ -82,6 +82,8 @@ def test_missing_or_duplicated_session_never_runs_model(client):
 
 @pytest.mark.parametrize("cookie", [
     "synapdesk_session_dev=valid ; analytics=ignored",
+    "synapdesk_session_dev=valid ;",
+    "synapdesk_session_dev=valid; synapdesk_session_dev=other",
     "synapdesk_session_dev=valid; synapdesk_session_dev =other",
     "synapdesk_session_dev=valid; synapdesk_session_dev",
     "synapdesk_session_dev=valid; __Host-synapdesk_csrf_context=other",

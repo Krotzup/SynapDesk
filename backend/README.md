@@ -339,6 +339,34 @@ El [contrato V1](../docs/contratos/recuperacion-semantica-v1.md) define estados,
 errores, límites y metadatos. Las pruebas de búsqueda viven en
 `pruebas/test_busqueda.py` y `pruebas/integracion/test_busqueda_semantica.py`.
 
+### Verificación de búsqueda antes de habilitarla
+
+El CI ordinario comprueba el canal TLS y las pruebas unitarias de búsqueda.
+El job PostgreSQL de autenticación excluye `test_busqueda_semantica.py` y
+`search-tests.yml` no configura las bases semánticas. Por eso, sus checks
+verdes no acreditan esa integración con el modelo real.
+
+Antes de activar `SEARCH_ENABLED`, ejecuta el archivo de integración en
+`db_test` con `EJECUTAR_PRUEBAS_BD=1`, una base de autenticación desechable
+migrada y tres bases semánticas de ensayo independientes:
+
+- `SYNAPDESK_SEMANTIC_TEST_DATABASE_URL` y `SEARCH_TEST_PROFILE` apuntan al
+  corpus de ensayo preparado y al perfil V2 que corresponde a ese índice.
+  La prueba utiliza los ejemplos de conectividad e impresora de
+  [ml/examples](../ml/examples/) con sus UUID fijos.
+- `SEARCH_TEST_EMPTY_URL` apunta a una base con el esquema inicializado y
+  sin documentos. `SEARCH_TEST_UNPREPARED_URL` apunta a otra sin ese esquema.
+
+Desde `backend/`:
+
+```powershell
+python -m pytest pruebas/integracion/test_busqueda_semantica.py -q -rs
+```
+
+Registra el commit y confirma que pasaron todos los casos sin omisiones.
+Mide también la ocupación de conexiones de la base principal bajo carga,
+según el [ensayo de concurrencia](../docs/gestion/mejora-recuperacion-semantica.md#evaluación-adicional-y-concurrencia).
+
 ## Organización
 
 | Ruta | Responsabilidad |

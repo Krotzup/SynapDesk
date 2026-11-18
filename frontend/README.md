@@ -72,15 +72,16 @@ backend `https://localhost:8000` con certificado de confianza y origen permitido
 flujo de cookies. Los nombres concretos de cookies y el despliegue de autenticación
 requieren su configuración acordada; no se aprueban automáticamente propuestas.
 
-La ruta reenvía solo la cookie autorizada, Origin, CSRF, Content-Type y
+La ruta reenvía las cookies de autenticación reservadas, Origin, CSRF, Content-Type y
 Sec-Fetch-Site cuando existe. Descarta Authorization y las cabeceras de IP
 aportadas por el cliente y agrega su propio bearer SEC-01B. Rechaza destinos/redirecciones
-arbitrarios y cookies ambiguas; usa no-store, plazo finito y errores saneados.
+arbitrarios y usa no-store, plazo finito y errores saneados. FastAPI
+rechaza cookies ambiguas a partir de la representación original.
 No funciona como proxy genérico para otras rutas.
 
 El proxy general atiende `/auth/me` y `/auth/csrf`. La ruta específica de
 búsqueda usa el mismo canal SEC-01B que el proxy general y SSR. Conserva su
-límite de 8192 bytes, valida Origin y reenvía solo la cookie de sesión. El
+límite de 8192 bytes y valida Origin. El
 plazo común cubre la lectura de la petición y la respuesta. Según P8, tras
 `CSRF_INVALID` la próxima acción manual obtiene un token nuevo.
 

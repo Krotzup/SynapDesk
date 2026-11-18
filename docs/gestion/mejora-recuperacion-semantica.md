@@ -203,6 +203,21 @@ del modelo aumentó con sesiones independientes. La causa de la mayor latencia
 con sesión compartida queda por medir, incluida la posible espera por bloqueos
 SQL. Los valores corresponden a un entorno local y una sola consulta.
 
+`service.buscar(...)` se ejecuta dentro de `transaccion_seguridad`. Por eso
+la conexión del backend permanece ocupada también durante la espera del
+bloqueo del modelo y el cálculo del embedding. Antes de habilitar la búsqueda,
+repite el ensayo con un corpus y carga representativos. Compara el p95 de
+latencia, el p95 de ocupación y el máximo de conexiones simultáneas con el
+tamaño del pool. Distingue las sesiones compartidas de las independientes
+y registra errores o timeouts. Mantén la transacción de autorización mientras
+se reúnen esos datos.
+
+La repetición local con el respaldo del piloto devolvió HTTP 200 en las 124
+solicitudes. Con ocho búsquedas simultáneas se observaron hasta ocho conexiones
+ocupadas. El p95 de ocupación fue de 1836 ms con sesión compartida y 1095 ms
+con sesiones independientes. El ensayo conserva una sola consulta y sesiones
+ficticias. La medición con carga representativa sigue pendiente.
+
 Para repetir el ensayo, restaura o indexa el corpus en una base local
 desechable `synapdesk_semantic_*_test` y comprueba que el perfil V2 corresponde
 a ese índice. Prepara otra base local desechable `synapdesk_backend_*_test`

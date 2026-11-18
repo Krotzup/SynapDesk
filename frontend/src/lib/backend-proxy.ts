@@ -26,9 +26,7 @@ const COOKIE_PROFILES = {
 
 // Nombres reservados de los dos perfiles. Hacia FastAPI se reenvían todas sus apariciones, tal
 // como llegaron, para que el backend rechace una cookie mal formada, repetida o de otro perfil.
-export const RESERVED_COOKIE_NAMES: ReadonlySet<string> = new Set(
-  Object.values(COOKIE_PROFILES).flat()
-);
+const RESERVED_COOKIE_NAMES: ReadonlySet<string> = new Set(Object.values(COOKIE_PROFILES).flat());
 
 // Hacia FastAPI solo viajan estas cabeceras del navegador. Se descartan, entre otras, Host,
 // Authorization, X-Forwarded-*, Forwarded, X-Real-IP, X-SynapDesk-Client-IP y X-Request-ID.
@@ -139,17 +137,29 @@ function stripOws(value: string): string {
  * otro perfil no se descarta ni se elige un valor: llega al backend, que la rechaza (P1). Las
  * demás cookies del navegador no se reenvían.
  */
-export function filterCookieHeader(cookieHeader: string | null): string | null {
+export function filterCookieHeader(
+  cookieHeader: string | null,
+  { preservePairEvidence = false } = {}
+): string | null {
   if (!cookieHeader) return null;
   const kept = cookieHeader
     .split(";")
-    .map(stripOws)
+    .map((part) => (preservePairEvidence ? part.replace(/^[ \t]+/, "") : stripOws(part)))
     .filter((part) => {
       const separator = part.indexOf("=");
-      const name = stripOws(separator === -1 ? part : part.slice(0, separator));
+      const rawName = separator === -1 ? part : part.slice(0, separator);
+      // En búsqueda se conserva incluso un nombre con espacio no canónico para
+      // que FastAPI pueda rechazarlo junto con el resto de la evidencia.
+      const name = preservePairEvidence
+        ? rawName.replace(/^[\s\u0085]+|[\s\u0085]+$/g, "")
+        : stripOws(rawName);
       return RESERVED_COOKIE_NAMES.has(name);
     });
-  return kept.length > 0 ? kept.join("; ") : null;
+  if (!kept.length) return null;
+  const filtered = kept.join("; ");
+  // Headers elimina OWS al final de la cabecera. Mantener un delimitador si
+  // se filtró el par que seguía a un valor con espacios sin recortar.
+  return preservePairEvidence && /[ \t]$/.test(filtered) ? `${filtered};` : filtered;
 }
 
 /** Nombre de la cookie de una cabecera Set-Cookie ("nombre=valor; atributos"). */

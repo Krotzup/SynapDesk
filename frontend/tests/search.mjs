@@ -124,16 +124,13 @@ test("fixed same-origin proxy forwards only session, origin and CSRF without red
   assert.equal(response.headers.get("set-cookie"), null);
 });
 
-test("ambiguous cookies, invalid origin and missing CSRF are rejected before contacting backend", async () => {
+test("no auth cookies, invalid origin and missing CSRF are rejected before contacting backend", async () => {
   let calls = 0;
   const send = async () => {
     calls++;
     throw new Error();
   };
   for (const [headers, status] of [
-    [{ Cookie: `synapdesk_session_dev=${sid}; synapdesk_session_dev=${sid}` }, 401],
-    [{ Cookie: "synapdesk_session_dev=" }, 401],
-    [{ Cookie: "synapdesk_session_dev=one,two" }, 401],
     [{ Cookie: "other=value" }, 401],
     [{ Origin: "https://evil.invalid" }, 403],
     [{ "X-CSRF-Token": "" }, 403],
@@ -158,18 +155,25 @@ test("valid cookie pairs preserve the credential without forwarding unrelated co
   assert.equal(response.status, 200);
 });
 
-test("malformed auth cookies are rejected without normalizing or dropping them", async () => {
-  for (const cookie of [
-    `synapdesk_session_dev=${sid} ; analytics=ignored`,
+test("ambiguous auth cookies reach FastAPI without normalizing or dropping evidence", async () => {
+  for (const expected of [
+    `synapdesk_session_dev=${sid} ;`,
+    `synapdesk_session_dev=${sid}; synapdesk_session_dev=${sid}`,
     `synapdesk_session_dev=${sid}; synapdesk_session_dev =${sid}`,
     `synapdesk_session_dev=${sid}; synapdesk_session_dev`,
+    `synapdesk_session_dev=${sid}; \u00A0synapdesk_session_dev=other`,
     `synapdesk_session_dev="${sid}"`,
     `synapdesk_session_dev=${sid}=`,
+    "synapdesk_session_dev=",
+    "synapdesk_session_dev=one,two",
   ]) {
     const response = await forwardSemanticSearch(
-      request(undefined, { Cookie: cookie }),
+      request(undefined, { Cookie: `${expected.replace(/;$/, "")}; analytics=ignored` }),
       config,
-      async () => assert.fail("Una cookie malformada no debe reenviarse")
+      async (_, init) => {
+        assert.equal(init.headers.get("cookie"), expected);
+        return Response.json({ error: { code: "AUTHENTICATION_REQUIRED" } }, { status: 401 });
+      }
     );
     assert.equal(response.status, 401);
     assert.equal((await response.json()).error.code, "AUTHENTICATION_REQUIRED");
@@ -381,7 +385,7 @@ test("cookie profiles match the shared proxy and reject conflicting settings", a
       profiledRequest(),
       profileConfig,
       async (_, init) => {
-        assert.equal(init.headers.get("cookie"), cookie);
+        assert.equal(init.headers.get("cookie"), `${cookie}; ${context}=${sid}`);
         return Response.json({ status: "no_documents", items: [] });
       }
     );
@@ -389,7 +393,10 @@ test("cookie profiles match the shared proxy and reject conflicting settings", a
     const mixed = await forwardSemanticSearch(
       request(undefined, { Cookie: `${cookie}; ${otherContext}=${sid}` }),
       profileConfig,
-      async () => assert.fail("No debe reenviar perfiles mezclados")
+      async (_, init) => {
+        assert.equal(init.headers.get("cookie"), `${cookie}; ${otherContext}=${sid}`);
+        return Response.json({ error: { code: "AUTHENTICATION_REQUIRED" } }, { status: 401 });
+      }
     );
     assert.equal(mixed.status, 401);
     const incompatible = await forwardSemanticSearch(

@@ -2,9 +2,9 @@ import {
   API_PREFIX,
   BACKEND_TIMEOUT_MS,
   callBackend,
+  filterCookieHeader,
   getBackendConfig,
   readLimited,
-  RESERVED_COOKIE_NAMES,
 } from "../backend-proxy";
 import { parseSearchResponse } from "../search-contract";
 
@@ -72,36 +72,6 @@ function rateLimited(response: Response, requestId: string | undefined) {
   return failure(429, "RATE_LIMITED", requestId);
 }
 
-function readSessionCookie(
-  header: string,
-  sessionName: string,
-  contextName: string
-): string | undefined {
-  const seen = new Set<string>();
-  let sessionCookie: string | undefined;
-  for (const segment of header.split(";")) {
-    // Solo SP/HTAB antes del par separan cookies. No recortar el valor.
-    const pair = segment.replace(/^[ \t]+/, "");
-    const separator = pair.indexOf("=");
-    const rawName = separator < 0 ? pair : pair.slice(0, separator);
-    const name = rawName.trim();
-    if (!RESERVED_COOKIE_NAMES.has(name)) continue;
-    if (
-      (name !== sessionName && name !== contextName) ||
-      name !== rawName ||
-      separator < 0 ||
-      seen.has(name)
-    ) {
-      return undefined;
-    }
-    const value = pair.slice(separator + 1);
-    if (!value || value.length > 4096 || /[^A-Za-z0-9_-]/.test(value)) return undefined;
-    seen.add(name);
-    if (name === sessionName) sessionCookie = pair;
-  }
-  return sessionCookie;
-}
-
 function validPublicOrigin(value: string | undefined, localProfile: boolean): boolean {
   if (!value || !URL.canParse(value)) return false;
   const origin = new URL(value);
@@ -118,8 +88,8 @@ export async function forwardSemanticSearch(
 ): Promise<Response> {
   const backend = getBackendConfig("proxy");
   if (!backend) return failure(503, "SERVICE_UNAVAILABLE");
-  // El perfil común devuelve primero la cookie de sesión y luego la de contexto.
-  const [cookieName, contextName] = backend.cookieNames;
+  // En el perfil común, la sesión precede a la cookie de contexto.
+  const [cookieName] = backend.cookieNames;
   if (
     !validPublicOrigin(config.publicOrigin, process.env.AUTH_COOKIE_PROFILE === "local") ||
     (config.sessionCookieName !== undefined && config.sessionCookieName !== cookieName)
@@ -128,7 +98,7 @@ export async function forwardSemanticSearch(
   }
   if (request.method !== "POST") return failure(405, "VALIDATION_ERROR");
   if (request.headers.get("origin") !== config.publicOrigin) return failure(403, "ORIGIN_INVALID");
-  const cookie = readSessionCookie(request.headers.get("cookie") ?? "", cookieName, contextName);
+  const cookie = filterCookieHeader(request.headers.get("cookie"), { preservePairEvidence: true });
   if (!cookie) {
     return failure(401, "AUTHENTICATION_REQUIRED");
   }

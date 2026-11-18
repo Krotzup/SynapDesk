@@ -88,6 +88,11 @@ function handle(req, res) {
         })
       );
     } else if (path === "/api/v1/search") {
+      if (req.headers.cookie === "synapdesk_session_dev=credencial-sesion ;") {
+        res.writeHead(401, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: { code: "AUTHENTICATION_REQUIRED" } }));
+        return;
+      }
       res.writeHead(200, { "Content-Type": "application/json", "Set-Cookie": [SESSION] });
       res.end(JSON.stringify({ status: "no_documents", items: [] }));
     } else if (path === "/api/v1/echo") {
@@ -314,6 +319,12 @@ test("la ruta específica de búsqueda comparte SEC-01B y conserva sus validacio
   assert.equal(lastHeaders.origin, origin);
   assert.equal(lastHeaders["x-csrf-token"], "token-de-prueba");
   assert.equal(lastHeaders["x-forwarded-for"], undefined);
+  const malformed = await search({
+    Cookie: "synapdesk_session_dev=credencial-sesion ; tracker=otro",
+  });
+  assert.equal(malformed.status, 401);
+  assert.equal((await malformed.json()).error.code, "AUTHENTICATION_REQUIRED");
+  assert.equal(lastHeaders.cookie, "synapdesk_session_dev=credencial-sesion ;");
   assert.equal((await search({ Cookie: "" })).status, 401);
   assert.equal((await search({ Origin: "https://other.invalid" })).status, 403);
   assert.equal((await search({ "X-CSRF-Token": "" })).status, 403);
@@ -321,7 +332,7 @@ test("la ruta específica de búsqueda comparte SEC-01B y conserva sus validacio
     process.env.BACKEND_INTERNAL_URL = url;
     assert.equal((await search()).status, 503);
   }
-  assert.equal(hits, beforeSearch + 1);
+  assert.equal(hits, beforeSearch + 2);
 });
 
 // ── AUTH_COOKIE_PROFILE obligatoria ──
