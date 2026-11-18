@@ -1,21 +1,20 @@
+import {
+  API_PREFIX,
+  BACKEND_TIMEOUT_MS,
+  callBackend,
+  getBackendConfig,
+  readLimited,
+  RESERVED_COOKIE_NAMES,
+} from "../backend-proxy";
 import { parseSearchResponse } from "../search-contract";
 
 export interface SearchProxyConfig {
-  backendUrl?: string;
   publicOrigin?: string;
   sessionCookieName?: string;
-  cookieProfile?: string;
-  serviceCredential?: string;
 }
 
 const noStore = { "Cache-Control": "no-store" };
-const cookieProfiles = {
-  local: { session: "synapdesk_session_dev", context: "synapdesk_csrf_context_dev" },
-  production: { session: "__Host-synapdesk_session", context: "__Host-synapdesk_csrf_context" },
-};
-const authCookieNames = new Set<string>(
-  Object.values(cookieProfiles).flatMap(({ session, context }) => [session, context])
-);
+const MAX_SEARCH_BODY_BYTES = 8192;
 const messages: Record<string, string> = {
   SERVICE_UNAVAILABLE: "El servicio no está disponible en este momento.",
   AUTHENTICATION_REQUIRED: "Debes iniciar sesión para buscar en los documentos.",
@@ -73,25 +72,11 @@ function rateLimited(response: Response, requestId: string | undefined) {
   return failure(429, "RATE_LIMITED", requestId);
 }
 
-function sessionCookieName(config: SearchProxyConfig): string {
-  let profileName: string | undefined;
-  if (config.cookieProfile === "local") profileName = cookieProfiles.local.session;
-  else if (config.cookieProfile === "production") profileName = cookieProfiles.production.session;
-  else if (config.cookieProfile !== undefined) throw new Error("Perfil de cookies inválido.");
-  const name = profileName ?? config.sessionCookieName;
-  if (
-    !name ||
-    !/^[A-Za-z0-9_-]{1,80}$/.test(name) ||
-    (profileName && config.sessionCookieName && config.sessionCookieName !== profileName)
-  )
-    throw new Error("Configuración de cookie incompatible.");
-  return name;
-}
-
-function readSessionCookie(header: string, sessionName: string): string | undefined {
-  const contextName = Object.values(cookieProfiles).find(
-    ({ session }) => session === sessionName
-  )?.context;
+function readSessionCookie(
+  header: string,
+  sessionName: string,
+  contextName: string
+): string | undefined {
   const seen = new Set<string>();
   let sessionCookie: string | undefined;
   for (const segment of header.split(";")) {
@@ -100,7 +85,7 @@ function readSessionCookie(header: string, sessionName: string): string | undefi
     const separator = pair.indexOf("=");
     const rawName = separator < 0 ? pair : pair.slice(0, separator);
     const name = rawName.trim();
-    if (name !== sessionName && !authCookieNames.has(name)) continue;
+    if (!RESERVED_COOKIE_NAMES.has(name)) continue;
     if (
       (name !== sessionName && name !== contextName) ||
       name !== rawName ||
@@ -117,85 +102,47 @@ function readSessionCookie(header: string, sessionName: string): string | undefi
   return sessionCookie;
 }
 
-function destination(config: SearchProxyConfig): string {
-  if (!config.backendUrl || !config.publicOrigin) throw new Error("Configuración incompleta.");
-  const url = new URL(config.backendUrl);
-  const origin = new URL(config.publicOrigin);
+function validPublicOrigin(value: string | undefined, localProfile: boolean): boolean {
+  if (!value || !URL.canParse(value)) return false;
+  const origin = new URL(value);
+  if (origin.origin !== value) return false;
   const publicLocal = ["localhost", "127.0.0.1", "[::1]"].includes(origin.hostname);
-  if (
-    url.protocol !== "https:" ||
-    (config.backendUrl !== url.origin && config.backendUrl !== `${url.origin}/`) ||
-    origin.origin !== config.publicOrigin ||
-    (origin.protocol !== "https:" &&
-      !(origin.protocol === "http:" && publicLocal && config.cookieProfile === "local"))
-  )
-    throw new Error("Destino no autorizado.");
-  return new URL("/api/v1/search", url).toString();
-}
-
-function serviceAuthorization(credential: string | undefined): string {
-  if (
-    !credential ||
-    !/^[A-Za-z0-9_-]{43}$/.test(credential) ||
-    Buffer.from(credential, "base64url").toString("base64url") !== credential
-  ) {
-    throw new Error("Credencial de servicio inválida.");
-  }
-  return `Bearer ${credential}`;
-}
-
-async function readBody(request: Request): Promise<string> {
-  const reader = request.body?.getReader();
-  if (!reader) throw new Error("Falta JSON.");
-  const parts: Uint8Array[] = [];
-  let length = 0;
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    length += value.length;
-    if (length > 8192) {
-      await reader.cancel();
-      throw new Error("Cuerpo excesivo.");
-    }
-    parts.push(value);
-  }
-  const bytes = new Uint8Array(length);
-  let offset = 0;
-  for (const part of parts) {
-    bytes.set(part, offset);
-    offset += part.length;
-  }
-  return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  return (
+    origin.protocol === "https:" || (origin.protocol === "http:" && publicLocal && localProfile)
+  );
 }
 
 export async function forwardSemanticSearch(
   request: Request,
-  config: SearchProxyConfig,
-  send: typeof fetch = fetch
+  config: SearchProxyConfig
 ): Promise<Response> {
-  let target: string;
-  let cookieName: string;
-  let authorization: string;
-  try {
-    target = destination(config);
-    cookieName = sessionCookieName(config);
-    authorization = serviceAuthorization(config.serviceCredential);
-  } catch {
+  const backend = getBackendConfig("proxy");
+  if (!backend) return failure(503, "SERVICE_UNAVAILABLE");
+  // El perfil común devuelve primero la cookie de sesión y luego la de contexto.
+  const [cookieName, contextName] = backend.cookieNames;
+  if (
+    !validPublicOrigin(config.publicOrigin, process.env.AUTH_COOKIE_PROFILE === "local") ||
+    (config.sessionCookieName !== undefined && config.sessionCookieName !== cookieName)
+  ) {
     return failure(503, "SERVICE_UNAVAILABLE");
   }
   if (request.method !== "POST") return failure(405, "VALIDATION_ERROR");
   if (request.headers.get("origin") !== config.publicOrigin) return failure(403, "ORIGIN_INVALID");
-  const cookie = readSessionCookie(request.headers.get("cookie") ?? "", cookieName);
+  const cookie = readSessionCookie(request.headers.get("cookie") ?? "", cookieName, contextName);
   if (!cookie) {
     return failure(401, "AUTHENTICATION_REQUIRED");
   }
   const csrf = request.headers.get("x-csrf-token");
   if (!csrf || csrf.length > 4096 || csrf.includes(",")) return failure(403, "CSRF_INVALID");
+  const signal = AbortSignal.timeout(BACKEND_TIMEOUT_MS);
+  const decoder = new TextDecoder("utf-8", { fatal: true });
   let payload: { query: string; limit: number };
   try {
     if (!(request.headers.get("content-type") ?? "").toLowerCase().startsWith("application/json"))
       throw new Error();
-    const body = JSON.parse(await readBody(request));
+    const bytes = await readLimited(request.body, MAX_SEARCH_BODY_BYTES, signal);
+    if (bytes === null) throw new Error();
+    const body = JSON.parse(decoder.decode(bytes));
     if (
       !body ||
       typeof body !== "object" ||
@@ -209,27 +156,29 @@ export async function forwardSemanticSearch(
       throw new Error();
     payload = { query: body.query.trim(), limit: body.limit ?? 5 };
   } catch {
+    if (signal.aborted) return failure(503, "SERVICE_UNAVAILABLE");
     return failure(422, "VALIDATION_ERROR");
   }
-  const headers: Record<string, string> = {
-    Authorization: authorization,
+  const headers = new Headers({
     "Content-Type": "application/json",
     Cookie: cookie,
     Origin: request.headers.get("origin")!,
     "X-CSRF-Token": csrf,
-  };
+  });
   const site = request.headers.get("sec-fetch-site");
-  if (site) headers["Sec-Fetch-Site"] = site;
+  if (site) headers.set("Sec-Fetch-Site", site);
   try {
-    const response = await send(target, {
-      method: "POST",
-      body: JSON.stringify(payload),
-      headers,
-      cache: "no-store",
-      redirect: "error",
-      signal: AbortSignal.timeout(30000),
-    });
-    const body = await response.json();
+    const { response, body: bytes } = await callBackend(
+      backend,
+      {
+        method: "POST",
+        path: `${API_PREFIX}/search`,
+        headers,
+        body: new TextEncoder().encode(JSON.stringify(payload)),
+      },
+      signal
+    );
+    const body = JSON.parse(decoder.decode(bytes ?? undefined));
     if (!response.ok) {
       const code = body?.error?.code;
       const id = body?.error?.requestId;

@@ -1,16 +1,46 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import client from "../artifacts/search-tests/lib/api.js";
-import proxy from "../artifacts/search-tests/lib/server/search-proxy.js";
-import contract from "../artifacts/search-tests/lib/search-contract.js";
-const { forwardSemanticSearch } = proxy;
-const { parseSearchResponse, safeSourceUrl, emptySearchMessage, groupSearchResults } = contract;
+import { api } from "../src/lib/api.ts";
+import { forwardSemanticSearch as search } from "../src/lib/server/search-proxy.ts";
+import {
+  parseSearchResponse,
+  safeSourceUrl,
+  emptySearchMessage,
+  groupSearchResults,
+} from "../src/lib/search-contract.ts";
 const config = {
   backendUrl: "https://backend.invalid",
   publicOrigin: "https://desk.invalid",
-  sessionCookieName: "test_session",
+  cookieProfile: "local",
   serviceCredential: Buffer.alloc(32, 7).toString("base64url"),
 };
+
+async function forwardSemanticSearch(request, config, send = fetch) {
+  const overrides = {
+    BACKEND_INTERNAL_URL: config.backendUrl,
+    AUTH_COOKIE_PROFILE: config.cookieProfile,
+    BACKEND_SERVICE_CREDENTIAL: config.serviceCredential,
+  };
+  const previous = Object.fromEntries(
+    Object.keys(overrides).map((name) => [name, process.env[name]])
+  );
+  function assign(values) {
+    for (const [name, value] of Object.entries(values)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  }
+
+  const originalFetch = globalThis.fetch;
+  assign(overrides);
+  globalThis.fetch = send;
+  try {
+    return await search(request, config);
+  } finally {
+    globalThis.fetch = originalFetch;
+    assign(previous);
+  }
+}
 const sid = "A".repeat(43);
 const item = {
   documentId: "11111111-1111-4111-8111-111111111111",
@@ -27,7 +57,7 @@ function request(body = { query: "DNS", limit: 5 }, headers = {}) {
     headers: {
       "Content-Type": "application/json",
       Origin: "https://desk.invalid",
-      Cookie: `analytics=ignored; test_session=${sid}`,
+      Cookie: `analytics=ignored; synapdesk_session_dev=${sid}`,
       "X-CSRF-Token": "synthetic-token",
       ...headers,
     },
@@ -85,10 +115,10 @@ test("fixed same-origin proxy forwards only session, origin and CSRF without red
   );
   assert.equal(response.status, 200);
   assert.equal(captured.url, "https://backend.invalid/api/v1/search");
-  assert.equal(captured.options.headers.Cookie, `test_session=${sid}`);
-  assert.equal(captured.options.headers.Authorization, `Bearer ${config.serviceCredential}`);
-  assert.equal(captured.options.headers["X-Forwarded-For"], undefined);
-  assert.equal(captured.options.redirect, "error");
+  assert.equal(captured.options.headers.get("cookie"), `synapdesk_session_dev=${sid}`);
+  assert.equal(captured.options.headers.get("authorization"), `Bearer ${config.serviceCredential}`);
+  assert.equal(captured.options.headers.get("x-forwarded-for"), null);
+  assert.equal(captured.options.redirect, "manual");
   assert.equal(captured.options.cache, "no-store");
   assert.equal(response.headers.get("cache-control"), "no-store");
   assert.equal(response.headers.get("set-cookie"), null);
@@ -101,9 +131,9 @@ test("ambiguous cookies, invalid origin and missing CSRF are rejected before con
     throw new Error();
   };
   for (const [headers, status] of [
-    [{ Cookie: `test_session=${sid}; test_session=${sid}` }, 401],
-    [{ Cookie: "test_session=" }, 401],
-    [{ Cookie: "test_session=one,two" }, 401],
+    [{ Cookie: `synapdesk_session_dev=${sid}; synapdesk_session_dev=${sid}` }, 401],
+    [{ Cookie: "synapdesk_session_dev=" }, 401],
+    [{ Cookie: "synapdesk_session_dev=one,two" }, 401],
     [{ Cookie: "other=value" }, 401],
     [{ Origin: "https://evil.invalid" }, 403],
     [{ "X-CSRF-Token": "" }, 403],
@@ -116,12 +146,12 @@ test("ambiguous cookies, invalid origin and missing CSRF are rejected before con
 });
 
 test("valid cookie pairs preserve the credential without forwarding unrelated cookies", async () => {
-  const cookie = `test_session=${sid}`;
+  const cookie = `synapdesk_session_dev=${sid}`;
   const response = await forwardSemanticSearch(
     request(undefined, { Cookie: `analytics=ignored; \t${cookie}; unrelated=value` }),
     config,
     async (_, init) => {
-      assert.equal(init.headers.Cookie, cookie);
+      assert.equal(init.headers.get("cookie"), cookie);
       return Response.json({ status: "no_documents", items: [] });
     }
   );
@@ -130,11 +160,11 @@ test("valid cookie pairs preserve the credential without forwarding unrelated co
 
 test("malformed auth cookies are rejected without normalizing or dropping them", async () => {
   for (const cookie of [
-    `test_session=${sid} ; analytics=ignored`,
-    `test_session=${sid}; test_session =${sid}`,
-    `test_session=${sid}; test_session`,
-    `test_session="${sid}"`,
-    `test_session=${sid}=`,
+    `synapdesk_session_dev=${sid} ; analytics=ignored`,
+    `synapdesk_session_dev=${sid}; synapdesk_session_dev =${sid}`,
+    `synapdesk_session_dev=${sid}; synapdesk_session_dev`,
+    `synapdesk_session_dev="${sid}"`,
+    `synapdesk_session_dev=${sid}=`,
   ]) {
     const response = await forwardSemanticSearch(
       request(undefined, { Cookie: cookie }),
@@ -173,9 +203,8 @@ test("a rejected search POST stays rejected and a manual retry gets a fresh CSRF
       ? Response.json(error, { status: 403 })
       : Response.json({ status: "no_documents", items: [] });
   });
-  const search = () =>
-    client.api.postSameOrigin("/search", { query: "DNS" }, { retryOnCsrfInvalid: false });
-  await assert.rejects(search(), (actual) => {
+  const submit = () => api.post("/search", { query: "DNS" });
+  await assert.rejects(submit(), (actual) => {
     assert.deepEqual(actual, error);
     return true;
   });
@@ -183,7 +212,7 @@ test("a rejected search POST stays rejected and a manual retry gets a fresh CSRF
     ["GET", "/api/v1/auth/csrf", undefined],
     ["POST", "/api/v1/search", "token-1"],
   ]);
-  assert.deepEqual(await search(), { status: "no_documents", items: [] });
+  assert.deepEqual(await submit(), { status: "no_documents", items: [] });
   assert.deepEqual(attempts.slice(2), [
     ["GET", "/api/v1/auth/csrf", undefined],
     ["POST", "/api/v1/search", "token-2"],
@@ -285,6 +314,25 @@ test("invalid or excessive requests do not echo their contents", async () => {
   }
 });
 
+test("search keeps its 8192-byte input limit and rejects malformed UTF-8", async () => {
+  const body = '{"query":"DNS"}';
+  const headers = request().headers;
+  const withBody = (payload) =>
+    new Request("https://desk.invalid/api/v1/search", { method: "POST", headers, body: payload });
+  let calls = 0;
+  const send = async () => {
+    calls++;
+    return Response.json({ status: "no_documents", items: [] });
+  };
+
+  const exact = body.padEnd(8192);
+  assert.equal((await forwardSemanticSearch(withBody(exact), config, send)).status, 200);
+  assert.equal((await forwardSemanticSearch(withBody(exact + " "), config, send)).status, 422);
+  const malformed = Uint8Array.from([...new TextEncoder().encode('{"query":"'), 0xff, 34, 125]);
+  assert.equal((await forwardSemanticSearch(withBody(malformed), config, send)).status, 422);
+  assert.equal(calls, 1);
+});
+
 test("upstream errors and network failures never expose provider messages or private data", async () => {
   const failed = await forwardSemanticSearch(request(), config, async () => {
     throw new Error("private-credentials");
@@ -333,7 +381,7 @@ test("cookie profiles match the shared proxy and reject conflicting settings", a
       profiledRequest(),
       profileConfig,
       async (_, init) => {
-        assert.equal(init.headers.Cookie, cookie);
+        assert.equal(init.headers.get("cookie"), cookie);
         return Response.json({ status: "no_documents", items: [] });
       }
     );

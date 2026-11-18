@@ -310,8 +310,8 @@ Configurar en el proceso o `.env` privado:
 - `SEARCH_RELEVANCE_PROFILE` para el perfil V2 existente, en ruta absoluta o
   relativa a la raíz del repositorio.
 - `AUTH_COOKIE_PROFILE` explícito (`local` o `production`) compartido con Next.js.
-  En ensayos sin perfil se puede configurar `SEARCH_SESSION_COOKIE_NAME` en
-  ambos procesos. Los valores incompatibles impiden autorizar la búsqueda.
+  El canal de Next.js exige el perfil. Si se declara `SEARCH_SESSION_COOKIE_NAME`
+  junto al perfil, el nombre debe coincidir en ambos procesos.
 - `AUTH_ORIGENES_PERMITIDOS` con los orígenes públicos autorizados.
 - `AUTH_INTERMEDIARIO` con la política SEC-01B del entorno y el digest de la
   credencial que usa Next.js. Consulta [el contrato SEC-01B](../docs/contratos/comunicacion-interna-segura-v1.md).

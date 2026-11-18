@@ -13,13 +13,7 @@ interface SearchRequest {
 const searchApi = {
   // Fragmentos de la base de conocimientos más cercanos a la consulta
   semantic: (query: string, limit = 5): Promise<SearchResponse> =>
-    api
-      .postSameOrigin<SearchResponse, SearchRequest>(
-        "/search",
-        { query, limit },
-        { retryOnCsrfInvalid: false }
-      )
-      .then(parseSearchResponse),
+    api.post<SearchResponse, SearchRequest>("/search", { query, limit }).then(parseSearchResponse),
 };
 
 export type SearchService = typeof searchApi;

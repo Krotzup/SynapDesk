@@ -1,8 +1,11 @@
+// Componentes de servidor: directo a BACKEND_INTERNAL_URL con las cookies permitidas (SSR).
+// Componentes cliente: rutas relativas /api/v1/* hacia el proxy de mismo origen.
+// Next elige el archivo según la condición "react-server" (ver "imports" en package.json).
+import { getTransport } from "#transport";
 import { ApiError, CsrfToken } from "@/types";
 import { getAuthGeneration } from "./auth-sync";
 import { clearCsrfToken, getCsrfToken } from "./csrf";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const API_PREFIX = "/api/v1";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -11,8 +14,6 @@ interface RequestOptions<TBody = unknown> {
   method?: HttpMethod;
   body?: TBody;
   headers?: Record<string, string>;
-  sameOrigin?: boolean;
-  retryOnCsrfInvalid?: boolean;
 }
 
 const MUTATING_METHODS: ReadonlySet<HttpMethod> = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -33,7 +34,7 @@ const sessionChangedError = (): ApiError => ({
     code: SESSION_CHANGED,
     message: "La sesión cambió mientras se preparaba la solicitud.",
     details: null,
-    requestId: "",
+    requestId: crypto.randomUUID(),
   },
 });
 
@@ -42,30 +43,20 @@ async function send<TResponse, TBody>(
   options: RequestOptions<TBody>,
   csrfToken?: string
 ): Promise<TResponse> {
-  if (options.sameOrigin) {
-    const response = await fetch(`${API_PREFIX}${endpoint}`, {
-      method: options.method ?? "GET",
-      credentials: "same-origin",
-      cache: "no-store",
-      headers: {
-        "Content-Type": "application/json",
-        ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {}),
-        ...options.headers,
-      },
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
-    });
-    return readResponse<TResponse>(response);
-  }
   const { method = "GET", body, headers = {} } = options;
+  const transport = await getTransport();
 
   const config: RequestInit = {
     method,
-    // Con el proxy de mismo origen, el navegador enviará la cookie de sesión.
+    // Con el proxy de mismo origen, el navegador envía la cookie de sesión.
     credentials: "same-origin",
+    // Respuestas privadas: sin caché compartida entre usuarios.
+    cache: "no-store",
     headers: {
       "Content-Type": "application/json",
       ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {}),
       ...headers,
+      ...transport.headers,
     },
   };
 
@@ -73,19 +64,20 @@ async function send<TResponse, TBody>(
     config.body = JSON.stringify(body);
   }
 
-  const response = await fetch(`${BASE_URL}${API_PREFIX}${endpoint}`, config);
+  const response = await transport.fetch(`${transport.baseUrl}${API_PREFIX}${endpoint}`, config);
 
   return readResponse<TResponse>(response);
 }
 
 async function readResponse<TResponse>(response: Response): Promise<TResponse> {
   if (!response.ok) {
+    // Si la respuesta no trae el formato del contrato, se genera un error con requestId propio.
     const errorBody: ApiError = await response.json().catch(() => ({
       error: {
         code: "UNKNOWN_ERROR",
         message: "Error desconocido",
         details: null,
-        requestId: "",
+        requestId: crypto.randomUUID(),
       },
     }));
     throw new HttpError(response.status, errorBody);
@@ -99,11 +91,9 @@ async function readResponse<TResponse>(response: Response): Promise<TResponse> {
   return response.json() as Promise<TResponse>;
 }
 
-const fetchCsrfToken = (sameOrigin = false) =>
-  send<CsrfToken, never>("/auth/csrf", { method: "GET", sameOrigin });
+const fetchCsrfToken = () => send<CsrfToken, never>("/auth/csrf", { method: "GET" });
 
-// Solo un 403 con código CSRF_INVALID permite el reintento: el mismo código con otro estado,
-// u otro código con 403, no se reintentan.
+// P8: descartar un token rechazado para que la próxima acción manual lo renueve.
 function isCsrfInvalid(error: unknown): boolean {
   return (
     error instanceof HttpError && error.status === 403 && error.body.error.code === "CSRF_INVALID"
@@ -123,17 +113,13 @@ async function request<TResponse, TBody = unknown>(
     // La sesión no debe cambiar (ni login ni logout, tampoco en otra pestaña) entre que se pide
     // el token y se envía la mutación; si cambia, la mutación no se envía.
     const generation = getAuthGeneration();
-    const token = await getCsrfToken(() => fetchCsrfToken(options.sameOrigin));
+    const token = await getCsrfToken(fetchCsrfToken);
     if (getAuthGeneration() !== generation) throw sessionChangedError();
     try {
       return await send<TResponse, TBody>(endpoint, options, token);
     } catch (error) {
-      if (!isCsrfInvalid(error) || getAuthGeneration() !== generation) throw error;
-      clearCsrfToken();
-      if (options.retryOnCsrfInvalid === false) throw error;
-      const freshToken = await getCsrfToken(() => fetchCsrfToken(options.sameOrigin));
-      if (getAuthGeneration() !== generation) throw sessionChangedError();
-      return await send<TResponse, TBody>(endpoint, options, freshToken);
+      if (isCsrfInvalid(error) && getAuthGeneration() === generation) clearCsrfToken();
+      throw error;
     }
   } catch (error) {
     // Hacia afuera se mantiene el formato del contrato: { error: { code, message, ... } }.
@@ -142,11 +128,6 @@ async function request<TResponse, TBody = unknown>(
 }
 
 export const api = {
-  postSameOrigin: <TResponse, TBody = unknown>(
-    endpoint: string,
-    body: TBody,
-    options: Pick<RequestOptions, "retryOnCsrfInvalid"> = {}
-  ) => request<TResponse, TBody>(endpoint, { method: "POST", body, sameOrigin: true, ...options }),
   get: <TResponse>(endpoint: string, headers?: Record<string, string>) =>
     request<TResponse>(endpoint, { method: "GET", headers }),
 

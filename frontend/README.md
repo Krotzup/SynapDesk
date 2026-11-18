@@ -64,8 +64,8 @@ Configurar exclusivamente en el servidor Next.js:
 | `BACKEND_INTERNAL_URL`       | Origen HTTPS fijo de FastAPI. Nunca se acepta del cliente ni se expone mediante NEXT_PUBLIC.                           |
 | `BACKEND_SERVICE_CREDENTIAL` | Credencial privada SEC-01B, de 32 bytes codificados en base64url canónico. Debe coincidir con la política del backend. |
 | `SEARCH_PUBLIC_ORIGIN`       | Origen público exacto, coincidente con el permitido por el backend.                                                    |
-| `AUTH_COOKIE_PROFILE`        | Perfil explícito `local` o `production`. Usar el mismo valor en FastAPI y en el proxy general de #30 al integrarlos.   |
-| `SEARCH_SESSION_COOKIE_NAME` | Alternativa de ensayo sin perfil. Si se configura junto al perfil, debe coincidir con él.                              |
+| `AUTH_COOKIE_PROFILE`        | Perfil obligatorio `local` o `production`. Usar el mismo valor en FastAPI y en Next.js.                                |
+| `SEARCH_SESSION_COOKIE_NAME` | Comprobación opcional del nombre. Si se configura, debe coincidir con la cookie de sesión del perfil.                  |
 
 Ejemplo de transporte local: frontend `http://localhost:3000` con perfil `local`,
 backend `https://localhost:8000` con certificado de confianza y origen permitido explícito. No mezclar hosts dentro del
@@ -78,11 +78,11 @@ aportadas por el cliente y agrega su propio bearer SEC-01B. Rechaza destinos/red
 arbitrarios y cookies ambiguas; usa no-store, plazo finito y errores saneados.
 No funciona como proxy genérico para otras rutas.
 
-Al combinar esta rama con el PR #30, el proxy general atiende `/auth/me`
-y `/auth/csrf`. La ruta específica de búsqueda aplica sus límites, valida el
-origen y reenvía solo la cookie de sesión. Ambos usan el mismo perfil de
-cookies y la configuración de SEC-01B. La ruta dedicada usa su propio adaptador
-hasta verificar la interoperabilidad con el transporte del #30.
+El proxy general atiende `/auth/me` y `/auth/csrf`. La ruta específica de
+búsqueda usa el mismo canal SEC-01B que el proxy general y SSR. Conserva su
+límite de 8192 bytes, valida Origin y reenvía solo la cookie de sesión. El
+plazo común cubre la lectura de la petición y la respuesta. Según P8, tras
+`CSRF_INVALID` la próxima acción manual obtiene un token nuevo.
 
 La pantalla diferencia resultados, base vacía e información insuficiente;
 muestra extractos, idioma y enlace HTTPS de la fuente cuando existen metadatos.
@@ -116,6 +116,7 @@ artefactos quedan excluidos de Git. Completar también `npm run lint` y
 | `npm run lint`         | Verificación de linting        |
 | `npm run format`       | Formatea todo el código        |
 | `npm run format:check` | Verifica formato sin modificar |
+| `npm run test:proxy`   | Pruebas proxy/SSR (unos 3 min) |
 
 ## Estado de implementación
 

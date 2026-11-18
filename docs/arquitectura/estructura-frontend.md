@@ -10,9 +10,11 @@ cookie de sesión, el Origin del navegador y la prueba CSRF vigente.
 El servicio llama al Route Handler dedicado `/api/v1/search`, con destino backend
 fijo de servidor; no es un proxy abierto ni implementa las otras rutas de API.
 
-`lib/search-contract.ts` valida estados y fragmentos, y `lib/server/search-proxy.ts`
-limita cuerpos, destinos, cabeceras y errores. El proxy filtra por nombre de
-cookie y deja a FastAPI validar la credencial. Si FastAPI responde
+`lib/search-contract.ts` valida estados y fragmentos. La ruta de búsqueda aplica
+sus validaciones de dominio en `lib/server/search-proxy.ts` y usa el canal
+SEC-01B de `lib/backend-proxy.ts`, compartido con el proxy general y SSR. El
+proxy valida la representación de las cookies y FastAPI valida la sesión.
+Si FastAPI responde
 `429 RATE_LIMITED`, el proxy conserva el estado y un `Retry-After` válido.
 La interfaz distingue base vacía
 de información insuficiente, presenta fuente/idioma cuando están disponibles y
@@ -147,7 +149,9 @@ Están documentadas en `.env.example` en la raíz del repositorio.
 
 | Variable | Descripción | Ejemplo |
 |---|---|---|
-| `NEXT_PUBLIC_API_URL` | URL base del backend FastAPI | `http://localhost:8000` |
+| `BACKEND_INTERNAL_URL` | Destino FastAPI del proxy de mismo origen y de las lecturas SSR: origen `https://` exacto (SEC-01B); solo de servidor. El navegador usa rutas relativas `/api/v1/*` | `https://127.0.0.1:8000` |
+| `BACKEND_SERVICE_CREDENTIAL` | Credencial de servicio SEC-01B que el proxy y el SSR envían como `Authorization: Bearer`; 32 bytes en base64url (43 caracteres), por entorno; solo de servidor. Nombre provisional (C07) | sin valor por omisión |
+| `AUTH_COOKIE_PROFILE` | Perfil de cookies: `local` (`synapdesk_*_dev`) o `production` (`__Host-synapdesk_*`); obligatoria, otro valor o ausente es un error de configuración (503); solo de servidor | sin valor por omisión |
 | `NEXT_PUBLIC_USE_MOCKS` | `true` para que los services devuelvan datos de ejemplo de `src/mocks`; cualquier otro valor llama al backend | `true` |
 
 El prefijo `NEXT_PUBLIC_` es obligatorio para que Next.js exponga la variable al navegador.

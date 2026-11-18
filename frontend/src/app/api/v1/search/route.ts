@@ -4,10 +4,7 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   return forwardSemanticSearch(request, {
-    backendUrl: process.env.BACKEND_INTERNAL_URL,
     publicOrigin: process.env.SEARCH_PUBLIC_ORIGIN,
     sessionCookieName: process.env.SEARCH_SESSION_COOKIE_NAME,
-    cookieProfile: process.env.AUTH_COOKIE_PROFILE,
-    serviceCredential: process.env.BACKEND_SERVICE_CREDENTIAL,
   });
 }

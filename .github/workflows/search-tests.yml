@@ -36,7 +36,6 @@ jobs:
     env:
       NEXT_TELEMETRY_DISABLED: "1"
       NEXT_PUBLIC_USE_MOCKS: "false"
-      NEXT_PUBLIC_API_URL: ""
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -46,5 +45,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm test
+      - name: Search route through the shared SEC-01B channel
+        run: npm run test:proxy -- --test-name-pattern="ruta específica de búsqueda"
       - run: npm run lint
       - run: npm run build

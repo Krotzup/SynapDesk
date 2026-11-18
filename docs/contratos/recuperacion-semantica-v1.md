@@ -12,9 +12,9 @@ El servicio está deshabilitado por defecto. Requiere conexión semántica, perf
 V2 calibrado y un perfil de cookies explícito compartido con Next.js. Para
 compatibilidad con el proxy de #30, `AUTH_COOKIE_PROFILE=local` selecciona
 `synapdesk_session_dev` y `AUTH_COOKIE_PROFILE=production` selecciona
-`__Host-synapdesk_session`. El despliegue y el flujo HTTP siguen sujetos a
-AUTH-07. En ensayos se admite el nombre explícito anterior. Si el nombre y el
-perfil se configuran juntos y discrepan, se rechaza la búsqueda.
+`__Host-synapdesk_session`. El proxy de búsqueda exige el perfil del canal
+común del #30. Si se declara un nombre explícito, debe coincidir con ese perfil.
+El despliegue y el flujo HTTP siguen sujetos a AUTH-07.
 
 ## Solicitud
 
@@ -36,6 +36,9 @@ la respuesta y no produce cookies nuevas.
 
 La credencial de servicio identifica a Next.js. La sesión, el Origin y el token
 CSRF siguen siendo controles independientes.
+La ruta específica de búsqueda reutiliza el transporte del proxy general y SSR,
+incluido el plazo que abarca la lectura del cuerpo y de la respuesta. La entrada
+de búsqueda mantiene su límite de 8192 bytes y UTF-8 estricto.
 
 ## Respuesta
 
