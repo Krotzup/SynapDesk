@@ -3,6 +3,8 @@
 La fábrica de FastAPI no importa ni instancia estos adaptadores. La procedencia
 HTTP sigue cerrada en obtener_ip_verificada. Los tests sustituyen esa dependencia
 solo con evidencia controlada; no hay parámetro que acepte una IP del cliente.
+MVP04 permite componer un proveedor de código exclusivamente en testing; la
+fábrica productiva no lo configura y conserva su cierre.
 """
 
 from collections.abc import Callable
@@ -35,6 +37,7 @@ from app.seguridad.login import (
     CredencialesLogin, LoginConfirmado, LoginRechazado, PruebaAnonimaLogin, PruebaSesionLogin, ServicioLogin,
 )
 from app.seguridad.operaciones_sesion import ReferenciaSesion, ServicioConsultaSesion, ServicioLogout
+from app.seguridad.proxies import IpVerificada
 from app.seguridad.transacciones import (
     CodigoSeguridad as C, ErrorSeguridad, Reloj, instante, reloj_postgresql, transaccion_seguridad,
 )
@@ -107,8 +110,11 @@ class AdaptadorAuth:
     """
 
     def __init__(self, motor: Engine, configuracion: Configuracion, perfil: PerfilCookies, *,
-                 capacidad_argon2: int, reloj: Reloj = reloj_postgresql) -> None:
+                 capacidad_argon2: int, reloj: Reloj = reloj_postgresql,
+                 procedencia_ip: Callable[[Request], IpVerificada] | None = None) -> None:
         self._config = configuracion.model_copy(deep=True)
+        if procedencia_ip is not None and (configuracion.app_env != "testing" or not callable(procedencia_ip)):
+            raise ErrorSeguridad(C.INFRAESTRUCTURA)
         validado = preparar_perfil(self._config, origen_publico=perfil.origen_publico,
             nombre_sesion=perfil.nombre_sesion, nombre_contexto=perfil.nombre_contexto)
         if perfil != validado:
@@ -116,6 +122,9 @@ class AdaptadorAuth:
         self._perfil = validado
         self._motor = motor
         self._reloj = reloj
+        # Dependencia de composición de código, nunca de JSON/env/cliente.
+        # Sin composición explícita conserva el cierre productivo existente.
+        self._procedencia_ip = procedencia_ip
         self._login = ServicioLogin(motor, self._config, capacidad_argon2=capacidad_argon2, reloj=reloj)
         self._consulta = ServicioConsultaSesion(motor, reloj=reloj)
         self._logout = ServicioLogout(motor, self._config, reloj=reloj)
@@ -153,7 +162,7 @@ class AdaptadorAuth:
             contexto = self._frontera(request, operacion="login")
             if type(solicitud) is not SolicitudLogin:
                 raise ErrorSeguridad(C.CONTEXTO_INVALIDO)
-            ip = obtener_ip_verificada(request)  # Siempre cerrada en producción.
+            ip = (self._procedencia_ip or obtener_ip_verificada)(request)
             prueba = prueba_login(contexto.cookies, obtener_token_csrf(request))
             validado = _control_csrf(lambda: self._login.validar_contexto(
                 prueba, ip=ip, request_id=contexto.request_id))
@@ -208,7 +217,7 @@ class AdaptadorAuth:
     def csrf(self, request: Request) -> Response:
         def ejecutar():
             contexto = self._frontera(request, operacion="csrf")
-            ip = obtener_ip_verificada(request)  # No hay fuente HTTP acreditada.
+            ip = (self._procedencia_ip or obtener_ip_verificada)(request)
             referencia = contexto.cookies.referencia()
             nuevo = None
             if referencia is None:
