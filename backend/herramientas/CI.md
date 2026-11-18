@@ -9,6 +9,15 @@ omisiones por listas parciales de rutas o límites del diff de GitHub.
 Los PR Draft no se excluyen. GitHub puede exigir aprobación de una primera
 ejecución desde un fork según la configuración del repositorio.
 
+Se declaran los tipos `opened`, `synchronize`, `reopened`, `edited` y
+`ready_for_review`: conservan los eventos predeterminados y cubren cambiar la
+base hacia main o sacar un PR de Draft. No hay filtros de paths ni condiciones
+para saltar jobs. No se añade `workflow_dispatch` ni ejecución de un SHA libre.
+La configuración no es retroactiva: tras integrar este arreglo a main mediante
+el flujo autorizado, un PR ya abierto requiere otro evento permitido (por
+ejemplo, actualizar su descripción). Comprobar la ejecución sobre su head y
+la previsualización de integración; un run de main sin tickets no valida ese PR.
+
 ## Checks estables
 
 | Job | Nombre visible | Comando desde backend |

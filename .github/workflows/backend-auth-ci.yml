@@ -4,6 +4,7 @@ name: Backend Auth CI
 "on":
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, edited, ready_for_review]
   push:
     branches: [main]
 
