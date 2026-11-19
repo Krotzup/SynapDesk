@@ -1,10 +1,25 @@
 # Preparación para Render
 
 El Blueprint raíz describe Next.js público y FastAPI privado con TLS directo.
-**No se ha desplegado ni acreditado Render.** No hay credencial de Render ni
+**El backend ML/RAG no está desplegado ni acreditado en Render.** No hay credencial de Render ni
 certificados de su hostname privado en el repositorio. `autoDeployTrigger: off`
 evita publicar estos cambios al hacer push. Los planes son una propuesta de
 staging; crear los servicios de pago requiere la cuenta y el presupuesto del equipo.
+
+**Restricción actual: solo gratuito.** No aplicar este Blueprint de pago bajo
+esa restricción. En el workspace SynapDesk se observó un servicio Node Free,
+desde `main` en `6e58949`, en https://synapdesk-o8tr.onrender.com; esta observación
+no acredita recuperación, Gemini o clasificación reales. No se crearon servicios
+de pago. El acceso se realizó al panel web, sin requerir la integración.
+Render [no ofrece instancias gratuitas para servicios privados](https://render.com/docs/free).
+Exponer ML mediante un servicio web gratuito requiere acordar el transporte y
+autenticación con backend y medir memoria real del modelo antes de activarlo.
+No se rebajan los controles del proyecto para obtener un despliegue vacío o inseguro.
+
+Se construyó localmente la imagen ligera `synapdesk-backend:pr60-validacion`
+y se comprobó que sus módulos importan con UID no privilegiado, sin conectar
+bases ni exponer puertos. Eso no valida el perfil con embeddings/torch ni el
+despliegue productivo. El artefacto autorizado y sus mapeos siguen pendientes.
 
 Referencias oficiales consultadas el 19 de noviembre de 2026:
 [Blueprint](https://render.com/docs/blueprint-spec),

@@ -189,6 +189,34 @@ despliegue realizado ni se activan rutas/ML productivos por defecto.
 
 ## Validación local
 
+### Repetición del recorrido RAG con db_test exclusiva
+
+Tras conciliar el #62 integrado en main, se repitieron en Windows/Edge los
+escenarios del lanzador `--rag --rag-fixture draft` y
+`--rag --rag-fixture abstention`, con la composición de testing y una base
+temporal propia en loopback:5433 por ejecución. Se verificó la búsqueda nueva
+junto con el Asistente, sesiones y CSRF reales, fuentes navegables y persistencia
+SQL. El driver valida los enlaces de citas renderizados, no el UUID crudo del
+contenido que la interfaz transforma.
+
+El borrador respondió 201 y su aceptación 204 persistió después de recargar;
+la abstención respondió 422 `INSUFFICIENT_INFORMATION`, sin recomendación
+guardada ni cambio de estado del ticket. Ambas ejecuciones finalizaron con
+cierre de Next/FastAPI y eliminación de su base temporal. Los informes locales
+quedan bajo `artifacts/rag-integrado-draft-v3.json` y
+`artifacts/rag-integrado-abstention-v1.json`, excluidos de Git.
+Los proveedores de recuperación/generación son sintéticos en estos recorridos:
+esto acredita integración y revisión humana, no calidad, tokens o latencia de
+Gemini real. La matriz MLOps, consultas reales anonimizadas con etiquetas
+independientes, cuota del proyecto Gemini, artefacto autorizado y mapeos siguen
+pendientes y se solicitaron en un comentario del PR #60.
+
+Se aprobaron además 39 integraciones PostgreSQL del conjunto conciliado y
+48 pruebas Node del protocolo de ingreso. El alcance adicional se limita a la
+parte ML/LLM/RAG; HU10 queda fuera de esta ronda por indicación del solicitante.
+
+### Evidencia anterior
+
 Pasaron 1.063 pruebas unitarias del backend y 474 de integración con PostgreSQL,
 con Alembic `upgrade/current/heads/check` y eliminación de las bases temporales.
 Las integraciones nuevas comprueban filtros literales, idempotencia de
