@@ -1,11 +1,18 @@
 # Ensayo local de navegador y PostgreSQL
 
 Composición explícita de **testing**, independiente de la fábrica productiva.
-Recompone las piezas de MVP04/MVP06B sobre main 3580ac4b (MVP09). No valida
+MVP11 conserva las páginas de main `ca1d572` (#47/#48/#49), incorpora selectivamente
+el candidato MVP09 `ba2422f` y el logout de MVP10 `c81367a`. No valida
 Render, HTTPS público, cookies Secure en Edge ni un bootstrap operativo.
 
-La [guía local](../../../docs/guia-recorrido-local-mvp.md) contiene los pasos de
+El [procedimiento MVP12](../../../docs/integracion/mvp12-actualizacion-pr52.md)
+contiene el candidato vigente con historia de PR #52 preservada, inicio y cierre.
+La [guía MVP11 histórica](../../../docs/guia-ensayo-reconciliado-mvp11.md) describe
+el ensayo anterior sobre main actualizado. La
+[guía local histórica](../../../docs/guia-recorrido-local-mvp.md) contiene los pasos de
 preparación y los requisitos de provisión administrativa. El
+[procedimiento de entrega MVP10](../../../docs/guia-entrega-academica-mvp10.md)
+incluye inicio, cierre y limitaciones acreditadas. El
 [verificador portable](verificar.py) no conoce rutas de otros worktrees ni carga
 automáticamente sus archivos privados; se ejecuta desde backend:
 
@@ -20,7 +27,7 @@ directorios existentes o externos. No instala Python, Node, Docker, Edge ni mód
 
 ## Componentes y límites
 
-- [aplicacion.py](aplicacion.py): compone CSRF/login/me y POST/GET/PATCH de tickets
+- [aplicacion.py](aplicacion.py): compone CSRF/login/me/logout y POST/GET/PATCH de tickets
   con adaptadores existentes. No agrega rutas a app.aplicacion ni administración.
 - [evidencia.py](evidencia.py), [protocolo.mjs](protocolo.mjs) y
   [servidor_next.mjs](servidor_next.mjs): IP observada en socket, HMAC independiente,

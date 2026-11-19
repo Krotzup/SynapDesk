@@ -1,5 +1,8 @@
 # Reproducir el CRUD local sobre main — MVP09
 
+> Procedimiento histórico de MVP09. El candidato actual y sus diferencias de
+> interfaz se documentan en la [guía MVP11](guia-ensayo-reconciliado-mvp11.md).
+
 Alcance: navegador real → Next.js → HTTPS/SEC-01B → FastAPI → PostgreSQL.
 Base del candidato: 5a73f024d6a3ef2476120b18042592cc017bb539, con #38, #30,
 #32, #39 y #50 integrados. Solo testing aislado. No acredita Render ni habilita rutas en la

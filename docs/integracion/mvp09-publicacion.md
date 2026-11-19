@@ -1,5 +1,8 @@
 # Preparación de publicación MVP09
 
+> Registro histórico anterior a la fusión de #47/#48/#49. Consultar la
+> [reconciliación MVP11](mvp11-reconciliacion.md) para el candidato actual.
+
 ## Base y selección
 
 La rama `funcionalidad/mvp09-crud-http-publicacion` parte de
