@@ -329,14 +329,4 @@ export const ticketsMock: TicketsService = {
     ticket.updatedAt = new Date().toISOString();
     return simulateLatency(ticket);
   },
-
-  // Cierre lógico, como indica el contrato para DELETE /tickets/{id}.
-  delete: (id) => {
-    const ticket = tickets.find((item) => item.id === id);
-    if (!ticket) return notFound();
-
-    ticket.status = "closed";
-    ticket.updatedAt = new Date().toISOString();
-    return simulateLatency(undefined);
-  },
 };

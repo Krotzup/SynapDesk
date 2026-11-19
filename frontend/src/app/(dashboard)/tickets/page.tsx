@@ -34,7 +34,7 @@ export default async function TicketsPage({ searchParams }: TicketsPageProps) {
         Esta página no tiene tickets.{" "}
         <Link
           href={`/tickets${buildQuery(filtersForUrl(filters))}`}
-          className="text-[#2563EB] hover:underline"
+          className="text-[#2563EB] underline"
         >
           Ir a la primera página
         </Link>
@@ -42,7 +42,7 @@ export default async function TicketsPage({ searchParams }: TicketsPageProps) {
     ) : filtered ? (
       <>
         No hay tickets que coincidan con los filtros.{" "}
-        <Link href="/tickets" className="text-[#2563EB] hover:underline">
+        <Link href="/tickets" className="text-[#2563EB] underline">
           Limpiar filtros
         </Link>
       </>
@@ -87,7 +87,7 @@ export default async function TicketsPage({ searchParams }: TicketsPageProps) {
           {/* Teléfono: tarjetas. Desde 768 px: tabla. */}
           <ul className="md:hidden divide-y divide-[#F1F5F9]" aria-label="Tickets">
             {tickets.length === 0 && (
-              <li className="py-10 px-4 text-center text-sm text-[#94A3B8]">{emptyMessage}</li>
+              <li className="py-10 px-4 text-center text-sm text-[#64748B]">{emptyMessage}</li>
             )}
             {tickets.map((ticket) => (
               <li key={ticket.id}>
@@ -99,7 +99,7 @@ export default async function TicketsPage({ searchParams }: TicketsPageProps) {
                     <span className="font-bold text-[#2563EB]" title={ticket.id}>
                       #{shortId(ticket.id)}
                     </span>
-                    <span className="text-[#94A3B8]">{formatDateTime(ticket.createdAt)}</span>
+                    <span className="text-[#64748B]">{formatDateTime(ticket.createdAt)}</span>
                   </span>
                   <span className="block text-sm font-semibold text-[#0F172A] line-clamp-2">
                     {ticket.title}
@@ -133,7 +133,7 @@ export default async function TicketsPage({ searchParams }: TicketsPageProps) {
               <tbody className="divide-y divide-[#F1F5F9] text-xs text-[#475569]">
                 {tickets.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="py-10 px-4 text-center text-sm text-[#94A3B8]">
+                    <td colSpan={8} className="py-10 px-4 text-center text-sm text-[#64748B]">
                       {emptyMessage}
                     </td>
                   </tr>
@@ -167,7 +167,7 @@ export default async function TicketsPage({ searchParams }: TicketsPageProps) {
                     <td className="py-4 px-4 whitespace-nowrap">
                       <PriorityBadge priority={ticket.priority} />
                     </td>
-                    <td className="py-4 px-4 text-[#94A3B8] whitespace-nowrap hidden xl:table-cell">
+                    <td className="py-4 px-4 text-[#64748B] whitespace-nowrap hidden xl:table-cell">
                       {formatDateTime(ticket.createdAt)}
                     </td>
                     <td className="py-4 px-4 text-right whitespace-nowrap hidden 2xl:table-cell">

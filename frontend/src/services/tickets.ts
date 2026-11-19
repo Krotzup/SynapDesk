@@ -20,9 +20,6 @@ const ticketsApi = {
   // Solo el estado (MVP02): asignación, edición libre y borrado no están aprobados.
   updateStatus: (id: string, data: { status: TicketStatus }): Promise<Ticket> =>
     api.patch(`/tickets/${id}`, data),
-
-  // Cierre o eliminación lógica
-  delete: (id: string): Promise<void> => api.delete(`/tickets/${id}`),
 };
 
 export type TicketsService = typeof ticketsApi;
