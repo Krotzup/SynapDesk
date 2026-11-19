@@ -12,6 +12,7 @@ API de SynapDesk basada en FastAPI y Pydantic, con prefijo `/api/v1`.
 - Conexión a PostgreSQL con SQLAlchemy y Psycopg 3.
 - Endpoint `GET /api/v1/ready` para comprobar acceso a PostgreSQL.
 - Endpoint optativo `POST /api/v1/search`, protegido con sesión, Origin y CSRF; deshabilitado por defecto.
+- Endpoints optativos de recomendaciones RAG con Gemini y revisión humana, cerrados por defecto; requieren los servicios de autenticación HTTP aún pendientes.
 - Entorno Alembic preparado para versionar cambios de estructura.
 - Modelos de usuarios y tickets y revisiones `0001_usuarios_tickets` y `0002_autenticacion_persistencia`.
 - Persistencia V1 de sesiones opacas, contextos/tokens CSRF, límites de autenticación y eventos de auditoría; no agrega endpoints.

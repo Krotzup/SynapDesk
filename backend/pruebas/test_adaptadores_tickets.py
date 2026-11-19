@@ -97,4 +97,7 @@ def test_no_registra_rutas_ni_acepta_rol_o_uuid_como_usuario(candidato):
     comprobar_error(e["adaptador"].resumen(solicitud(e, headers=h)), 401, "AUTHENTICATION_REQUIRED")
     # La búsqueda de #32 ya está integrada; los adaptadores no publican rutas de tickets.
     assert set(crear_aplicacion(e["config"]).openapi()["paths"]) == {
-        "/api/v1/health", "/api/v1/ready", "/api/v1/auth/csrf", "/api/v1/search"}
+        "/api/v1/health", "/api/v1/ready", "/api/v1/auth/csrf", "/api/v1/search",
+        "/api/v1/tickets/{ticket_id}/recommendations",
+        "/api/v1/recommendations/{recommendation_id}",
+        "/api/v1/recommendations/{recommendation_id}/reviews"}

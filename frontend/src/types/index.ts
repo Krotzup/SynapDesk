@@ -76,6 +76,7 @@ export interface RecommendationSource {
   title: string;
   excerpt: string;
   score: number;
+  sourceUrl?: string;
 }
 
 export interface Recommendation {
@@ -85,6 +86,7 @@ export interface Recommendation {
   status: RecommendationStatus;
   sources: RecommendationSource[];
   createdAt: string;
+  review?: (HumanReview & { reviewedAt: string }) | null;
 }
 
 export interface HumanReview {

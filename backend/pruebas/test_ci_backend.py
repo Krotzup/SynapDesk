@@ -189,6 +189,14 @@ def test_plantilla_publica_no_es_exencion_para_otros_archivos():
     assert hallazgos("backend/credenciales.py", PLANTILLA_URL)
 
 
+def test_scanner_exime_solo_la_asignacion_dinamica_historica():
+    ruta = "backend/herramientas/ingreso_local/demo.py"
+    dinamica = b"POSTGRES_TEST_PASSWORD=principal.postgres_password.get_secret_value())"
+    assert hallazgos(ruta, dinamica) == []
+    assert hallazgos("backend/otro.py", dinamica)
+    assert hallazgos(ruta, b"POSTGRES_TEST_PASSWORD=clave_literal_de_ensayo")
+
+
 def test_scanner_completo_falla_sin_imprimir_el_token(tmp_path, monkeypatch, capsys):
     from herramientas import validar_ci
     monkeypatch.setattr(validar_ci, "RAIZ", tmp_path)

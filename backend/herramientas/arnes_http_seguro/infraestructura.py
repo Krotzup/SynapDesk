@@ -67,11 +67,11 @@ def base_propia(carpeta, evidencia):
             assert result.returncode == 0, "Alembic no completó el ensayo."
             evidencia["alembic"].append(dict(step=paso, exit_code=0))
         with motor.connect() as db:
-            assert db.scalar(text("SELECT version_num FROM alembic_version")) == "0006_user_created"
+            assert db.scalar(text("SELECT version_num FROM alembic_version")) == "0007_recomendaciones_rag"
             catalogo = db.scalars(text("SELECT pg_get_constraintdef(oid) FROM pg_constraint "
                 "WHERE conrelid='eventos_autenticacion'::regclass AND contype='c'")).all()
             assert any("user_created" in c for c in catalogo)
-        evidencia["schema_head"] = "0006_user_created"
+        evidencia["schema_head"] = "0007_recomendaciones_rag"
         evidencia["user_created_catalog_present"] = True
         yield motor, nombre
     finally:

@@ -18,7 +18,7 @@ Consultar el [contrato](../contratos/bootstrap-administrador-v1.md).
    Configurar AUTH_BOOTSTRAP_CLUSTER_ID con system_identifier obtenido por un
    canal administrativo ya confiable. No copiar el pin de un servidor desconocido
    para hacer pasar el control; no es un secreto ni sustituye TLS.
-4. Revisar/aplicar Alembic explícitamente hasta 0006_user_created. Las
+4. Revisar/aplicar Alembic explícitamente hasta 0007_recomendaciones_rag. Las
    migraciones y el arranque no crean usuarios. La CLI requiere versión exacta,
    tablas/columnas y restricciones críticas; no ejecuta upgrade automáticamente.
    AUTH-07C.2B actualiza solo ese head requerido para compatibilidad de auditoría;

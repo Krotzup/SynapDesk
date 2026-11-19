@@ -306,6 +306,8 @@ La [recuperación semántica V1](recuperacion-semantica-v1.md) implementa esta r
 
 ## Recomendaciones
 
+El comportamiento implementado, sus controles de acceso, abstención y revisión se detallan en el [contrato RAG V1](recomendaciones-rag-v1.md).
+
 | Método | Ruta                                   | Propósito                         |
 | ------ | -------------------------------------- | --------------------------------- |
 | `POST` | `/api/v1/tickets/{id}/recommendations` | Generar una recomendación         |

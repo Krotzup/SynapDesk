@@ -9,6 +9,7 @@ from starlette.concurrency import run_in_threadpool
 from app.api.salud import router as router_salud
 from app.api.busqueda import error_response, router as router_busqueda
 from app.api.csrf_auth import router as router_csrf
+from app.api.recomendaciones import router as router_recomendaciones
 from app.api.errores_auth import manejar_validacion, registrar_errores
 from app.configuracion import Configuracion
 from app.persistencia.conexion import crear_motor_bd
@@ -79,4 +80,5 @@ def crear_aplicacion(configuracion: Configuracion | None = None) -> FastAPI:
     aplicacion.include_router(router_salud, prefix="/api/v1")
     aplicacion.include_router(router_busqueda, prefix="/api/v1")
     aplicacion.include_router(router_csrf, prefix="/api/v1")
+    aplicacion.include_router(router_recomendaciones, prefix="/api/v1")
     return aplicacion

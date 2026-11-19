@@ -52,7 +52,7 @@ def tickets(configuracion_bd_test):
                 config.postgres_db, config.postgres_user, config.postgres_user)
             assert 170000 <= int(db.scalar(text("SHOW server_version_num"))) < 180000
             assert db.scalar(text("SELECT extversion FROM pg_extension WHERE extname='vector'"))
-            assert db.scalar(text("SELECT version_num FROM alembic_version")) == "0006_user_created"
+            assert db.scalar(text("SELECT version_num FROM alembic_version")) == "0007_recomendaciones_rag"
         referencias = []
         usuarios = []
         for rol in ("admin", "agent"):

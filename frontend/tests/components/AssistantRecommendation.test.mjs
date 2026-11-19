@@ -59,6 +59,8 @@ describe("AssistantRecommendation: sin recomendación", () => {
     assert.equal(busy.disabled, true);
 
     pending.resolve(PENDING);
+    await screen.findByText(PENDING.content);
+    assert.ok(button("✓ Aceptar recomendación"));
     await waitFor(() => assert.deepEqual(router.calls, [["refresh"]]));
   });
 
@@ -261,15 +263,23 @@ describe("AssistantRecommendation: errores", () => {
   });
 });
 
-describe("AssistantRecommendation: aceptar y resolver", () => {
-  test("queda deshabilitado y descrito por accept-note", () => {
+describe("AssistantRecommendation: aceptar sin resolver", () => {
+  test("registra la revisión y conserva el contenido original sin resolver el ticket", async () => {
+    stub = stubService(recommendationsService, { review: async () => undefined });
     renderPanel();
-    const accept = button("✓ Aceptar y resolver");
-    assert.equal(accept.disabled, true);
+    const accept = button("✓ Aceptar recomendación");
+    assert.equal(accept.disabled, false);
     assert.equal(accept.getAttribute("aria-describedby"), "accept-note");
     assert.match(
       document.getElementById("accept-note").textContent,
-      /Disponible cuando el backend/
+      /el estado del ticket se cambia por separado/
     );
+    fireEvent.click(accept);
+
+    await screen.findByText("La recomendación fue aceptada.");
+    assert.deepEqual(stub.calls.review, [[PENDING.id, { decision: "accepted" }]]);
+    assert.ok(screen.getByText(PENDING.content));
+    assert.equal(PENDING.status, "pending");
+    assert.deepEqual(router.calls, [["refresh"]]);
   });
 });

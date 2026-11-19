@@ -27,7 +27,7 @@ const statusByDecision: Record<ReviewDecision, RecommendationStatus> = {
 };
 
 type Mode = "view" | "edit" | "discard";
-type Action = "edit" | "discard" | "generate";
+type Action = "accept" | "edit" | "discard" | "generate";
 
 interface ActionError {
   message: string;
@@ -36,6 +36,7 @@ interface ActionError {
 }
 
 const actionFallback: Record<Action, string> = {
+  accept: "No se pudo aceptar la recomendación. Intenta nuevamente.",
   edit: "No se pudo guardar la recomendación editada. Intenta nuevamente.",
   discard: "No se pudo descartar la recomendación. Intenta nuevamente.",
   generate: "No se pudo generar una nueva recomendación. Intenta nuevamente.",
@@ -56,6 +57,10 @@ function actionErrorMessage(error: unknown, action: Action): string {
     // Código propuesto al backend para una recomendación que ya tiene revisión.
     case "RECOMMENDATION_ALREADY_REVIEWED":
       return "Esta recomendación ya fue revisada. Recarga la página para ver su estado.";
+    case "RECOMMENDATION_PENDING":
+      return "Ya hay una recomendación pendiente. Revísala antes de generar otra.";
+    case "INSUFFICIENT_INFORMATION":
+      return "La documentación recuperada no alcanza para generar una recomendación fundamentada.";
     case "VALIDATION_ERROR":
       return "Revisa los datos ingresados.";
     // P8: api.ts no reintenta; descarta el token y la próxima acción manual pide uno nuevo.
@@ -122,8 +127,8 @@ interface AssistantRecommendationProps {
 
 /**
  * Última recomendación del ticket y acciones de revisión humana (Human-in-the-loop).
- * Editar registra una revisión "modified", Descartar una "rejected" y Reintentar pide una
- * nueva generación sin sobrescribir las anteriores.
+ * Aceptar, editar y descartar registran la revisión humana. Tras revisar se puede
+ * solicitar otro borrador sin sobrescribir los anteriores.
  */
 export function AssistantRecommendation({
   ticketId,
@@ -240,7 +245,7 @@ export function AssistantRecommendation({
     });
   }
 
-  async function submitReview(action: "edit" | "discard") {
+  async function submitReview(action: "accept" | "edit" | "discard") {
     if (!recommendation || busy) return;
 
     const trimmedFeedback = feedback.trim();
@@ -256,8 +261,10 @@ export function AssistantRecommendation({
         return;
       }
       submitted = { decision: "modified", modifiedContent: content };
-    } else {
+    } else if (action === "discard") {
       submitted = { decision: "rejected" };
+    } else {
+      submitted = { decision: "accepted" };
     }
     if (trimmedFeedback) submitted.feedback = trimmedFeedback;
 
@@ -329,7 +336,9 @@ export function AssistantRecommendation({
 
   const isPending = recommendation.status === "pending";
   const modifiedContent =
-    recommendation.status === "modified" ? review?.modifiedContent : undefined;
+    recommendation.status === "modified"
+      ? (review ?? recommendation.review)?.modifiedContent
+      : undefined;
 
   return (
     <div className="space-y-5" aria-busy={busy}>
@@ -410,14 +419,15 @@ export function AssistantRecommendation({
                 type="button"
                 variant="accept"
                 fullWidth
-                disabled
+                disabled={busy}
                 aria-describedby="accept-note"
+                onClick={() => submitReview("accept")}
               >
-                ✓ Aceptar y resolver
+                ✓ Aceptar recomendación
               </Button>
               <p id="accept-note" className="text-[11px] text-[#475569]">
-                Disponible cuando el backend defina la operación para aceptar la recomendación y
-                resolver el ticket a la vez.
+                Aceptar la recomendación registra la revisión; el estado del ticket se cambia por
+                separado.
               </p>
               <Button
                 type="button"
@@ -428,9 +438,6 @@ export function AssistantRecommendation({
                 onClick={startEdit}
               >
                 ✏️ Editar
-              </Button>
-              <Button type="button" variant="ghost" fullWidth disabled={busy} onClick={generate}>
-                {pending === "generate" ? "Generando recomendación…" : "🔄 Reintentar"}
               </Button>
               <Button
                 type="button"
@@ -518,12 +525,16 @@ export function AssistantRecommendation({
       ) : (
         <div className="pt-2 border-t border-[#C7D2FE] space-y-2">
           <p className="text-xs text-[#475569]">{reviewedMessages[recommendation.status]}</p>
-          {review?.feedback && (
+          {(review ?? recommendation.review)?.feedback && (
             <p className="text-xs text-[#475569]">
               <span className="font-semibold">
-                {review.decision === "rejected" ? "Motivo:" : "Comentario del especialista:"}
+                {(review ?? recommendation.review)?.decision === "rejected"
+                  ? "Motivo:"
+                  : "Comentario del especialista:"}
               </span>{" "}
-              <span className="whitespace-pre-line">{review.feedback}</span>
+              <span className="whitespace-pre-line">
+                {(review ?? recommendation.review)?.feedback}
+              </span>
             </p>
           )}
           {recommendation.status === "rejected" && (

@@ -225,6 +225,9 @@ with patch.dict("os.environ", {
     assert app.state.motor_bd is None
     assert set(app.openapi()["paths"]) == {
         "/api/v1/health", "/api/v1/ready", "/api/v1/auth/csrf", "/api/v1/search",
+        "/api/v1/tickets/{ticket_id}/recommendations",
+        "/api/v1/recommendations/{recommendation_id}",
+        "/api/v1/recommendations/{recommendation_id}/reviews",
     }
     crear_motor.assert_not_called()
 """

@@ -669,6 +669,23 @@ python -m ml.tools.build_procedure_corpus --output ml/data/procedimientos_v1
 python -m ml.tools.index_procedure_corpus --corpus ml/data/procedimientos_v1
 ```
 
+Separar los casos sintéticos antes de calibrar. La herramienta reserva una consulta
+de cada documento para cada conjunto y mantiene consultas sin cobertura en ambos;
+rechaza una carpeta de salida existente para no sobrescribir evidencia anterior.
+Ejecutar calibración y evaluación con un perfil V2 nuevo, después de indexar:
+
+```powershell
+python -m ml.tools.split_procedure_cases --cases ml/data/procedimientos_v1/cases.json --output-dir ml/artifacts/procedimientos_v1_cases
+python -m ml.semantic_retrieval.cli calibrate-relevance --cases ml/artifacts/procedimientos_v1_cases/calibracion.json --output ml/artifacts/procedimientos_perfil_v2.json
+python -m ml.semantic_retrieval.cli evaluate-relevance --cases ml/artifacts/procedimientos_v1_cases/evaluacion.json --relevance-profile ml/artifacts/procedimientos_perfil_v2.json --output ml/artifacts/procedimientos_evaluacion_v2.json
+```
+
+Los comandos del indexador y del CLI requieren `SYNAPDESK_SEMANTIC_DATABASE_URL`
+en el entorno del proceso; no leen `.env` automáticamente. `ml/data/` y
+`ml/artifacts/` están excluidos de Git. Las etiquetas de los casos siguen siendo
+sintéticas y pendientes de revisión humana; la evaluación reservada no debe
+usarse para escoger el umbral.
+
 El indexador comprueba UUID, rutas internas, huellas y destino independiente;
 carga el modelo una sola vez e indexa todo el corpus en una transacción. Al
 cambiar la preparación del texto se genera otro perfil, nunca se reutiliza
