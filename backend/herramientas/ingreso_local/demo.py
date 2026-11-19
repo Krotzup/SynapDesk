@@ -118,7 +118,8 @@ def next_local(frontend, carpeta, control, evidencia, ocultos):
         "src/app/api/local/csrf/route.ts", "src/components/auth/LoginForm.tsx",
         "src/components/tickets/TicketStatusControl.tsx", "src/app/(dashboard)/layout.tsx",
         "src/app/(dashboard)/tickets/page.tsx", "src/app/(dashboard)/tickets/[id]/page.tsx",
-        "src/app/(dashboard)/inicio/page.tsx", "tests/proxy/rag-result.mjs"]
+        "src/app/(dashboard)/inicio/page.tsx", "tests/proxy/rag-result.mjs", "src/app/api/v1/search/route.ts", "src/lib/server/search-proxy.ts",
+        "src/components/search/SearchResults.tsx"]
     evidencia["frontend_sources"] = [dict(path=p, sha256=hashlib.sha256((frontend / p).read_bytes()).hexdigest()) for p in rutas]
     archivo = carpeta / "next-control.json"
     escribir(archivo, dict(control, repo=str(frontend.parent), project=str(frontend)))
@@ -127,7 +128,8 @@ def next_local(frontend, carpeta, control, evidencia, ocultos):
         env.pop(nombre, None)
     env.update(NODE_PATH=str(frontend / "node_modules"), NEXT_TELEMETRY_DISABLED="1",
         NEXT_PUBLIC_USE_MOCKS="false", NEXT_PUBLIC_TRUSTED_LOCAL_INGRESS="true",
-        AUTH_COOKIE_PROFILE="local", BACKEND_INTERNAL_URL=control["backend"],
+        AUTH_COOKIE_PROFILE="local", SEARCH_PUBLIC_ORIGIN=f"http://127.0.0.1:{control['port']}",
+        SEARCH_SESSION_COOKIE_NAME="synapdesk_session_dev", BACKEND_INTERNAL_URL=control["backend"],
         BACKEND_SERVICE_CREDENTIAL=control["credential"], NODE_EXTRA_CA_CERTS=str(carpeta / "ca.pem"))
     with (carpeta / "next.log").open("wb") as salida:
         proceso = subprocess.Popen([node, str(Path(__file__).with_name("servidor_next.mjs")), str(archivo)],
@@ -164,7 +166,9 @@ def next_local(frontend, carpeta, control, evidencia, ocultos):
 
 
 def ejecutar(frontend: Path, reporte: Path, driver: Path | None, *, rag: bool = False,
-             rag_fixture: str | None = None, rag_expect: str = "draft"):
+             rag_fixture: str | None = None, rag_expect: str = "draft", search: bool = False, search_fixture: bool = False):
+    if search_fixture and (not search or rag):
+        raise ValueError("El fixture de búsqueda requiere --search y no se combina con --rag.")
     if (rag_fixture is not None and (not rag or rag_fixture not in {"draft", "abstention"})
             or rag_expect not in {"draft", "abstention", "either"}):
         raise ValueError("Opciones del ensayo RAG inválidas.")
@@ -180,14 +184,16 @@ def ejecutar(frontend: Path, reporte: Path, driver: Path | None, *, rag: bool = 
         reconciliation_sha="9c13277635e3e0838c46a05b863a502cd2ec7fef",
         main_merge_sha="800a723034279c12ff0e26b970d7b554fe50d151",
         production_enabled=False, base_main="4acec0992b246ed78898c06d1007a626230e51cc",
-        browser_verified=False, rag_enabled=rag)
+        browser_verified=False, rag_enabled=rag, search_requested=search,
+        search_mode="fixture" if search_fixture or rag_fixture else "live" if search or rag else "disabled")
     fuentes = [BACKEND / p for p in (
         "app/api/adaptadores_auth.py", "app/api/adaptadores_tickets.py",
         "app/tickets/servicio.py", "app/tickets/repositorio.py",
         "herramientas/ingreso_local/aplicacion.py", "herramientas/ingreso_local/evidencia.py",
         "herramientas/ingreso_local/protocolo.mjs", "herramientas/ingreso_local/servidor_next.mjs",
         "herramientas/ingreso_local/demo.py", "herramientas/ingreso_local/rag_ensayo.py",
-        "app/api/recomendaciones.py", "app/recomendaciones/generacion.py")]
+        "app/api/recomendaciones.py", "app/recomendaciones/generacion.py", "app/api/busqueda.py",
+        "app/recuperacion/acceso.py")]
     evidencia["backend_sources"] = [dict(path=str(p.relative_to(BACKEND.parent)).replace("\\", "/"),
         sha256=hashlib.sha256(p.read_bytes()).hexdigest()) for p in fuentes]
     if driver is not None:
@@ -211,6 +217,8 @@ def ejecutar(frontend: Path, reporte: Path, driver: Path | None, *, rag: bool = 
                 auth_origenes_permitidos=[origen], auth_proxies_autorizados=["127.0.0.1/32"],
                 auth_cookie_profile="local", rag_enabled=rag,
                 rag_public_origin=origen if rag else None)
+            if search:
+                datos.update(search_enabled=True)
             if rag_fixture:
                 datos.update(search_enabled=True, gemini_api_key=SecretStr("proveedor-sintetico-sin-egress"),
                              rag_external_data_approved=True)
@@ -226,6 +234,15 @@ def ejecutar(frontend: Path, reporte: Path, driver: Path | None, *, rag: bool = 
             if rag:
                 sys.path.insert(0, str(BACKEND.parent))
                 recuperacion = recursos.enter_context(preparar_rag(config, rag_fixture, evidencia))
+            elif search_fixture:
+                from herramientas.ingreso_local.rag_ensayo import RecuperacionSintetica
+                recuperacion = RecuperacionSintetica()
+                evidencia["search_mode"] = "fixture"
+            elif search:
+                sys.path.insert(0, str(BACKEND.parent))
+                from app.recuperacion.servicio import ServicioRecuperacion
+                recuperacion = ServicioRecuperacion(config)
+                evidencia["search_mode"] = "live"
             else:
                 recuperacion = None
             app = crear_aplicacion_local(config, motor, perfil, verificador, capacidad_argon2=1,
@@ -269,7 +286,7 @@ def ejecutar(frontend: Path, reporte: Path, driver: Path | None, *, rag: bool = 
                     credential=servicio.get_secret_value())
                 privado_browser = carpeta / "browser-input.json"
                 escribir(privado_browser, dict(origin=origen, accounts=cuentas, tickets=tickets,
-                    ragEnabled=rag,
+                    ragEnabled=rag, searchEnabled=recuperacion is not None, searchMode="fixture" if search_fixture or rag_fixture else "live",
                     ragMode="fixture" if rag_fixture else "live",
                     ragExpectedOutcome=rag_fixture or rag_expect,
                     backend=control["backend"], ca=str(carpeta / "ca.pem"), output=str(carpeta / "browser-result.json"),
@@ -360,6 +377,8 @@ def main():
     parser.add_argument("--frontend", type=Path, required=True)
     parser.add_argument("--reporte", type=Path, required=True)
     parser.add_argument("--browser-driver", type=Path)
+    parser.add_argument("--search", action="store_true", help="Activa búsqueda protegida sin requerir Gemini.")
+    parser.add_argument("--search-fixture", action="store_true", help="Con --search: recuperación sintética, sesión y CSRF reales.")
     parser.add_argument("--rag", action="store_true", help="Activa recomendaciones solo en este ensayo aislado.")
     parser.add_argument("--rag-fixture", choices=("draft", "abstention"),
                         help="Con --rag: dependencias sintéticas sin llamadas externas; no acredita Gemini.")
@@ -375,7 +394,7 @@ def main():
                 os.environ.setdefault(nombre, valor)
     result = ejecutar(args.frontend.resolve(), args.reporte.resolve(),
         args.browser_driver.resolve() if args.browser_driver else None, rag=args.rag,
-        rag_fixture=args.rag_fixture, rag_expect=args.rag_expect)
+        rag_fixture=args.rag_fixture, rag_expect=args.rag_expect, search=args.search, search_fixture=args.search_fixture)
     print(json.dumps({k: result.get(k) for k in ("browser_verified", "persisted_sessions_from_http",
         "persisted_tickets", "database_deleted", "next_stopped", "fastapi_stopped", "temporary_deleted")}))
 

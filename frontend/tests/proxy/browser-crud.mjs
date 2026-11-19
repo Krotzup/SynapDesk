@@ -161,6 +161,37 @@ try {
     );
     await page.goto(config.origin + "/tickets", { waitUntil: "domcontentloaded" });
     await page.getByRole("heading", { name: "Gestión de tickets", exact: true }).waitFor();
+    if (config.searchEnabled) {
+      stage = role + "_search";
+      const searched = responseFor(page, "/api/v1/search", "POST");
+      await page.goto(
+        config.origin + "/busqueda?q=" + encodeURIComponent("Comprobar DNS en Windows"),
+        { waitUntil: "domcontentloaded" }
+      );
+      const response = await searched;
+      const payload = await response.json();
+      check(role + "_search_authenticated", response.status() === 200);
+      check(role + "_search_no_store", response.headers()["cache-control"] === "no-store");
+      check(
+        role + "_search_contract",
+        ["results", "no_documents", "insufficient_information"].includes(payload.status) &&
+          Array.isArray(payload.items)
+      );
+      if (config.searchMode === "fixture") {
+        check(
+          role + "_search_fixture_result",
+          payload.status === "results" && payload.items.length > 0
+        );
+        await page
+          .getByRole("heading", { name: `📑 ${payload.items[0].title}`, exact: true })
+          .first()
+          .waitFor();
+        check(
+          role + "_search_source_visible",
+          payload.status === "results" && payload.items.length > 0
+        );
+      }
+    }
     stage = role + "_new_ticket_page";
     const newPage = await page.goto(config.origin + "/tickets/nuevo", {
       waitUntil: "domcontentloaded",
