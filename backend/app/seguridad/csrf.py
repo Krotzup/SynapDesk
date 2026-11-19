@@ -63,6 +63,11 @@ class ServicioCsrf:
             self.db.flush()
             return ContextoEmitido(contexto.id, contexto.expira_en, secreto)
 
+    @staticmethod
+    def _validar_contexto(contexto: ContextoCsrf | None, ahora: datetime) -> None:
+        if contexto is None or contexto.revocado_en is not None or ahora >= contexto.expira_en:
+            raise ErrorSeguridad(CodigoSeguridad.CONTEXTO_INVALIDO)
+
     def _contexto(self, anonimo: str | SecretStr | None,
                   sesion: str | SecretStr | None, *, crear: bool = False
                   ) -> tuple[ContextoCsrf, datetime, Sesion | None]:
@@ -91,8 +96,7 @@ class ServicioCsrf:
         ahora = instante(self.db, self.reloj)
         if registro_sesion is not None:
             self.sesiones._validar(registro_sesion, usuario, ahora)
-        if contexto is None or contexto.revocado_en is not None or ahora >= contexto.expira_en:
-            raise ErrorSeguridad(CodigoSeguridad.CONTEXTO_INVALIDO)
+        self._validar_contexto(contexto, ahora)
         return contexto, ahora, registro_sesion
 
     def recuperar_anonimo(self, secreto: str | SecretStr) -> ContextoConsultado:
@@ -142,11 +146,29 @@ class ServicioCsrf:
                       sesion: str | SecretStr | None = None) -> ContextoConsultado:
         with operacion_bd(self.db):
             contexto, ahora, _ = self._contexto(anonimo, sesion)
-            registro = self._token(contexto, token)
-            if registro.invalidado_en is not None:
-                raise ErrorSeguridad(CodigoSeguridad.TOKEN_INVALIDO)
-            if ahora >= registro.expira_en:
-                raise ErrorSeguridad(CodigoSeguridad.TOKEN_VENCIDO)
+            self._validar_token_vigente(contexto, token, ahora)
+            return self._resultado(contexto)
+
+    def _validar_token_vigente(self, contexto: ContextoCsrf, token: str | SecretStr,
+                               ahora: datetime) -> None:
+        registro = self._token(contexto, token)
+        if registro.invalidado_en is not None:
+            raise ErrorSeguridad(CodigoSeguridad.TOKEN_INVALIDO)
+        if ahora >= registro.expira_en:
+            raise ErrorSeguridad(CodigoSeguridad.TOKEN_VENCIDO)
+
+    def validar_token_para_cierre(self, token: str | SecretStr, *,
+                                  sesion: str | SecretStr) -> ContextoConsultado:
+        """Acepta únicamente un contexto y token existentes de la sesión a revocar."""
+        with operacion_bd(self.db):
+            registro, usuario = self.sesiones._bloquear_credencial(sesion)
+            contexto = self.db.scalar(select(ContextoCsrf).where(
+                ContextoCsrf.sesion_id == registro.id,
+            ).with_for_update().execution_options(populate_existing=True))
+            ahora = instante(self.db, self.reloj)
+            self.sesiones._validar_para_cierre(registro, usuario, ahora)
+            self._validar_contexto(contexto, ahora)
+            self._validar_token_vigente(contexto, token, ahora)
             return self._resultado(contexto)
 
     def invalidar_token(self, token: str | SecretStr, *, anonimo: str | SecretStr | None = None,
