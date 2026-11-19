@@ -163,6 +163,16 @@ export interface Metrics {
   recommendationsRejected?: number;
 }
 
+// ─── Estado del servicio ──────────────────────────────────────────────────────
+
+// Respuesta 200 de GET /api/v1/ready: la API responde y PostgreSQL está accesible. Si la base no
+// responde, el backend devuelve 503 con error.code DATABASE_UNAVAILABLE.
+export interface Readiness {
+  status: "ready";
+  service: "synapdesk-backend";
+  database: "ok";
+}
+
 // ─── Errores de API ───────────────────────────────────────────────────────────
 
 export interface ApiErrorBody {

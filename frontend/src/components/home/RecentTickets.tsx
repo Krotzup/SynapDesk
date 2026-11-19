@@ -23,7 +23,7 @@ export async function RecentTickets() {
   }
   if (result.items.length === 0) {
     return (
-      <p className="py-6 text-center text-sm text-[#94A3B8]">
+      <p className="py-6 text-center text-sm text-[#64748B]">
         Todavía no hay tickets registrados.{" "}
         <Link href="/tickets/nuevo" className="text-[#2563EB] hover:underline">
           Crear el primero
@@ -52,7 +52,7 @@ export async function RecentTickets() {
               </span>
             </div>
             <p className="text-sm font-semibold text-[#0F172A] truncate">{ticket.title}</p>
-            <p className="text-xs text-[#94A3B8]">
+            <p className="text-xs text-[#64748B]">
               {ticket.createdBy.name} ·{" "}
               <span className="whitespace-nowrap">{formatDateTime(ticket.createdAt)}</span>
             </p>

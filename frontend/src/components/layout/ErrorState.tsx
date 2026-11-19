@@ -49,7 +49,7 @@ export function ErrorState({ error, retry }: ErrorStateProps) {
           </Link>
         </div>
         {error.digest && (
-          <p className="text-xs text-[#94A3B8]">
+          <p className="text-xs text-[#64748B]">
             Código de referencia: <span className="font-mono">{error.digest}</span>
           </p>
         )}

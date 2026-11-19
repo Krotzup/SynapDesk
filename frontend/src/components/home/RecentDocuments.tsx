@@ -19,7 +19,7 @@ export async function RecentDocuments() {
   }
   if (result.items.length === 0) {
     return (
-      <p className="py-4 text-center text-xs text-[#94A3B8]">
+      <p className="py-4 text-center text-xs text-[#64748B]">
         Todavía no hay documentos en la base de conocimientos.
       </p>
     );
@@ -51,10 +51,10 @@ export async function RecentDocuments() {
             </div>
             <div className="min-w-0">
               <p className="text-xs font-semibold text-[#0F172A]">{document.title}</p>
-              <p className="text-[11px] text-[#94A3B8] truncate" title={document.originalFilename}>
+              <p className="text-[11px] text-[#64748B] truncate" title={document.originalFilename}>
                 {document.originalFilename}
               </p>
-              <p className="text-[11px] text-[#94A3B8] whitespace-nowrap">
+              <p className="text-[11px] text-[#64748B] whitespace-nowrap">
                 {formatDateTime(document.createdAt)}
               </p>
             </div>

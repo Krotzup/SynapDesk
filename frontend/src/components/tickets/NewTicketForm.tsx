@@ -57,7 +57,7 @@ function generalErrorMessage(error: unknown): string {
 function CharacterCount({ value, max }: { value: string; max: number }) {
   const length = value.trim().length;
   return (
-    <span className={`text-xs ${length > max ? "text-[#EF4444]" : "text-[#94A3B8]"}`}>
+    <span className={`text-xs ${length > max ? "text-[#B91C1C]" : "text-[#64748B]"}`}>
       {length}/{max}
     </span>
   );
@@ -196,7 +196,7 @@ export function NewTicketForm() {
           className={`${inputClass} ${borderClass(Boolean(fieldErrors.title))}`}
         />
         {fieldErrors.title && (
-          <p id="title-error" className="text-xs text-[#EF4444]">
+          <p id="title-error" className="text-xs text-[#B91C1C]">
             {fieldErrors.title}
           </p>
         )}
@@ -222,7 +222,7 @@ export function NewTicketForm() {
           className={`${inputClass} ${borderClass(Boolean(fieldErrors.description))} resize-y`}
         />
         {fieldErrors.description && (
-          <p id="description-error" className="text-xs text-[#EF4444]">
+          <p id="description-error" className="text-xs text-[#B91C1C]">
             {fieldErrors.description}
           </p>
         )}

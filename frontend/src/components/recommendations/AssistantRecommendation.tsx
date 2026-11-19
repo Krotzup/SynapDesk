@@ -415,7 +415,7 @@ export function AssistantRecommendation({
               >
                 ✓ Aceptar y resolver
               </Button>
-              <p id="accept-note" className="text-[11px] text-[#64748B]">
+              <p id="accept-note" className="text-[11px] text-[#475569]">
                 Disponible cuando el backend defina la operación para aceptar la recomendación y
                 resolver el ticket a la vez.
               </p>
