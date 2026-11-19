@@ -457,7 +457,7 @@ El backend debe adaptar la respuesta de validación predeterminada de FastAPI (`
 * `details` no nombra los campos no previstos: llega como `null` o como lista vacía. Si además hay campos previstos inválidos, puede incluir solo esos.
 * El frontend envía únicamente los campos del contrato. Si recibe este `422` sin campos en `details`, muestra el mensaje general de la operación con `error.requestId` como código de referencia.
 
-**Verificación con las rutas HTTP del PR #52** (composición de ensayo en testing, commit `ba2422f`). `POST /api/v1/tickets` con un campo adicional y `PATCH /api/v1/tickets/{id}` con `status` y un campo adicional responden `422 VALIDATION_ERROR` con `details: null`, `requestId` y `Cache-Control: no-store`. El cuerpo se valida antes de invocar al adaptador de tickets, así que la solicitud no llega a la capa de datos: no se crea ni se modifica ningún ticket. Las mismas solicitudes sin el campo adicional sí llegan al adaptador. Los esquemas del núcleo de tickets (PR #39) también rechazan campos adicionales (`extra="forbid"`).
+El núcleo de tickets rechaza campos adicionales (`extra="forbid"` en `EsquemaTicket`); la composición HTTP debe conservar ese rechazo antes de cualquier efecto.
 
 ### Servicio temporalmente no disponible
 
