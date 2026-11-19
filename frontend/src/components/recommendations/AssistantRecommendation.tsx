@@ -58,7 +58,7 @@ function actionErrorMessage(error: unknown, action: Action): string {
       return "Esta recomendación ya fue revisada. Recarga la página para ver su estado.";
     case "VALIDATION_ERROR":
       return "Revisa los datos ingresados.";
-    // CSRF_INVALID llega aquí solo si también falló el único reintento de api.ts.
+    // P8: api.ts no reintenta; descarta el token y la próxima acción manual pide uno nuevo.
     case "CSRF_INVALID":
     case "ORIGIN_INVALID":
       return "No se pudo validar la solicitud. Recarga la página e intenta de nuevo.";
@@ -356,7 +356,7 @@ export function AssistantRecommendation({
               className={`${textareaClass} ${borderClass(Boolean(contentError))}`}
             />
             {contentError && (
-              <p id="recommendation-content-error" className="text-xs text-[#EF4444]">
+              <p id="recommendation-content-error" className="text-xs text-[#B91C1C]">
                 {contentError}
               </p>
             )}
@@ -482,7 +482,7 @@ export function AssistantRecommendation({
                 className={`${textareaClass} ${borderClass(Boolean(feedbackError))}`}
               />
               {feedbackError && (
-                <p id="review-feedback-error" className="text-xs text-[#EF4444]">
+                <p id="review-feedback-error" className="text-xs text-[#B91C1C]">
                   {feedbackError}
                 </p>
               )}
