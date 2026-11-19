@@ -320,7 +320,7 @@ export function AssistantRecommendation({
   if (!recommendation) {
     return (
       <div className="space-y-3">
-        <p className="text-xs text-[#64748B]">Aún no hay recomendaciones para este ticket.</p>
+        <p className="text-xs text-[#475569]">Aún no hay recomendaciones para este ticket.</p>
         {errorBox}
         {generateButton("Generar recomendación")}
       </div>
@@ -386,7 +386,7 @@ export function AssistantRecommendation({
               {recommendation.content}
             </p>
             {recommendation.status === "modified" && (
-              <p className="mt-1.5 text-[11px] text-[#64748B]">
+              <p className="mt-1.5 text-[11px] text-[#475569]">
                 Este es el texto original generado por la IA. La versión del especialista se
                 mostrará cuando el backend entregue las revisiones de la recomendación.
               </p>
