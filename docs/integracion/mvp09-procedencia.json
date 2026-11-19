@@ -1,0 +1,523 @@
+{
+  "task": "SYNAPDESK-MVP09-RECOMPOSE-CRUD-ON-MAIN",
+  "base": "3580ac4bfa90ff4ad982e9aee656cc507ca41312",
+  "source_tip": "059f31bbdbd9d4308a4bcbec249f1b12b9a390e3",
+  "original_plan_sha256": "f38f796b9bd5366f1cddbfbbbd5a9b348b8a657d780062f796a5fc368827cb14",
+  "files": [
+    {
+      "path": ".env.example",
+      "classification": "Ya integrado en main",
+      "source_blob": "c49bc70be886857dcb36e6fae29ba666c2b8066a",
+      "base_blob": "b7a8222aa3984ff89120580cafbd9babf77eeefd",
+      "source_commits": [
+        "d3bb975",
+        "31f7678",
+        "d11a334"
+      ],
+      "original_action": "Conservar main; excluir el delta antiguo del transporte y cualquier valor privado.",
+      "destination": ".env.example"
+    },
+    {
+      "path": "backend/app/api/adaptadores_auth.py",
+      "classification": "Necesita adaptación",
+      "source_blob": "a31ad97c9490f37e6f3940b9c84cda516c6c40d2",
+      "base_blob": "97d29cad1cf0e7f0d841800464f8b4c7a336a2b9",
+      "source_commits": [
+        "e4e2cf5"
+      ],
+      "original_action": "Portar solo el delta e4e2cf5: proveedor de procedencia IP inyectado por codigo, permitido exclusivamente en testing; mantener cierre productivo.",
+      "destination": "backend/app/api/adaptadores_auth.py"
+    },
+    {
+      "path": "backend/herramientas/ingreso_local/README.md",
+      "classification": "Necesita adaptación",
+      "source_blob": "21342463c87350b89322a6fffd43b8c3739d4ae5",
+      "base_blob": null,
+      "source_commits": [
+        "10c1764"
+      ],
+      "original_action": "Incorporar desde 10c1764, actualizando base, worktree y resultados solo despues de revalidar.",
+      "destination": "backend/herramientas/ingreso_local/README.md"
+    },
+    {
+      "path": "backend/herramientas/ingreso_local/__init__.py",
+      "classification": "Necesita incorporación",
+      "source_blob": "f0c7fdc1a1e3ad86123dd77084b988da4983494b",
+      "base_blob": null,
+      "source_commits": [
+        "e4e2cf5"
+      ],
+      "original_action": "Incorporar el paquete de composicion de e4e2cf5; no importarlo desde la fabrica habitual.",
+      "destination": "backend/herramientas/ingreso_local/__init__.py"
+    },
+    {
+      "path": "backend/herramientas/ingreso_local/aplicacion.py",
+      "classification": "Necesita adaptación",
+      "source_blob": "75ceb03a6cbf4a4c3816bde8a42f440bca3e77c1",
+      "base_blob": null,
+      "source_commits": [
+        "9f2e5fc"
+      ],
+      "original_action": "Incorporar 9f2e5fc tras revisar el limite de nueve digitos y la ruta de resumen; reutilizar adaptadores y conservar el SQL corregido de main.",
+      "destination": "backend/herramientas/ingreso_local/aplicacion.py"
+    },
+    {
+      "path": "backend/herramientas/ingreso_local/demo.py",
+      "classification": "Herramienta de testing",
+      "source_blob": "2b5f423fbbfa86d6bee6ef675bff7fa6bbdc40c5",
+      "base_blob": null,
+      "source_commits": [
+        "10c1764"
+      ],
+      "original_action": "Incorporar 10c1764 con guardas de base testing propia y procesos propios; revisar compatibilidad con el transporte actual.",
+      "destination": "backend/herramientas/ingreso_local/demo.py"
+    },
+    {
+      "path": "backend/herramientas/ingreso_local/evidencia.py",
+      "classification": "Necesita incorporación",
+      "source_blob": "a2826fc68cda09123c9d951a725e31ad8ec89819",
+      "base_blob": null,
+      "source_commits": [
+        "e4e2cf5"
+      ],
+      "original_action": "Incorporar e4e2cf5: evidencia firmada, nonce y audiencia; preservar aislamiento testing y no aceptar IP declarada.",
+      "destination": "backend/herramientas/ingreso_local/evidencia.py"
+    },
+    {
+      "path": "backend/herramientas/ingreso_local/protocolo.mjs",
+      "classification": "Necesita adaptación",
+      "source_blob": "c15013a6754cba478d394e573ac08a8cca0f06be",
+      "base_blob": null,
+      "source_commits": [
+        "e4e2cf5"
+      ],
+      "original_action": "Incorporar e4e2cf5 y conciliar el filtro de cookies con el contrato actual del transporte y busqueda.",
+      "destination": "backend/herramientas/ingreso_local/protocolo.mjs"
+    },
+    {
+      "path": "backend/herramientas/ingreso_local/protocolo.test.mjs",
+      "classification": "Herramienta de testing",
+      "source_blob": "c747de06c9325ec114b1ad919b1802b5538f86d2",
+      "base_blob": null,
+      "source_commits": [
+        "e4e2cf5"
+      ],
+      "original_action": "Incorporar sus regresiones de manipulacion, replay y procedencia; no eliminar casos existentes.",
+      "destination": "backend/herramientas/ingreso_local/protocolo.test.mjs"
+    },
+    {
+      "path": "backend/herramientas/ingreso_local/servidor_next.mjs",
+      "classification": "Herramienta de testing",
+      "source_blob": "ae19490cc5a51443ec19e2fd43e07bcb620fa902",
+      "base_blob": null,
+      "source_commits": [
+        "10c1764"
+      ],
+      "original_action": "Incorporar 10c1764; instalar el puente solo desde composicion privada testing con claves efimeras.",
+      "destination": "backend/herramientas/ingreso_local/servidor_next.mjs"
+    },
+    {
+      "path": "backend/herramientas/ingreso_local/verificar.py",
+      "classification": "Herramienta de testing",
+      "source_blob": "adff701a73929810f0803d09a31fd57da349dc79",
+      "base_blob": null,
+      "source_commits": [
+        "10c1764"
+      ],
+      "original_action": "Incorporar 10c1764 y apuntar a la nueva copia; archivo privado solo explicito, nunca copiar ni versionar valores.",
+      "destination": "backend/herramientas/ingreso_local/verificar.py"
+    },
+    {
+      "path": "backend/pruebas/test_ingreso_local.py",
+      "classification": "Herramienta de testing",
+      "source_blob": "560bf543dedef02541d475b06a032231483fb200",
+      "base_blob": null,
+      "source_commits": [
+        "e4e2cf5"
+      ],
+      "original_action": "Incorporar e4e2cf5 y extender solo si la adaptacion lo exige; conservar las guardas y negativos originales.",
+      "destination": "backend/pruebas/test_ingreso_local.py"
+    },
+    {
+      "path": "docs/arquitectura/estructura-frontend.md",
+      "classification": "Ya integrado en main",
+      "source_blob": "8479d2d8b8554a8f7a2d25a4a73dd2305b7f557b",
+      "base_blob": "ddaea382c1b012420515c4a39f0e9ba0fc5853a2",
+      "source_commits": [
+        "d3bb975",
+        "31f7678",
+        "d11a334"
+      ],
+      "original_action": "Conservar main; contenido de transporte ya integrado, sin reemplazo desde la rama antigua.",
+      "destination": "docs/arquitectura/estructura-frontend.md"
+    },
+    {
+      "path": "docs/contratos/comunicacion-interna-segura-v1.md",
+      "classification": "Necesita adaptación",
+      "source_blob": "6395ecaaa4ec48e59d955face924e32574482e46",
+      "base_blob": "549bc6f3d7840fcbbba302dfa79af8aed0ff035a",
+      "source_commits": [
+        "e4e2cf5"
+      ],
+      "original_action": "Portar solo la excepcion local testing de e4e2cf5 y enlaces; mantener procedencia productiva cerrada.",
+      "destination": "docs/contratos/comunicacion-interna-segura-v1.md"
+    },
+    {
+      "path": "docs/contratos/frontend-backend.md",
+      "classification": "Necesita adaptación",
+      "source_blob": "bac4d1bfb463f72e5b4de9e21bb3a42cce1e60cf",
+      "base_blob": "0f4a01e1be222c9d71bc7a5acf5e04a035b5e310",
+      "source_commits": [
+        "d3bb975",
+        "31f7678",
+        "6b82eb5",
+        "d11a334",
+        "45ac185",
+        "10c1764"
+      ],
+      "original_action": "Portar solo el parrafo de composicion local de 10c1764; revisar por separado la politica de cookies, preservando propuestas actuales de estado, metricas y busqueda.",
+      "destination": "docs/contratos/frontend-backend.md"
+    },
+    {
+      "path": "docs/contratos/ingreso-local-mvp04.md",
+      "classification": "Necesita adaptación",
+      "source_blob": "1db1dac2bd544f3a92a68f229fb4e5ed4fa5506f",
+      "base_blob": null,
+      "source_commits": [
+        "e4e2cf5",
+        "10c1764"
+      ],
+      "original_action": "Incorporar e4e2cf5 y el delta dependiente 10c1764, actualizando referencias a PR ya fusionados y limites reales.",
+      "destination": "docs/contratos/ingreso-local-mvp04.md"
+    },
+    {
+      "path": "docs/guia-recorrido-local-mvp.md",
+      "classification": "Necesita adaptación",
+      "source_blob": "0e78288cd000b14551c52a91ef670b33cb1c3f7e",
+      "base_blob": null,
+      "source_commits": [
+        "10c1764"
+      ],
+      "original_action": "Incorporar la guia de 10c1764 con nueva base y resultados nuevos; conservar el ensayo anterior como evidencia historica.",
+      "destination": "docs/guia-recorrido-local-mvp.md"
+    },
+    {
+      "path": "docs/integracion/mvp07-consolidacion-y-publicacion.md",
+      "classification": "Debe excluirse",
+      "source_blob": "e1b2856b8b29a1f5b45e19e96003c7e2818825a8",
+      "base_blob": null,
+      "source_commits": [
+        "059f31b"
+      ],
+      "original_action": "No portar literalmente: preservar original historico y redactar procedencia actual para el nuevo candidato.",
+      "destination": "docs/integracion/mvp07-consolidacion-y-publicacion.md"
+    },
+    {
+      "path": "docs/integracion/mvp07-procedencia.json",
+      "classification": "Debe excluirse",
+      "source_blob": "bd19c33027f32dfaeecedad4c5620da5fee105af",
+      "base_blob": null,
+      "source_commits": [
+        "059f31b"
+      ],
+      "original_action": "No reutilizar como manifiesto actual: sus hashes son de f101/MVP06B; generar otro solo despues de componer y validar.",
+      "destination": "docs/integracion/mvp07-procedencia.json"
+    },
+    {
+      "path": "frontend/.env.example",
+      "classification": "Ya integrado en main",
+      "source_blob": "a0fca63b5f57159ef8452cda1b142ccc265253f7",
+      "base_blob": "f0123ad3ca152a313609df1913f083aa83bacd3f",
+      "source_commits": [
+        "d3bb975",
+        "31f7678",
+        "d11a334"
+      ],
+      "original_action": "Conservar main; no importar la plantilla antigua ni agregar credenciales o activar confianza con variables publicas.",
+      "destination": "frontend/.env.example"
+    },
+    {
+      "path": "frontend/README.md",
+      "classification": "Ya integrado en main",
+      "source_blob": "f21f5528ffb07dc2fa0d5f193aaa8be70d21b2ff",
+      "base_blob": "ec1192f0dbf79dce30f9868c661dd88917fad503",
+      "source_commits": [
+        "31f7678",
+        "d11a334"
+      ],
+      "original_action": "Conservar main; incorporar solo documentacion nueva de ensayo si falta, sin restaurar instrucciones obsoletas.",
+      "destination": "frontend/README.md"
+    },
+    {
+      "path": "frontend/package.json",
+      "classification": "Ya integrado en main",
+      "source_blob": "e307ff27a6dbd343dceba9d14893991643e04149",
+      "base_blob": "aa9a75e212816d053a0fafa3a0695072d85a261f",
+      "source_commits": [
+        "d3bb975",
+        "31f7678",
+        "d11a334"
+      ],
+      "original_action": "Conservar scripts unitarios, busqueda y proxy y la configuracion de main; no portar el archivo viejo.",
+      "destination": "frontend/package.json"
+    },
+    {
+      "path": "frontend/src/app/(dashboard)/inicio/page.tsx",
+      "classification": "Ya integrado en main",
+      "source_blob": "a04db59c4ce7db899d87ff116f5eaf3c4ba17e55",
+      "base_blob": "e20038b9dd226d6a9559e21eb97bc4472aed9ad6",
+      "source_commits": [
+        "fad1a9c"
+      ],
+      "original_action": "No reemplazar por redireccion global; si se necesita, limitar el recorrido antiguo al ensayo local y conservar el inicio actual.",
+      "destination": "frontend/src/app/(dashboard)/inicio/page.tsx"
+    },
+    {
+      "path": "frontend/src/app/(dashboard)/layout.tsx",
+      "classification": "Ya integrado en main",
+      "source_blob": "f19814a4e5a6c88d34409d6690a1f3d33f554bdf",
+      "base_blob": "acbcd2c504b274b3409bda24b41df59c54838586",
+      "source_commits": [
+        "fad1a9c"
+      ],
+      "original_action": "Conservar layout y resumen actuales; revisar compatibilidad del resumen con la composicion testing antes de introducir una variante local.",
+      "destination": "frontend/src/app/(dashboard)/layout.tsx"
+    },
+    {
+      "path": "frontend/src/app/(dashboard)/tickets/[id]/page.tsx",
+      "classification": "Necesita adaptación",
+      "source_blob": "fbeac491047aa61d01b14ed817f33f3a8187d7d6",
+      "base_blob": "8b61b23592b78fcace9971fff9c0385371279d65",
+      "source_commits": [
+        "fad1a9c"
+      ],
+      "original_action": "Conservar detalle, TicketStatusControl y paneles actuales; adaptar solo lectura local necesaria, sin sustituir la pagina completa.",
+      "destination": "frontend/src/app/(dashboard)/tickets/[id]/page.tsx"
+    },
+    {
+      "path": "frontend/src/app/(dashboard)/tickets/page.tsx",
+      "classification": "Necesita adaptación",
+      "source_blob": "18de20dc21cb54e2874696ceae2f34888a14a132",
+      "base_blob": "25a6de7f2ca81deb82f73205e194d0ac0b4a19de",
+      "source_commits": [
+        "fad1a9c"
+      ],
+      "original_action": "Conservar listado, paginacion y UI actuales; conciliar filtros y resumen no expuestos por la composicion local sin enviarlos silenciosamente.",
+      "destination": "frontend/src/app/(dashboard)/tickets/page.tsx"
+    },
+    {
+      "path": "frontend/src/app/api/local/csrf/route.ts",
+      "classification": "Necesita incorporación",
+      "source_blob": "1ec777f419eb86fd64b031f92d5c7e0ea1760284",
+      "base_blob": null,
+      "source_commits": [
+        "fad1a9c"
+      ],
+      "original_action": "Incorporar el BFF de fad1a9c con puente privado, Origin y same-origin; una variable publica sola nunca habilita confianza.",
+      "destination": "frontend/src/app/api/local/csrf/route.ts"
+    },
+    {
+      "path": "frontend/src/app/api/v1/[...path]/route.ts",
+      "classification": "Ya integrado en main",
+      "source_blob": "8694b79e9ac7074157a58d403cde15f9381bd748",
+      "base_blob": "8694b79e9ac7074157a58d403cde15f9381bd748",
+      "source_commits": [
+        "d3bb975"
+      ],
+      "original_action": "Excluir: contenido identico en main.",
+      "destination": "frontend/src/app/api/v1/[...path]/route.ts"
+    },
+    {
+      "path": "frontend/src/components/auth/LoginForm.tsx",
+      "classification": "Necesita adaptación",
+      "source_blob": "36e389eb752e807d6522090f2a5f42fcb2ae9974",
+      "base_blob": "e7c40b487578d641646bfa33b5665a19f7591308",
+      "source_commits": [
+        "fad1a9c"
+      ],
+      "original_action": "Portar solo proteccion previa a hidratacion, method post y estado del boton de fad1a9c; preservar flujo actual.",
+      "destination": "frontend/src/components/auth/LoginForm.tsx"
+    },
+    {
+      "path": "frontend/src/components/tickets/TicketReading.tsx",
+      "classification": "Debe excluirse",
+      "source_blob": "1a8fc521e8a937b964416557afc159a7f14fe792",
+      "base_blob": null,
+      "source_commits": [
+        "fad1a9c"
+      ],
+      "original_action": "No incorporar literalmente ni duplicar UI de main; si se mantiene como vista testing, usar updateStatus y acotarla al ensayo.",
+      "destination": "frontend/src/components/tickets/TicketReading.tsx"
+    },
+    {
+      "path": "frontend/src/lib/api.ts",
+      "classification": "Necesita adaptación",
+      "source_blob": "620b53fd2893ab85ccfcf799fa81d1a98e48027c",
+      "base_blob": "b1795c43fc8bb6431e82bbcafed9a8b86390b6ac",
+      "source_commits": [
+        "d3bb975",
+        "31f7678",
+        "fad1a9c"
+      ],
+      "original_action": "Portar solo seleccion de CSRF local y prefijo; preservar readResponse, status HTTP, SESSION_CHANGED desde errors y guarda de generacion de autenticacion.",
+      "destination": "frontend/src/lib/api.ts"
+    },
+    {
+      "path": "frontend/src/lib/backend-proxy.ts",
+      "classification": "Necesita adaptación",
+      "source_blob": "940f2ea1a74a4e5493a1eeb749b804ed4b62bef9",
+      "base_blob": "0b64b42d32095b957c1d9131bab4861fa7655f50",
+      "source_commits": [
+        "d3bb975",
+        "31f7678",
+        "6b82eb5",
+        "d11a334",
+        "dcb7b44",
+        "fad1a9c"
+      ],
+      "original_action": "Adaptar por bloques el puente local y solo el delta de cookies acordado; preservar readLimited exportado y filterCookieHeader con preservePairEvidence usado por busqueda.",
+      "destination": "frontend/src/lib/backend-proxy.ts"
+    },
+    {
+      "path": "frontend/src/lib/transport/client.ts",
+      "classification": "Ya integrado en main",
+      "source_blob": "7dc5424ed90f0c3a7603267c6116b4a665f8cbce",
+      "base_blob": "7dc5424ed90f0c3a7603267c6116b4a665f8cbce",
+      "source_commits": [
+        "d3bb975",
+        "31f7678"
+      ],
+      "original_action": "Excluir: contenido identico en main.",
+      "destination": "frontend/src/lib/transport/client.ts"
+    },
+    {
+      "path": "frontend/src/lib/transport/server.ts",
+      "classification": "Necesita adaptación",
+      "source_blob": "d6c00f1ccd88eee43940fb65376c74bb9aa6c981",
+      "base_blob": "9ded480aed94a66d4388a554c43f7eb698d854b9",
+      "source_commits": [
+        "d3bb975",
+        "31f7678",
+        "6b82eb5",
+        "d11a334",
+        "dcb7b44"
+      ],
+      "original_action": "No portar: el delta residual observado es de comentarios; mantener implementacion SSR de main.",
+      "destination": "frontend/src/lib/transport/server.ts"
+    },
+    {
+      "path": "frontend/tests/proxy/README.md",
+      "classification": "Herramienta de testing",
+      "source_blob": "f52345fb82279630621611457c8665f7603968ec",
+      "base_blob": null,
+      "source_commits": [
+        "dcb7b44"
+      ],
+      "original_action": "Incorporar solo instrucciones vigentes y referencias a tests/support; no afirmar resultados nuevos sin ejecutarlos.",
+      "destination": "frontend/tests/proxy/README.md"
+    },
+    {
+      "path": "frontend/tests/proxy/browser-critical.mjs",
+      "classification": "Debe excluirse",
+      "source_blob": "cf05a7508cc4d7422f53b21a791d18700d2d4bcf",
+      "base_blob": null,
+      "source_commits": [
+        "10c1764"
+      ],
+      "original_action": "Conservar como driver historico opcional; adaptar rutas/selectores antes de usar y no confundirlo con la prueba CRUD completa.",
+      "destination": "frontend/tests/proxy/browser-critical.mjs"
+    },
+    {
+      "path": "frontend/tests/proxy/browser-crud.mjs",
+      "classification": "Herramienta de testing",
+      "source_blob": "8f5d20f65e1ef78107111a0b95b8cc3db9b00147",
+      "base_blob": null,
+      "source_commits": [
+        "10c1764"
+      ],
+      "original_action": "Incorporar y adaptar al candidato final; repetir admin/agent, persistencia por recarga y comprobaciones SQL independientes.",
+      "destination": "frontend/tests/proxy/browser-crud.mjs"
+    },
+    {
+      "path": "frontend/tests/proxy/cookie-cases.mjs",
+      "classification": "Debe excluirse",
+      "source_blob": "4ec3d50b3665b8e83f4100f878803e457c8380bb",
+      "base_blob": null,
+      "source_commits": [
+        "dcb7b44"
+      ],
+      "original_action": "Incorporar los casos estrictos que se acuerden para el transporte, sin sustituir regresiones actuales de busqueda ni reducir cobertura.",
+      "destination": "frontend/tests/proxy/cookie-cases.mjs"
+    },
+    {
+      "path": "frontend/tests/proxy/hooks.mjs",
+      "classification": "Ya integrado en main",
+      "source_blob": "99048ba6add275f2135af297a77243e510c45ff2",
+      "base_blob": null,
+      "source_commits": [
+        "31f7678"
+      ],
+      "original_action": "No duplicar: reutilizar tests/support/hooks.mjs actualizado en main.",
+      "destination": "frontend/tests/support/hooks.mjs"
+    },
+    {
+      "path": "frontend/tests/proxy/next-headers-stub.mjs",
+      "classification": "Ya integrado en main",
+      "source_blob": "55b62577056c682c3226dd879cdd7374d88b140a",
+      "base_blob": null,
+      "source_commits": [
+        "31f7678"
+      ],
+      "original_action": "No duplicar: identico a tests/support/next-headers-stub.mjs.",
+      "destination": "frontend/tests/support/next-headers-stub.mjs"
+    },
+    {
+      "path": "frontend/tests/proxy/proxy.test.mjs",
+      "classification": "Herramienta de testing",
+      "source_blob": "a117fd7010633e74be9bca34de698c345b16e652",
+      "base_blob": "fd86ba3f018548c4cebe3ba9136b8c9ea2816793",
+      "source_commits": [
+        "31f7678",
+        "6b82eb5",
+        "d11a334",
+        "dcb7b44",
+        "fad1a9c"
+      ],
+      "original_action": "Integrar selectivamente casos de cookies y puente local sobre pruebas actuales; mantener cobertura agregada en main y runner compartido.",
+      "destination": "frontend/tests/proxy/proxy.test.mjs"
+    },
+    {
+      "path": "frontend/tests/proxy/register.mjs",
+      "classification": "Ya integrado en main",
+      "source_blob": "695b5192257ff49bd978f41a42b6d5d99e055189",
+      "base_blob": null,
+      "source_commits": [
+        "31f7678"
+      ],
+      "original_action": "No duplicar: reutilizar tests/support/register.mjs actualizado en main.",
+      "destination": "frontend/tests/support/register.mjs"
+    },
+    {
+      "path": "frontend/tests/proxy/run.mjs",
+      "classification": "Ya integrado en main",
+      "source_blob": "7f1c418ded8ac597000b90ec1d2e889f5fa08340",
+      "base_blob": "8176819169d757189a3220ba67ae8a59dd9f1c2b",
+      "source_commits": [
+        "d11a334"
+      ],
+      "original_action": "Conservar el runner de main que utiliza tests/support/register.mjs; no restaurar el import antiguo.",
+      "destination": "frontend/tests/proxy/run.mjs"
+    },
+    {
+      "path": "frontend/tests/proxy/server-only-stub.mjs",
+      "classification": "Ya integrado en main",
+      "source_blob": "e2f552eea4a84b61ba260462424da16513d1bac5",
+      "base_blob": null,
+      "source_commits": [
+        "31f7678"
+      ],
+      "original_action": "No duplicar: identico a tests/support/server-only-stub.mjs.",
+      "destination": "frontend/tests/support/server-only-stub.mjs"
+    }
+  ]
+}

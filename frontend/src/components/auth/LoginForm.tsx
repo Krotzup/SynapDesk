@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/Button";
 import { SESSION_CHANGED } from "@/lib/api";
 import { notifyAuthChange } from "@/lib/auth-sync";
@@ -9,6 +9,7 @@ import { isApiError } from "@/lib/errors";
 import { authService } from "@/services/auth";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const subscribeHydration = () => () => {};
 
 const inputClass =
   "w-full rounded-lg border border-[#E2E8F0] bg-white px-3 py-2.5 text-sm text-[#0F172A] placeholder-[#94A3B8] outline-none transition-colors focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 disabled:bg-[#F8FAFC]";
@@ -33,6 +34,11 @@ function loginErrorMessage(error: unknown): string {
 }
 
 export function LoginForm() {
+  const hydrated = useSyncExternalStore(
+    subscribeHydration,
+    () => true,
+    () => false
+  );
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -73,7 +79,7 @@ export function LoginForm() {
   }
 
   return (
-    <form className="space-y-5" onSubmit={handleSubmit} noValidate>
+    <form method="post" className="space-y-5" onSubmit={handleSubmit} noValidate>
       <div className="space-y-1.5">
         <label htmlFor="email" className="block text-sm font-medium text-[#0F172A]">
           Correo electrónico
@@ -124,7 +130,7 @@ export function LoginForm() {
         </p>
       )}
 
-      <Button type="submit" fullWidth disabled={isSubmitting}>
+      <Button type="submit" fullWidth disabled={!hydrated || isSubmitting}>
         {isSubmitting ? "Iniciando sesión…" : "Iniciar sesión"}
       </Button>
     </form>

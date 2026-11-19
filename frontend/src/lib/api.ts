@@ -41,7 +41,8 @@ const sessionChangedError = (): ApiError => ({
 async function send<TResponse, TBody>(
   endpoint: string,
   options: RequestOptions<TBody>,
-  csrfToken?: string
+  csrfToken?: string,
+  prefix = API_PREFIX
 ): Promise<TResponse> {
   const { method = "GET", body, headers = {} } = options;
   const transport = await getTransport();
@@ -64,7 +65,7 @@ async function send<TResponse, TBody>(
     config.body = JSON.stringify(body);
   }
 
-  const response = await transport.fetch(`${transport.baseUrl}${API_PREFIX}${endpoint}`, config);
+  const response = await transport.fetch(`${transport.baseUrl}${prefix}${endpoint}`, config);
 
   return readResponse<TResponse>(response);
 }
@@ -91,7 +92,10 @@ async function readResponse<TResponse>(response: Response): Promise<TResponse> {
   return response.json() as Promise<TResponse>;
 }
 
-const fetchCsrfToken = () => send<CsrfToken, never>("/auth/csrf", { method: "GET" });
+const fetchCsrfToken = () =>
+  process.env.NEXT_PUBLIC_TRUSTED_LOCAL_INGRESS === "true"
+    ? send<CsrfToken, never>("/csrf", { method: "POST" }, undefined, "/api/local")
+    : send<CsrfToken, never>("/auth/csrf", { method: "GET" });
 
 // P8: descartar un token rechazado para que la próxima acción manual lo renueve.
 function isCsrfInvalid(error: unknown): boolean {

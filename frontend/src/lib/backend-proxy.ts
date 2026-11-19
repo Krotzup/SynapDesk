@@ -256,6 +256,8 @@ export interface BackendRequest {
   path: string;
   headers: Headers;
   body?: Uint8Array<ArrayBuffer>;
+  /** Solo el adaptador SSR de codigo puede delegar una lectura local acreditada. */
+  localRead?: boolean;
 }
 
 /**
@@ -272,6 +274,35 @@ export async function callBackend(
   const headers = new Headers(request.headers);
   headers.delete("authorization");
   headers.set("authorization", `Bearer ${config.credential}`);
+
+  // Capacidad privada instalada solo por el lanzador testing; no procede de HTTP/env publico.
+  const bridge = (
+    process as unknown as Record<
+      symbol,
+      {
+        localTesting?: boolean;
+        attest: (
+          method: string,
+          path: string,
+          headers: Headers,
+          filter: typeof filterCookieHeader,
+          ssr: boolean
+        ) => string;
+      }
+    >
+  )[Symbol.for("synapdesk.mvp04.ingress")];
+  if (bridge?.localTesting === true) {
+    headers.set(
+      "x-synapdesk-ingress-evidence",
+      bridge.attest(
+        request.method,
+        request.path,
+        headers,
+        filterCookieHeader,
+        request.localRead === true
+      )
+    );
+  }
 
   let response: Response;
   try {
