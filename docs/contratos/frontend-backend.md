@@ -165,7 +165,7 @@ Los valores predichos mediante Machine Learning deberán identificarse clarament
 
 Reglas acordadas entre frontend y backend el 03-11-2026. El frontend ya las aplica con datos de ejemplo (PR #27); el endpoint todavía no está implementado en el backend.
 
-**Solicitud.** El cliente envía únicamente `title` y `description`. El servidor asigna los demás campos: `id`, `status`, `priority`, `createdBy`, fechas y, más adelante, la clasificación.
+**Solicitud.** El cliente envía únicamente `title` y `description`. El servidor asigna los demás campos: `id`, `status`, `priority`, `createdBy`, fechas y, más adelante, la clasificación. Cualquier otro campo en la solicitud responde `422` (propuesta en [Campos no previstos](#campos-no-previstos)).
 
 **Normalización.** Se eliminan los espacios en blanco al inicio y al final de `title` y `description` **antes de validar**, y se guarda el valor recortado. El frontend envía los valores ya recortados, pero el backend debe recortarlos igualmente y no confiar en el cliente.
 
@@ -197,7 +197,7 @@ Como toda mutación de V1, creación y cambio de estado se enviarán con `fetch`
 | `401` | `AUTHENTICATION_REQUIRED`        | Sin sesión válida                                        |
 | `403` | `CSRF_INVALID`, `ORIGIN_INVALID` | Token CSRF u `Origin` inválidos (rechazo previo a efectos) |
 | `403` | `FORBIDDEN`                      | El rol no puede crear tickets                            |
-| `422` | `VALIDATION_ERROR`               | `title` o `description` no cumplen las reglas            |
+| `422` | `VALIDATION_ERROR`               | `title` o `description` no cumplen las reglas, o la solicitud trae campos no previstos |
 | `503` | `SERVICE_UNAVAILABLE`            | Servicio temporalmente no disponible                     |
 
 Ejemplo de `422`, con el formato descrito en [Errores de validación](#errores-de-validación):
@@ -228,7 +228,7 @@ Ejemplo de `422`, con el formato descrito en [Errores de validación](#errores-d
 }
 ```
 
-Valores admitidos: `open`, `in_progress`, `resolved` y `closed`. Un `status` ausente o fuera de esa lista responde `422` con `details` en el campo `status`. No se pueden editar otros campos (título, descripción, prioridad, categoría, área ni asignación).
+Valores admitidos: `open`, `in_progress`, `resolved` y `closed`. Un `status` ausente o fuera de esa lista responde `422` con `details` en el campo `status`. No se pueden editar otros campos (título, descripción, prioridad, categoría, área ni asignación): si la solicitud trae cualquier campo distinto de `status`, responde `422` sin cambiar el ticket (ver [Campos no previstos](#campos-no-previstos)).
 
 **Efectos.** Cambia `status` y `updatedAt`. No modifica ningún otro campo. El cambio a un estado no deduce ni borra `resolvedAt` mientras su regla siga pendiente (ver más abajo).
 
@@ -245,7 +245,7 @@ Valores admitidos: `open`, `in_progress`, `resolved` y `closed`. Un `status` aus
 | `403` | `FORBIDDEN`                      | El rol no puede cambiar el estado                          |
 | `404` | `TICKET_NOT_FOUND`               | El ticket no existe                                        |
 | `409` | Por definir                      | El ticket cambió y la operación entra en conflicto         |
-| `422` | `VALIDATION_ERROR`               | `status` ausente o no válido                               |
+| `422` | `VALIDATION_ERROR`               | `status` ausente o no válido, o campos distintos de `status` |
 | `503` | `SERVICE_UNAVAILABLE`            | Servicio temporalmente no disponible                       |
 
 El frontend identifica el `409` y el `503` por estado HTTP, sin depender de `error.code`. Ante un `409` pide recargar el ticket; no reintenta automáticamente ninguna mutación. En todos los errores muestra `error.requestId` como código de referencia.
@@ -450,6 +450,15 @@ Acordado el 03-11-2026 para todos los endpoints que validan datos de entrada. Un
 
 El backend debe adaptar la respuesta de validación predeterminada de FastAPI (`{"detail": [...]}`), que no cumple este formato. Si `details` no trae la lista esperada, el frontend muestra un mensaje general. Si un campo trae varios mensajes, se muestra el primero.
 
+#### Campos no previstos
+
+**Propuesta pendiente de aprobación.** En la creación de tickets y en el cambio de estado, una solicitud con cualquier campo que el contrato no define para esa operación responde `422` con `error.code: "VALIDATION_ERROR"` y no produce efectos. El campo no se ignora ni se aplica.
+
+* `details` no nombra los campos no previstos: llega como `null` o como lista vacía. Si además hay campos previstos inválidos, puede incluir solo esos.
+* El frontend envía únicamente los campos del contrato. Si recibe este `422` sin campos en `details`, muestra el mensaje general de la operación con `error.requestId` como código de referencia.
+
+El núcleo de tickets rechaza campos adicionales (`extra="forbid"` en `EsquemaTicket`); la composición HTTP debe conservar ese rechazo antes de cualquier efecto.
+
 ### Servicio temporalmente no disponible
 
 HTTP 503 significa indisponibilidad temporal. Se aprueba SERVICE_UNAVAILABLE como código general de operaciones de aplicación cuando la causa específica no sea parte del contrato público. GET `/api/v1/ready` conserva DATABASE_UNAVAILABLE cuando falla su comprobación PostgreSQL, con la misma estructura error.code, error.message, error.details y error.requestId. Ese comportamiento existente no se modifica. El frontend maneja 503 por estado HTTP sin asumir un único error.code y sin revelar detalles de infraestructura ni reintentar mutaciones automáticamente. Un fallo PostgreSQL que impide comprobar o confirmar una revocación requerida debe devolver 503, nunca un 204 ficticio.
@@ -479,7 +488,8 @@ Cuando se apruebe este contrato, los servicios de `frontend/src/services/` deber
 * límite de tamaño y formatos de documentos;
 * códigos definitivos de errores;
 * filtros disponibles para tickets;
-* en la creación de tickets: unidad de conteo de las longitudes (el frontend cuenta unidades de JavaScript `string.length`, que pueden diferir de los caracteres de Python en emojis y otros símbolos) y respuesta ante campos no previstos en la solicitud;
+* en la creación de tickets: unidad de conteo de las longitudes (el frontend cuenta unidades de JavaScript `string.length`, que pueden diferir de los caracteres de Python en emojis y otros símbolos);
+* aprobación de la propuesta de respuesta ante [campos no previstos](#campos-no-previstos) en la creación y el cambio de estado de tickets;
 * forma de representar categorías y áreas;
 * estrategia para operaciones de IA que requieran procesamiento prolongado;
 * presupuestos numéricos por operación/tramo pendientes; P8 ya prohíbe reintentos automáticos de escrituras de autenticación;
