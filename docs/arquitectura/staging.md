@@ -1,5 +1,11 @@
 # Estrategia inicial de staging
 
+> Este documento conserva la propuesta inicial de Vercel y Supabase; no es una
+> configuración desplegada. Para autenticación, prevalece la topología B
+> aprobada en [SEC-01B](../contratos/comunicacion-interna-segura-v1.md): Next.js
+> público y FastAPI privado en Render, con TLS directo. La elección de base,
+> archivos, plan y responsables todavía requiere acuerdo y evidencia operativa.
+
 ## Propósito
 
 Staging será el entorno compartido donde el equipo validará la integración de SynapDesk antes de demostraciones y entregas. No se considera un entorno de producción ni tendrá garantías empresariales de disponibilidad.

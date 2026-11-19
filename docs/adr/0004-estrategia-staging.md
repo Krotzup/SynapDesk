@@ -5,6 +5,13 @@
 * Fecha aprobación: 10-09-2026
 * Responsables: equipo SynapDesk
 
+> Vigencia: este ADR conserva la propuesta inicial de proveedores como registro
+> histórico. Para el flujo de autenticación, la topología B aprobada después en
+> [SEC-01B](../contratos/comunicacion-interna-segura-v1.md) exige Next.js público
+> y FastAPI privado en Render con TLS directo. La selección operativa de base,
+> archivos, plan y responsables de staging sigue pendiente; este ADR no acredita
+> un despliegue existente.
+
 ## Contexto
 
 SynapDesk necesita un entorno compartido y de bajo costo para validar la integración y realizar demostraciones. El backend, la base de datos y los documentos requieren persistencia y capacidades diferentes.
@@ -72,4 +79,3 @@ Esta decisión no autoriza todavía la creación de servicios ni el almacenamien
 ## Condiciones para revisar la decisión
 
 Se evaluará otra alternativa si el costo, los límites, la latencia, la suspensión por inactividad o la complejidad operacional dificultan la demostración del producto.
-

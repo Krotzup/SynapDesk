@@ -65,23 +65,26 @@ sesión, Origin, CSRF, TLS y credencial de servicio. Requiere la migración `000
 recuperación V2 preparada, `GEMINI_API_KEY` y aprobación explícita mediante
 `RAG_EXTERNAL_DATA_APPROVED=true`. Sin `--rag` el ensayo CRUD no genera contenido.
 
-Desde `backend/`, con Python y Node ya instalados y la base semántica preparada:
+Desde `backend/`, con Python y Node ya instalados, la base semántica preparada y
+una instancia **exclusiva de testing** en `127.0.0.1:5433` con credenciales
+`POSTGRES_TEST_*` independientes de la base principal:
 
 ```powershell
 New-Item -ItemType Directory -Force ../artifacts | Out-Null
 $env:RAG_EXTERNAL_DATA_APPROVED = 'true' # Solo si el proyecto Gemini está autorizado para esos tickets.
-& 'D:/Visual Code Amemin/Recursos/SynapDesk/envs/backend-ml/Scripts/python.exe' -B -m herramientas.ingreso_local.demo `
+python -B -m herramientas.ingreso_local.demo `
   --frontend ../frontend --reporte ../artifacts/rag-mvp-local.json `
-  --env-file ../.env --rag --remote-test-db
+  --env-file ../.env --rag
 ```
 
-`--remote-test-db` se usa cuando PostgreSQL está en el notebook: abre solo
-`127.0.0.1:5433` en este PC, lo conecta durante el ensayo a la IPv4 privada
-`POSTGRES_HOST` del `.env`, crea una base aleatoria propia y la elimina al cerrar.
-Exige que el usuario de PostgreSQL pueda crear bases; la base principal y la
-semántica no se borran ni migran. Si la base de testing ya corre localmente en
-`127.0.0.1:5433`, omitir esa opción y configurar `POSTGRES_TEST_*`. El reporte
-debe tener un nombre nuevo en cada ejecución; no se sobrescribe evidencia.
+El servicio `db_test` de `compose.yaml` puede proporcionar esa instancia. Si
+PostgreSQL está en otro equipo, ejecutar allí el ensayo junto a `db_test` o
+conectar el PC mediante un túnel seguro que exponga **solo `db_test`** en
+`127.0.0.1:5433`. No conectar el puerto de la base principal ni reutilizar
+`POSTGRES_USER` o `POSTGRES_PASSWORD` para `POSTGRES_TEST_*`. La cuenta de testing
+debe poder crear y eliminar bases temporales en su propia instancia. El arnés
+rechaza otro host o puerto; crea una base aleatoria y la elimina al cerrar.
+El reporte debe tener un nombre nuevo en cada ejecución; no se sobrescribe evidencia.
 
 Abrir la URL impresa, obtener las credenciales efímeras del archivo privado
 indicado por el lanzador, iniciar sesión, crear un ticket relacionado con el

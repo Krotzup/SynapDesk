@@ -180,8 +180,8 @@ PLANTILLAS = {
 }
 PLANTILLA_URL = (b"SYNAPDESK_SEMANTIC_DATABASE_URL=postgresql" +
                  b"://synapdesk_test:reemplazar_con_clave_testing_local@localhost:5433/synapdesk_semantic_test")
-# El puente de testing toma la clave de SecretStr en memoria. Esta excepción
-# exacta cubre también el blob del commit anterior sin eximir valores literales.
+# Excepción para un blob histórico del PR que ya no existe en HEAD. El escáner
+# también revisa commits anteriores; este caso dinámico no contiene una clave literal.
 ASIGNACION_DINAMICA_TESTING = (
     "backend/herramientas/ingreso_local/demo.py",
     b"POSTGRES_TEST_PASSWORD=principal.postgres_password.get_secret_value())",

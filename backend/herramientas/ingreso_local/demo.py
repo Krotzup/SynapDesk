@@ -10,19 +10,14 @@ import base64
 from contextlib import contextmanager
 import hashlib
 import http.client
-from ipaddress import ip_address
 import json
 import os
 from pathlib import Path
-import select as socket_select
 import secrets
 import shutil
-import socket
-import socketserver
 import ssl
 import subprocess
 import sys
-from threading import Thread
 from time import monotonic, sleep
 from uuid import UUID, uuid4
 
@@ -52,57 +47,6 @@ from pruebas.login_auxiliar import configuracion_login
 def escribir(path, value):
     path.write_text(json.dumps(value, ensure_ascii=False), encoding="utf-8")
     path.chmod(0o600)
-
-
-@contextmanager
-def puente_bd_remota():
-    """Expone solo en loopback:5433 la BD del notebook para el ensayo desechable."""
-    principal = seleccionar_configuracion_bd("principal")
-    try:
-        host = ip_address(principal.postgres_host)
-    except ValueError:
-        raise ValueError("El puente requiere la IPv4 privada explícita del notebook.") from None
-    if (host.version != 4 or not host.is_private or host.is_loopback or
-            principal.postgres_db == "postgres" or not principal.tiene_configuracion_bd):
-        raise ValueError("La base remota no cumple las guardas del ensayo.")
-
-    class Conexion(socketserver.BaseRequestHandler):
-        def handle(self):
-            with socket.create_connection((str(host), principal.postgres_port), timeout=10) as remoto:
-                sockets = (self.request, remoto)
-                while True:
-                    listos, _, _ = socket_select.select(sockets, [], [], 120)
-                    if not listos:
-                        return
-                    for origen in listos:
-                        datos = origen.recv(65536)
-                        if not datos:
-                            return
-                        (remoto if origen is self.request else self.request).sendall(datos)
-
-    class Servidor(socketserver.ThreadingTCPServer):
-        allow_reuse_address = True
-        daemon_threads = True
-
-    nombres = ("POSTGRES_TEST_HOST", "POSTGRES_TEST_PORT", "POSTGRES_TEST_DB",
-               "POSTGRES_TEST_USER", "POSTGRES_TEST_PASSWORD")
-    previos = {nombre: os.environ.get(nombre) for nombre in nombres}
-    with Servidor(("127.0.0.1", 5433), Conexion) as servidor:
-        hilo = Thread(target=servidor.serve_forever, daemon=True)
-        hilo.start()
-        os.environ.update(POSTGRES_TEST_HOST="127.0.0.1", POSTGRES_TEST_PORT="5433",
-            POSTGRES_TEST_DB="postgres", POSTGRES_TEST_USER=principal.postgres_user,
-            POSTGRES_TEST_PASSWORD=principal.postgres_password.get_secret_value())
-        try:
-            yield
-        finally:
-            for nombre, valor in previos.items():
-                if valor is None:
-                    os.environ.pop(nombre, None)
-                else:
-                    os.environ[nombre] = valor
-            servidor.shutdown()
-            hilo.join(timeout=5)
 
 
 def comprobar_punto_sql(motor, solicitud, cuentas, evidencia):
@@ -379,8 +323,6 @@ def main():
     parser.add_argument("--browser-driver", type=Path)
     parser.add_argument("--rag", action="store_true", help="Activa recomendaciones solo en este ensayo aislado.")
     parser.add_argument("--env-file", type=Path, help="Configuración privada; nunca se copia al reporte.")
-    parser.add_argument("--remote-test-db", action="store_true",
-        help="Usa la base del notebook por un puente local y crea solo una BD temporal propia.")
     args = parser.parse_args()
     if args.env_file is not None:
         if not args.env_file.is_file():
@@ -388,10 +330,8 @@ def main():
         for nombre, valor in dotenv_values(args.env_file).items():
             if valor is not None:
                 os.environ.setdefault(nombre, valor)
-    from contextlib import nullcontext
-    with puente_bd_remota() if args.remote_test_db else nullcontext():
-        result = ejecutar(args.frontend.resolve(), args.reporte.resolve(),
-            args.browser_driver.resolve() if args.browser_driver else None, rag=args.rag)
+    result = ejecutar(args.frontend.resolve(), args.reporte.resolve(),
+        args.browser_driver.resolve() if args.browser_driver else None, rag=args.rag)
     print(json.dumps({k: result.get(k) for k in ("browser_verified", "persisted_sessions_from_http",
         "persisted_tickets", "database_deleted", "next_stopped", "fastapi_stopped", "temporary_deleted")}))
 
