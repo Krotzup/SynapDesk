@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import { capture, seal } from "./protocolo.mjs";
+import { rutaPermitida } from "./rutas.mjs";
 const key = randomBytes(32);
 const origin = "http://127.0.0.1:3010";
 const request = (method, url, extra = []) => ({ method, url,
@@ -67,6 +68,26 @@ const ssr = { ssr: true, publicOrigin: origin };
 const sessionCookie = "synapdesk_session_dev=original";
 const ssrHeaders = () => new Headers({ cookie: sessionCookie });
 const projectCookie = () => sessionCookie;
+
+const id = '11111111-1111-4111-8111-111111111111';
+for (const [method, path] of [['GET', '/documentos'], ['GET', `/documentos/${id}`],
+  ['GET', '/api/v1/documents?page=2'], ['POST', '/api/v1/documents'],
+  ['GET', `/api/v1/documents/${id}`], ['DELETE', `/api/v1/documents/${id}`],
+  ['GET', `/api/v1/tickets/${id}/prediction`], ['POST', `/api/v1/tickets/${id}/prediction`]]) {
+  test(`lanzador permite ${method} ${path}`, () => assert.equal(rutaPermitida(method, path), true));
+}
+for (const [method, path] of [['PUT', '/api/v1/documents'], ['GET', '/api/v1/documents/no-id'],
+  ['POST', `/api/v1/tickets/${id}/prediction?x=1`], ['GET', '/documentos/privado/extra']]) {
+  test(`lanzador rechaza ${method} ${path}`, () => assert.equal(rutaPermitida(method, path), false));
+}
+for (const [source, target] of [['/documentos', '/api/v1/documents?page=1'],
+  [`/documentos/${id}`, `/api/v1/documents/${id}`], [`/tickets/${id}`, `/api/v1/tickets/${id}/prediction`]]) {
+  test(`SSR permite ${source} a ${target}`, () => {
+    const context = capture(request('GET', source, ['Cookie', sessionCookie]));
+    assert.doesNotThrow(() => seal(context, 'GET', target, ssrHeaders(), key, 'audiencia', projectCookie, ssr));
+    assert.throws(() => seal(context, 'POST', target, ssrHeaders(), key, 'audiencia', projectCookie, ssr));
+  });
+}
 test("SSR acredita lecturas desde la navegación y conserva socket, cookie y nonce único", () => {
   const navigation = capture(request("GET", "/tickets?page=2", ["Cookie", sessionCookie, "Sec-Fetch-Site", "same-origin"]));
   const attest = () => seal(navigation, "GET", "/api/v1/tickets?page=2&pageSize=10", ssrHeaders(), key, "audiencia", projectCookie, ssr);

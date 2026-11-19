@@ -60,31 +60,27 @@ def crear_aplicacion_local(config: Configuracion, motor: Engine, perfil: PerfilC
     async def error_ml(request, error):
         return error_response(error.code, error.message, error.status)
 
+    @app.middleware("http")
+    async def ingreso_asistencia(request: Request, siguiente):
+        ruta = request.url.path
+        protegida = (ruta == "/api/v1/documents" or ruta.startswith("/api/v1/documents/")
+            or ruta.startswith("/api/v1/recommendations/")
+            or ruta.startswith("/api/v1/tickets/") and
+               (ruta.endswith("/recommendations") or ruta.endswith("/prediction")))
+        if protegida:
+            try:
+                if request.method != "GET" or request.headers.getlist("origin"):
+                    exigir_origin(request, config)
+                obtener_intermediario(request)
+                extraer_cookies(request, perfil)
+                verificador(request)
+            except Exception as error:
+                return respuesta_error(request, traducir_error(error))
+        return await siguiente(request)
+
     if config.rag_enabled:
         if config.auth_cookie_profile != "local" or config.rag_public_origin != perfil.origen_publico:
             raise ValueError("El acceso RAG local requiere el origen y las cookies del ensayo.")
-
-        @app.exception_handler(ErrorRecuperacion)
-        async def error_rag(request, error):
-            return error_response(error.code, error.message, error.status)
-
-        @app.middleware("http")
-        async def ingreso_rag(request: Request, siguiente):
-            ruta = request.url.path
-            if (ruta.startswith("/api/v1/recommendations/") or
-                    ruta.startswith("/api/v1/tickets/") and ruta.endswith("/recommendations")):
-                try:
-                    if request.method == "POST":
-                        exigir_origin(request, config)
-                    elif request.headers.getlist("origin"):
-                        exigir_origin(request, config)
-                    obtener_intermediario(request)
-                    extraer_cookies(request, perfil)
-                    verificador(request)
-                except Exception as error:
-                    return respuesta_error(request, traducir_error(error))
-            return await siguiente(request)
-
         app.include_router(router_recomendaciones, prefix="/api/v1")
 
     @app.get("/api/v1/auth/csrf")

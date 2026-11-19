@@ -64,13 +64,15 @@ async def subir(request: Request, response: Response):
         if size > MAX_UPLOAD_BYTES + 8192:
             raise ErrorRecuperacion("DOCUMENT_TOO_LARGE", "El archivo supera el límite permitido.", 413)
         parts.append(part)
-    request._body = b"".join(parts)
+    async def recibir_cuerpo_acotado():
+        return {"type": "http.request", "body": b"".join(parts), "more_body": False}
+    formulario = Request(request.scope, receive=recibir_cuerpo_acotado)
     from starlette.exceptions import HTTPException
     try:
-        await request.form(max_files=1, max_fields=2, max_part_size=MAX_UPLOAD_BYTES + 8192)
+        await formulario.form(max_files=1, max_fields=2, max_part_size=MAX_UPLOAD_BYTES + 8192)
     except HTTPException:
         raise ErrorRecuperacion("VALIDATION_ERROR", "El formulario de carga no es válido.", 422) from None
-    async with request.form(max_files=1, max_fields=2, max_part_size=MAX_UPLOAD_BYTES + 8192) as form:
+    async with formulario.form(max_files=1, max_fields=2, max_part_size=MAX_UPLOAD_BYTES + 8192) as form:
         if (not {"file", "title"} <= set(form) or set(form) - {"file", "title", "description"}
                 or any(len(form.getlist(k)) != 1 for k in form)):
             raise ErrorRecuperacion("VALIDATION_ERROR", "Envía archivo, título y descripción sin duplicados.", 422)

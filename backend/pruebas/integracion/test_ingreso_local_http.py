@@ -249,3 +249,24 @@ def test_escritura_invalida_detalla_campos_conocidos_sin_mutar_sql(
     else:
         assert error["details"] == [dict(
             field=campo, message="El campo no tiene un valor válido.")]
+
+
+@pytest.mark.parametrize("ruta", ["/api/v1/documents", "/api/v1/documents/11111111-1111-4111-8111-111111111111",
+    "/api/v1/tickets/11111111-1111-4111-8111-111111111111/prediction"])
+@pytest.mark.parametrize("metodo", ["GET", "POST", "DELETE"])
+def test_asistencia_exige_sello_antes_de_ruta_o_ml(http_local, ruta, metodo):
+    response = http_local["solicitar"](ruta, 0, metodo=metodo, evidencia=False)
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "SERVICE_UNAVAILABLE"
+
+
+@pytest.mark.parametrize("ruta,modulo", [
+    ("/api/v1/documents", "app.api.documentos"),
+    ("/api/v1/tickets/11111111-1111-4111-8111-111111111111/prediction", "app.api.predicciones")])
+def test_sello_valido_llega_a_autorizacion_de_asistencia(http_local, ruta, modulo):
+    from unittest.mock import patch
+    from app.recuperacion.servicio import ErrorRecuperacion
+    with patch(modulo + ".identidad_aplicacion", side_effect=ErrorRecuperacion("FORBIDDEN", "Prueba de frontera", 403)) as identidad:
+        response = http_local["solicitar"](ruta, 0)
+    assert response.status_code == 403
+    identidad.assert_called_once()

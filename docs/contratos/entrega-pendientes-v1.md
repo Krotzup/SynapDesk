@@ -6,6 +6,40 @@ completar los pendientes; no se presentan como aprobación histórica del PO o
 como despliegue productivo. Este documento actualiza los pendientes específicos
 de filtros, estados, clasificación e ingestión de los contratos anteriores.
 
+## Condiciones pendientes antes del merge
+
+La revisión de `2e6beb7` no constituye aprobación. Registrar expresamente en el
+PR quién ratifica cada decisión; ninguna casilla se considera aprobada por
+aparecer en el código o por pasar CI:
+
+- [ ] PO/equipo: tabla de transiciones y política de `resolvedAt` (HU04).
+- [ ] PO/equipo: precondición y códigos 409, semántica de filtros.
+- [ ] PO/equipo: formatos/límites de documentos y mapeos por variables (HU05/HU06/EQUIPO).
+- [ ] PO/equipo: resolver la contradicción entre «Aceptar y resolver» del 03-11
+  y «aceptar no resuelve» del #59. La implementación conserva el comportamiento
+  del #59 mientras se decide; no se interpreta como una ratificación nueva.
+- [ ] Felipe: revisar tickets, autenticación, origen alternativo de identidad,
+  registro optativo de rutas habituales y preparación de Render.
+- [ ] Valentina: revisión de la interfaz del incremento.
+
+El PR mantiene este alcance integrado a petición del solicitante. Se explicita
+la excepción al criterio de una tarea por PR; cada responsable debe revisar su
+parte antes del merge. No se atribuye aprobación al equipo sin evidencia.
+
+### Perfil de demo
+
+El lanzador `ingreso_local/demo.py` fija `DOCUMENTS_ENABLED=false`, incluso si
+el entorno heredado lo activa. Las páginas y rutas de gestión ya pueden atravesar
+el ingreso de testing, pero las escrituras documentales permanecen cerradas en
+esa demo para conservar el perfil V2. Un ensayo separado de carga debe configurar
+el origen, indexador y base semántica propios. Para habilitar gestión documental
+durante una demo futura, el equipo debe nombrar operador y ventana de
+recalibración; no se recalibra ni se reutiliza un umbral automáticamente.
+
+El sello de ingreso local ahora se exige también para documentos y predicciones
+antes de su autorización de sesión/CSRF; SSR permite únicamente las nuevas
+navegaciones y lecturas acotadas. Esto no acredita ingreso productivo AUTH-07D.3.
+
 ## Tickets, filtros y estados
 
 `GET /api/v1/tickets` combina `search`, `status`, `priority`, `category` y `area`
