@@ -124,7 +124,8 @@ Respuesta resumida de usuario:
 | `GET`    | `/api/v1/tickets/{id}` | Obtener el detalle de un ticket         |
 | `POST`   | `/api/v1/tickets`      | Crear un ticket                         |
 | `PATCH`  | `/api/v1/tickets/{id}` | Cambiar el estado del ticket            |
-| `DELETE` | `/api/v1/tickets/{id}` | Cerrar o eliminar lógicamente un ticket |
+
+El borrado de tickets no forma parte del MVP (MVP02, 16-11-2026); el cierre se hace cambiando el estado a `closed`.
 
 Solicitud inicial para crear un ticket:
 

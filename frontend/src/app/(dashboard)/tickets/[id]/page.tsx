@@ -65,36 +65,36 @@ export default async function TicketDetailPage({ params }: TicketDetailPageProps
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-4 border-t border-[#F1F5F9]">
             <div>
-              <p className="text-xs text-[#94A3B8] font-medium">Usuario</p>
+              <p className="text-xs text-[#64748B] font-medium">Usuario</p>
               <p className="text-sm font-semibold text-[#0F172A] mt-1">{ticket.createdBy.name}</p>
             </div>
             <div>
-              <p className="text-xs text-[#94A3B8] font-medium">Fecha de creación</p>
+              <p className="text-xs text-[#64748B] font-medium">Fecha de creación</p>
               <p className="text-sm font-semibold text-[#0F172A] mt-1">
                 {formatDateTime(ticket.createdAt)}
               </p>
             </div>
             <div>
-              <p className="text-xs text-[#94A3B8] font-medium">Área</p>
+              <p className="text-xs text-[#64748B] font-medium">Área</p>
               <p className="text-sm font-semibold text-[#0F172A] mt-1">
                 {ticket.area ?? "Sin asignar"}
               </p>
             </div>
             <div>
-              <p className="text-xs text-[#94A3B8] font-medium">Categoría</p>
+              <p className="text-xs text-[#64748B] font-medium">Categoría</p>
               <p className="text-sm font-semibold text-[#0F172A] mt-1">
                 {ticket.category ?? "Sin categoría"}
               </p>
             </div>
             <div>
-              <p className="text-xs text-[#94A3B8] font-medium">Asignado a</p>
+              <p className="text-xs text-[#64748B] font-medium">Asignado a</p>
               <p className="text-sm font-semibold text-[#0F172A] mt-1">
                 {ticket.assignedTo?.name ?? "Sin asignar"}
               </p>
             </div>
             {ticket.resolvedAt && (
               <div>
-                <p className="text-xs text-[#94A3B8] font-medium">Fecha de resolución</p>
+                <p className="text-xs text-[#64748B] font-medium">Fecha de resolución</p>
                 <p className="text-sm font-semibold text-[#0F172A] mt-1">
                   {formatDateTime(ticket.resolvedAt)}
                 </p>

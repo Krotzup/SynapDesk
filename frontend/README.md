@@ -139,10 +139,12 @@ con las rutas reales.
 - [x] Servicios por entidad (`src/services/`)
 - [x] Layout del dashboard con Sidebar y Header
 - [x] Página de login (estructura base)
-- [ ] Autenticación — pendiente de decisión técnica del equipo
-- [ ] Protección de rutas — pendiente de definir mecanismo de autenticación
-- [ ] Implementación de pantallas funcionales — pendiente de aprobación del contrato frontend-backend
+- [x] Autenticación con la sesión del backend: cookies `HttpOnly` a través del proxy de mismo origen (#30); login, `/auth/me` y logout conectados y verificados de punta a punta en el ensayo local (#52)
+- [x] Protección de rutas: `AuthProvider` consulta `/auth/me` y redirige a `/login` si no hay sesión
+- [x] Pantallas funcionales del MVP: tickets (listado, detalle, creación y cambio de estado), métricas por estado, búsqueda e indicador de servicio
+- [ ] Documentos y Asistente IA: con datos de ejemplo hasta que el backend implemente sus endpoints
+- [ ] Filtros del listado y administración de usuarios: desactivados o fuera del MVP (#48, #49)
 
-> Los tipos en `src/types/index.ts` y los servicios en `src/services/` son **provisionales**.
-> Deben revisarse y ajustarse cuando se apruebe el contrato frontend-backend
-> (`docs/contratos/frontend-backend.md`) antes de implementar cada módulo.
+> Los tipos de `src/types/index.ts` y los servicios de `src/services/` siguen el contrato
+> (`docs/contratos/frontend-backend.md`). Las partes marcadas como propuesta o pendientes en el
+> contrato pueden cambiar cuando se aprueben.
