@@ -77,7 +77,10 @@ export function describeError(value: unknown): ErrorDescription {
   if (status === 409) {
     return {
       kind: "conflict",
-      message: "El ticket cambió mientras lo editabas. Recarga para ver la versión actual.",
+      message:
+        code === "TICKET_TRANSITION_INVALID"
+          ? "Ese cambio de estado no está permitido. Resuelve el ticket antes de cerrarlo; para reabrirlo, elige En Proceso."
+          : "El ticket cambió mientras lo editabas. Recarga para ver la versión actual.",
       requestId,
     };
   }

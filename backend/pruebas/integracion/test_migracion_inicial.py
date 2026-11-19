@@ -22,7 +22,7 @@ def test_migracion_se_revierte_se_aplica_y_coincide_con_modelos(
     revision = conexion_bd_test.execute(
         text("SELECT version_num FROM alembic_version")
     ).scalar_one()
-    assert revision == "0007_recomendaciones_rag"
+    assert revision == "0008_predicciones_ticket"
     assert inspect(conexion_bd_test).has_table("recomendaciones")
     assert inspect(conexion_bd_test).has_table("revisiones_recomendacion")
     assert inspect(conexion_bd_test).has_table("cuotas_bootstrap_csrf")

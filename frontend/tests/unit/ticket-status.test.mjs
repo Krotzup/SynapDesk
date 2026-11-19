@@ -15,23 +15,39 @@ const apiError = (code, { status, details = null, requestId = "req-123" } = {}) 
 });
 
 describe("ticketsMock.updateStatus", () => {
-  test("cambia solo el estado y updatedAt; resolvedAt no se deduce", async () => {
+  test("resolver fija resolvedAt; reabrir la limpia sin alterar la prioridad", async () => {
     const before = getMockTickets().find((ticket) => ticket.id === TICKET_ID);
     const original = { ...before };
     const updated = await ticketsMock.updateStatus(TICKET_ID, { status: "resolved" });
     assert.equal(updated.status, "resolved");
     assert.ok(updated.updatedAt > original.updatedAt);
-    assert.equal(updated.resolvedAt, original.resolvedAt);
+    assert.equal(updated.resolvedAt, updated.updatedAt);
     assert.equal(updated.title, original.title);
     assert.equal(updated.priority, original.priority);
     assert.deepEqual(updated.assignedTo, original.assignedTo);
     // Vuelve al estado original para no afectar otras pruebas.
-    await ticketsMock.updateStatus(TICKET_ID, { status: original.status });
+    await ticketsMock.updateStatus(TICKET_ID, { status: "in_progress" });
+    const reopened = await ticketsMock.updateStatus(TICKET_ID, { status: original.status });
+    assert.equal(reopened.resolvedAt, null);
   });
 
-  test("acepta cualquiera de los 4 estados: no valida transiciones", async () => {
+  test("cerrar exige resolución y conserva la fecha; rechaza transiciones y estado obsoleto", async () => {
     const original = getMockTickets().find((ticket) => ticket.id === TICKET_ID).status;
-    for (const status of ["closed", "open", "in_progress", "resolved", "open"]) {
+    await assert.rejects(
+      ticketsMock.updateStatus(TICKET_ID, { status: "closed" }),
+      (e) => e.error.code === "TICKET_TRANSITION_INVALID"
+    );
+    await assert.rejects(
+      ticketsMock.updateStatus(TICKET_ID, { status: "resolved", expectedStatus: "closed" }),
+      (e) => e.error.code === "TICKET_STATE_CONFLICT"
+    );
+    const resolved = await ticketsMock.updateStatus(TICKET_ID, { status: "resolved" });
+    const date = resolved.resolvedAt;
+    assert.equal(
+      (await ticketsMock.updateStatus(TICKET_ID, { status: "closed" })).resolvedAt,
+      date
+    );
+    for (const status of ["in_progress", "open"]) {
       assert.equal((await ticketsMock.updateStatus(TICKET_ID, { status })).status, status);
     }
     await ticketsMock.updateStatus(TICKET_ID, { status: original });

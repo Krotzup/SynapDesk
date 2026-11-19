@@ -82,9 +82,14 @@ class AdaptadorTickets:
                 return respuesta_auth(RespuestaError(error=ApiErrorBody(
                     code="FORBIDDEN", message="No tienes permiso para esta operación.",
                     details=None, requestId=id_peticion(request))), estado=403)
+            if error.codigo in {CodigoTickets.CONFLICTO_ESTADO, CodigoTickets.TRANSICION_INVALIDA}:
+                conflicto = error.codigo == CodigoTickets.CONFLICTO_ESTADO
+                return respuesta_auth(RespuestaError(error=ApiErrorBody(
+                    code="TICKET_STATE_CONFLICT" if conflicto else "TICKET_TRANSITION_INVALID",
+                    message="El ticket cambió. Recarga su estado." if conflicto else "La transición de estado no está permitida.",
+                    details=None, requestId=id_peticion(request))), estado=409)
             codigo = (CodigoHttp.VALIDATION_ERROR if error.codigo == CodigoTickets.ENTRADA
                       else CodigoHttp.SERVICE_UNAVAILABLE)
-            # Conflicto de estado: sin nuevo código 409/DTO público no aprobado.
             return respuesta_error(request, codigo)
         except Exception as error:
             if isinstance(error, ErrorSeguridad) and error.codigo == C.ROL_INVALIDO:
@@ -98,6 +103,14 @@ class AdaptadorTickets:
             referencia = self._frontera(request, "POST")
             resultado = self._servicio.crear(referencia, datos,
                 control_escritura=self._control(request, referencia))
+            if getattr(request.app.state, "clasificacion", None) is not None:
+                # La escritura ya confirmó. Un fallo ML jamás revierte el ticket.
+                from app.api.predicciones import generar_prediccion
+                try:
+                    generar_prediccion(request, resultado.id)
+                except Exception:
+                    import logging
+                    logging.getLogger(__name__).warning("Clasificación pendiente tras crear ticket.")
             return respuesta_auth(resultado, estado=201)
         return self._responder(request, ejecutar)
 

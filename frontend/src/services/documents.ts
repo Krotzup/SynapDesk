@@ -10,9 +10,7 @@ const documentsApi = {
 
   getById: (id: string): Promise<Document> => api.get(`/documents/${id}`),
 
-  // La carga usa multipart/form-data.
-  // Se implementa cuando el backend defina formatos, tamaños máximos y validaciones aceptadas.
-  // No se incluye aquí para mantener consistencia con el manejo de errores del cliente HTTP.
+  upload: (data: FormData): Promise<Document> => api.post("/documents", data),
 
   delete: (id: string): Promise<void> => api.delete(`/documents/${id}`),
 };

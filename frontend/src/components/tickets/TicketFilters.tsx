@@ -30,9 +30,13 @@ function formValue(data: FormData, name: string): string | undefined {
 export function TicketFilters(filters: TicketListParams) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const activeCount = [filters.search, filters.status, filters.priority, filters.area].filter(
-    Boolean
-  ).length;
+  const activeCount = [
+    filters.search,
+    filters.status,
+    filters.priority,
+    filters.area,
+    filters.category,
+  ].filter(Boolean).length;
   // Bajo 768 px los filtros quedan detrás del botón "Filtros"; desde ahí, siempre a la vista.
   // La key del listado vuelve a montar este componente al aplicar un filtro: con filtros activos
   // el panel empieza abierto, para elegir el siguiente sin volver a tocar "Filtros".
@@ -45,7 +49,8 @@ export function TicketFilters(filters: TicketListParams) {
     const query = buildQuery({
       status: formValue(data, "status"),
       priority: formValue(data, "priority"),
-      area: filters.area,
+      area: formValue(data, "area"),
+      category: formValue(data, "category"),
       search: formValue(data, "search"),
     });
     startTransition(() => router.push(`/tickets${query}`));
@@ -84,6 +89,7 @@ export function TicketFilters(filters: TicketListParams) {
           id="ticket-search"
           name="search"
           type="search"
+          maxLength={150}
           defaultValue={filters.search ?? ""}
           placeholder="Título, área, usuario o ID..."
           className={`${fieldClass} w-full md:w-56 placeholder-[#94A3B8]`}
@@ -125,6 +131,28 @@ export function TicketFilters(filters: TicketListParams) {
           ))}
         </select>
 
+        <label htmlFor="ticket-area" className="sr-only">
+          Área confirmada
+        </label>
+        <input
+          id="ticket-area"
+          name="area"
+          maxLength={150}
+          defaultValue={filters.area ?? ""}
+          placeholder="Área confirmada"
+          className={`${fieldClass} w-full md:w-36`}
+        />
+        <label htmlFor="ticket-category" className="sr-only">
+          Categoría confirmada
+        </label>
+        <input
+          id="ticket-category"
+          name="category"
+          maxLength={150}
+          defaultValue={filters.category ?? ""}
+          placeholder="Categoría confirmada"
+          className={`${fieldClass} w-full md:w-36`}
+        />
         <Button
           type="submit"
           variant="secondary"

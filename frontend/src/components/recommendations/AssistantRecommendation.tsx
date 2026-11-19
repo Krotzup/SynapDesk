@@ -11,6 +11,7 @@ import { errorRequestId, getFieldErrors, isApiError, isAuthenticationRequired } 
 import { recommendationsService } from "@/services/recommendations";
 import { HumanReview, Recommendation, RecommendationStatus, ReviewDecision } from "@/types";
 import { RecommendationSources } from "./RecommendationSources";
+import { RecommendationContent } from "./RecommendationContent";
 import { RecommendationStatusBadge } from "@/components/ui/Badge";
 
 const reviewedMessages: Record<RecommendationStatus, string> = {
@@ -61,6 +62,14 @@ function actionErrorMessage(error: unknown, action: Action): string {
       return "Ya hay una recomendación pendiente. Revísala antes de generar otra.";
     case "INSUFFICIENT_INFORMATION":
       return "La documentación recuperada no alcanza para generar una recomendación fundamentada.";
+    case "GENERATION_INVALID":
+      return "El generador devolvió una respuesta inválida. No se guardó una recomendación; puedes intentar de nuevo.";
+    case "GENERATION_UNAVAILABLE":
+      return "El servicio de generación no está disponible temporalmente. Intenta de nuevo más tarde.";
+    case "RECOMMENDATIONS_UNAVAILABLE":
+      return "El Asistente IA todavía no está preparado para generar recomendaciones.";
+    case "SEARCH_PROFILE_STALE":
+      return "La base de conocimientos cambió. Las recomendaciones estarán disponibles cuando se actualice la búsqueda.";
     case "VALIDATION_ERROR":
       return "Revisa los datos ingresados.";
     // P8: api.ts no reintenta; descarta el token y la próxima acción manual pide uno nuevo.
@@ -385,14 +394,22 @@ export function AssistantRecommendation({
                 Ver la recomendación original generada por la IA
               </summary>
               <p className="mt-1.5 text-[#475569] leading-relaxed whitespace-pre-line">
-                {recommendation.content}
+                <RecommendationContent
+                  content={recommendation.content}
+                  sources={recommendation.sources}
+                  recommendationId={recommendation.id}
+                />
               </p>
             </details>
           </div>
         ) : (
           <>
             <p className="text-xs text-[#1E293B] leading-relaxed whitespace-pre-line">
-              {recommendation.content}
+              <RecommendationContent
+                content={recommendation.content}
+                sources={recommendation.sources}
+                recommendationId={recommendation.id}
+              />
             </p>
             {recommendation.status === "modified" && (
               <p className="mt-1.5 text-[11px] text-[#475569]">
@@ -404,7 +421,10 @@ export function AssistantRecommendation({
         )}
       </div>
 
-      <RecommendationSources sources={recommendation.sources} />
+      <RecommendationSources
+        sources={recommendation.sources}
+        recommendationId={recommendation.id}
+      />
 
       {mockNotice}
 

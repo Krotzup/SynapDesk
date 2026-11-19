@@ -148,16 +148,12 @@ try {
     const me = await browserRequest(page, "/api/v1/auth/me", "GET");
     check(role + "_me_persisted_session", me.status === 200 && me.data.user.role === role);
     await page.goto(config.origin + "/tickets?status=open", { waitUntil: "domcontentloaded" });
-    const filtersNotice = page.getByText(
-      "Los filtros y la búsqueda de tickets se habilitarán cuando el backend los implemente.",
-      { exact: true }
-    );
-    await filtersNotice.waitFor();
+    await page.locator("#ticket-status").waitFor();
     check(
-      role + "_unsupported_filters_disabled",
-      (await filtersNotice.isVisible()) &&
-        (await page.locator("#ticket-status").isDisabled()) &&
-        (await page.locator("#ticket-priority").isDisabled())
+      role + "_filters_enabled",
+      (await page.locator("#ticket-status").isEnabled()) &&
+        (await page.locator("#ticket-priority").isEnabled()) &&
+        (await page.locator("#ticket-status").inputValue()) === "open"
     );
     await page.goto(config.origin + "/tickets", { waitUntil: "domcontentloaded" });
     await page.getByRole("heading", { name: "Gestión de tickets", exact: true }).waitFor();

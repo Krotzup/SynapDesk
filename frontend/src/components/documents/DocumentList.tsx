@@ -70,7 +70,12 @@ export async function DocumentList({ page, pageSize }: DocumentListProps) {
         {documents.map((document) => (
           <li key={document.id} className="space-y-2 px-4 py-4">
             <div className="flex items-start justify-between gap-3">
-              <p className="text-sm font-semibold text-[#0F172A]">{document.title}</p>
+              <Link
+                href={`/documentos/${document.id}`}
+                className="text-sm font-semibold text-[#2563EB] hover:underline"
+              >
+                {document.title}
+              </Link>
               <span className="shrink-0">
                 <DocumentStatusBadge status={document.processingStatus} />
               </span>
@@ -103,7 +108,12 @@ export async function DocumentList({ page, pageSize }: DocumentListProps) {
             {documents.map((document) => (
               <tr key={document.id} className="hover:bg-[#F8FAFC] transition-colors">
                 <td className="py-4 px-4">
-                  <p className="font-semibold text-[#0F172A]">{document.title}</p>
+                  <Link
+                    href={`/documentos/${document.id}`}
+                    className="font-semibold text-[#2563EB] hover:underline"
+                  >
+                    {document.title}
+                  </Link>
                   {document.description && (
                     <p className="mt-0.5 text-[11px] text-[#64748B] line-clamp-1">
                       {document.description}

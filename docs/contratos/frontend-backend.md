@@ -189,7 +189,7 @@ Un valor vacío, o que quede vacío tras recortar, es inválido.
 
 Como toda mutación de V1, creación y cambio de estado se enviarán con `fetch` desde el cliente, a través del proxy de mismo origen, con `X-CSRF-Token` y `Origin` válido, según el [contrato de autenticación V1](autenticacion-v1.md). Revalidación de sesión, permisos y CSRF comparten la transacción de escritura; un rechazo posterior al trabajo SQL exige rollback y no se representa como un rechazo previo a efectos ni autoriza reintento automático.
 
-**Estado de integración MVP02.** Los [servicios y DTO internos](../../backend/app/tickets/README.md) y los [adaptadores candidatos](../../backend/app/api/adaptadores_tickets.py) están preparados. No hay rutas de tickets registradas. La matriz de permisos ya está aprobada; siguen pendientes la unidad Unicode/recorte/campos extra de creación, filtros y máximo de página públicos, transiciones/resolvedAt/actividad, concurrencia pública y representación final del resumen. `TicketSummary` calcula solo total y los cuatro estados; no sustituye `Metrics` completo ni permite inventar promedios o métricas de IA. Las URLs de esta sección siguen siendo contratos de integración, no evidencia de endpoints operativos.
+**Estado de integración MVP02.** Los [servicios y DTO internos](../../backend/app/tickets/README.md) y los [adaptadores candidatos](../../backend/app/api/adaptadores_tickets.py) están preparados. Las rutas habituales se registran solo con `TICKETS_HTTP_ENABLED=true`; las rutas del ensayo local son independientes. La matriz de permisos ya está aprobada; siguen pendientes la unidad Unicode/recorte/campos extra de creación, filtros y máximo de página públicos, transiciones/resolvedAt/actividad, concurrencia pública y representación final del resumen. `TicketSummary` calcula solo total y los cuatro estados; no sustituye `Metrics` completo ni permite inventar promedios o métricas de IA. Las URLs de esta sección siguen siendo contratos de integración, no evidencia de endpoints operativos.
 
 **Errores.**
 
@@ -219,9 +219,9 @@ Ejemplo de `422`, con el formato descrito en [Errores de validación](#errores-d
 
 ### Cambio de estado (`PATCH /api/v1/tickets/{id}`)
 
-**Propuesta pendiente de aprobación.** En MVP02 (16-11-2026) el Product Owner aprobó que `admin` y `agent` actualicen **exclusivamente el estado** de un ticket. Esta sección propone la forma de la operación, tal como la usa el frontend (PR #43) y como la resuelve el núcleo de tickets del backend (PR #39). La ruta todavía no está implementada.
+**Propuesta pendiente de aprobación.** En MVP02 (16-11-2026) el Product Owner aprobó que `admin` y `agent` actualicen **exclusivamente el estado** de un ticket. Esta sección propone la forma de la operación, tal como la usa el frontend (PR #43) y como la resuelve el núcleo de tickets del backend (PR #39). Las rutas están implementadas en el ensayo local y disponibles de forma optativa mediante `TICKETS_HTTP_ENABLED`; ver la integración de pendientes del MVP.
 
-**Solicitud.** El cliente envía solo `status`:
+**Solicitud actualizada.** El cliente envía `status` y puede incluir `expectedStatus` con el estado que leyó:
 
 ```json
 {
@@ -229,9 +229,9 @@ Ejemplo de `422`, con el formato descrito en [Errores de validación](#errores-d
 }
 ```
 
-Valores admitidos: `open`, `in_progress`, `resolved` y `closed`. Un `status` ausente o fuera de esa lista responde `422` con `details` en el campo `status`. No se pueden editar otros campos (título, descripción, prioridad, categoría, área ni asignación): si la solicitud trae cualquier campo distinto de `status`, responde `422` sin cambiar el ticket (ver [Campos no previstos](#campos-no-previstos)).
+Valores admitidos: `open`, `in_progress`, `resolved` y `closed`. Un `status` ausente o fuera de esa lista responde `422` con `details` en el campo `status`. No se pueden editar otros campos (título, descripción, prioridad, categoría, área ni asignación): si la solicitud trae cualquier campo distinto de `status` y `expectedStatus`, responde `422` sin cambiar el ticket (ver [Campos no previstos](#campos-no-previstos)).
 
-**Efectos.** Cambia `status` y `updatedAt`. No modifica ningún otro campo. El cambio a un estado no deduce ni borra `resolvedAt` mientras su regla siga pendiente (ver más abajo).
+**Efectos actualizados (19-11-2026).** Cambia `status`, `updatedAt` y la fecha de resolución según las reglas de [integración de pendientes](entrega-pendientes-v1.md#tickets-filtros-y-estados): resolver fija la fecha, cerrar la conserva y reabrir la limpia. Se admite `expectedStatus` opcional para detectar conflictos; el frontend lo envía. No modifica prioridad, categoría, área ni asignación.
 
 **Respuesta exitosa.** `200 OK`, con el ticket completo en el mismo formato de `GET /api/v1/tickets/{id}`.
 
@@ -245,13 +245,13 @@ Valores admitidos: `open`, `in_progress`, `resolved` y `closed`. Un `status` aus
 | `403` | `CSRF_INVALID`, `ORIGIN_INVALID` | Token CSRF u `Origin` inválidos (rechazo previo a efectos) |
 | `403` | `FORBIDDEN`                      | El rol no puede cambiar el estado                          |
 | `404` | `TICKET_NOT_FOUND`               | El ticket no existe                                        |
-| `409` | Por definir                      | El ticket cambió y la operación entra en conflicto         |
+| `409` | `TICKET_STATE_CONFLICT`, `TICKET_TRANSITION_INVALID` | Precondición fallida o transición no permitida |
 | `422` | `VALIDATION_ERROR`               | `status` ausente o no válido, o campos distintos de `status` |
 | `503` | `SERVICE_UNAVAILABLE`            | Servicio temporalmente no disponible                       |
 
 El frontend identifica el `409` y el `503` por estado HTTP, sin depender de `error.code`. Ante un `409` pide recargar el ticket; no reintenta automáticamente ninguna mutación. En todos los errores muestra `error.requestId` como código de referencia.
 
-**Pendiente de decisión** (no implementar hasta acordarlo):
+**Antecedente de decisiones pendientes**, sustituido en la implementación solicitada por la [propuesta ejecutable del 19-11-2026](entrega-pendientes-v1.md). Se conserva para identificar qué estaba abierto:
 
 * **`resolvedAt`:** si se fija al pasar a `resolved`, qué ocurre al pasar a `closed` y si se borra al reabrir el ticket;
 * **transiciones:** si se permite pasar de cualquier estado a cualquier otro (comportamiento actual de frontend y backend) o se restringen;
@@ -266,7 +266,7 @@ El frontend identifica el `409` y el `503` por estado HTTP, sin depender de `err
 | `POST`   | `/api/v1/documents`      | Incorporar un documento             |
 | `DELETE` | `/api/v1/documents/{id}` | Retirar un documento                |
 
-La carga utilizará `multipart/form-data`. Los formatos, tamaños máximos y validaciones se definirán antes de implementar esta ruta.
+La carga implementada usa `multipart/form-data`, archivos `.txt`/`.md` UTF-8 de hasta 64 KiB y metadatos acotados. Solo administradores pueden cargar/retirar; agentes y administradores pueden leer. El [contrato de ingestión](entrega-pendientes-v1.md#documentos) define procesamiento, persistencia atómica, retiro, errores y recalibración.
 
 El backend nunca deberá confiar únicamente en la extensión del archivo enviada por el navegador.
 

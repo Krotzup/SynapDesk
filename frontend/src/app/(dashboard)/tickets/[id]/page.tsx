@@ -8,6 +8,7 @@ import {
 } from "@/components/recommendations/TicketRecommendations";
 import { CurrentTicketStatus } from "@/components/tickets/CurrentTicketStatus";
 import { TicketStatusControl } from "@/components/tickets/TicketStatusControl";
+import { TicketPrediction } from "@/components/tickets/TicketPrediction";
 import { PriorityBadge } from "@/components/ui/Badge";
 import { USE_MOCKS } from "@/lib/config";
 import { isApiError } from "@/lib/errors";
@@ -126,11 +127,7 @@ export default async function TicketDetailPage({ params }: TicketDetailPageProps
 
         {/* Panel derecho: Asistente IA */}
         <AssistantPanel>
-          {/* La predicción ML depende de las decisiones pendientes del contrato backend-ML */}
-          <div className="p-3 bg-white border border-dashed border-[#C7D2FE] rounded-xl text-xs text-[#64748B]">
-            La clasificación automática (categoría y prioridad estimadas) se mostrará cuando se
-            apruebe el contrato backend–ML.
-          </div>
+          <TicketPrediction key={ticket.id} ticketId={ticket.id} />
 
           <Suspense fallback={<TicketRecommendationsFallback />}>
             <TicketRecommendations ticketId={ticket.id} />

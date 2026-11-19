@@ -18,8 +18,10 @@ const ticketsApi = {
   create: (data: CreateTicketRequest): Promise<Ticket> => api.post("/tickets", data),
 
   // Solo el estado (MVP02): asignación, edición libre y borrado no están aprobados.
-  updateStatus: (id: string, data: { status: TicketStatus }): Promise<Ticket> =>
-    api.patch(`/tickets/${id}`, data),
+  updateStatus: (
+    id: string,
+    data: { status: TicketStatus; expectedStatus?: TicketStatus }
+  ): Promise<Ticket> => api.patch(`/tickets/${id}`, data),
 };
 
 export type TicketsService = typeof ticketsApi;

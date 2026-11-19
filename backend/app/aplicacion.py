@@ -10,6 +10,8 @@ from app.api.salud import router as router_salud
 from app.api.busqueda import error_response, router as router_busqueda
 from app.api.csrf_auth import router as router_csrf
 from app.api.recomendaciones import router as router_recomendaciones
+from app.api.predicciones import router as router_predicciones
+from app.api.documentos import router as router_documentos
 from app.api.errores_auth import manejar_validacion, registrar_errores
 from app.configuracion import Configuracion
 from app.persistencia.conexion import crear_motor_bd
@@ -28,6 +30,14 @@ def crear_aplicacion(configuracion: Configuracion | None = None) -> FastAPI:
         )
         aplicacion.state.motor_bd = motor
         aplicacion.state.recuperacion = None
+        aplicacion.state.clasificacion = None
+        if configuracion.classifier_enabled:
+            from app.clasificacion import ServicioClasificacion
+            try:
+                aplicacion.state.clasificacion = await run_in_threadpool(ServicioClasificacion, configuracion)
+            except Exception:
+                import logging
+                logging.getLogger(__name__).error("No se pudo preparar el clasificador configurado.")
         if configuracion.search_enabled:
             from app.recuperacion.servicio import ServicioRecuperacion
             try:
@@ -37,6 +47,14 @@ def crear_aplicacion(configuracion: Configuracion | None = None) -> FastAPI:
                 # mensajes de proveedores. La ruta permanece cerrada con 503.
                 import logging
                 logging.getLogger(__name__).error("No se pudo preparar la recuperación semántica configurada.")
+        aplicacion.state.indexador = aplicacion.state.recuperacion
+        if configuracion.documents_enabled and aplicacion.state.indexador is None:
+            from app.documentos import IndexadorDocumentos
+            try:
+                aplicacion.state.indexador = await run_in_threadpool(IndexadorDocumentos)
+            except Exception:
+                import logging
+                logging.getLogger(__name__).error("No se pudo preparar el indexador de documentos.")
         try:
             yield
         finally:
@@ -44,6 +62,8 @@ def crear_aplicacion(configuracion: Configuracion | None = None) -> FastAPI:
                 await run_in_threadpool(motor.dispose)
             aplicacion.state.motor_bd = None
             aplicacion.state.recuperacion = None
+            aplicacion.state.clasificacion = None
+            aplicacion.state.indexador = None
 
     aplicacion = FastAPI(
         title="SynapDesk API",
@@ -54,6 +74,8 @@ def crear_aplicacion(configuracion: Configuracion | None = None) -> FastAPI:
     aplicacion.state.motor_bd = None
     aplicacion.state.configuracion = configuracion
     aplicacion.state.recuperacion = None
+    aplicacion.state.clasificacion = None
+    aplicacion.state.indexador = None
     registrar_errores(aplicacion)
 
     @aplicacion.exception_handler(ErrorRecuperacion)
@@ -81,4 +103,9 @@ def crear_aplicacion(configuracion: Configuracion | None = None) -> FastAPI:
     aplicacion.include_router(router_busqueda, prefix="/api/v1")
     aplicacion.include_router(router_csrf, prefix="/api/v1")
     aplicacion.include_router(router_recomendaciones, prefix="/api/v1")
+    aplicacion.include_router(router_predicciones, prefix="/api/v1")
+    aplicacion.include_router(router_documentos, prefix="/api/v1")
+    if configuracion.tickets_http_enabled:
+        from app.api.tickets import router as router_tickets
+        aplicacion.include_router(router_tickets, prefix="/api/v1")
     return aplicacion

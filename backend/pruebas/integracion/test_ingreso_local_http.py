@@ -81,7 +81,7 @@ def test_ruta_acepta_pagina_enorme_sin_truncar_ni_desbordar(http_local, actor, c
     assert resumen.status_code == 200 and resumen.json()["totalTickets"] == cantidad
 
 
-@pytest.mark.parametrize("query", ["page=1&page=2", "page=1e3", "pageSize=101", "status=open"])
+@pytest.mark.parametrize("query", ["page=1&page=2", "page=1e3", "pageSize=101", "status=invalid"])
 def test_ruta_no_oculta_parametros_duplicados_invalidos_o_no_soportados(http_local, query):
     respuesta = http_local["obtener"]("/api/v1/tickets?" + query, 0)
     assert respuesta.status_code == 422

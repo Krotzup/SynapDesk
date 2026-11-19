@@ -13,6 +13,8 @@ Cada contrato deberá incluir datos de entrada, datos de salida, validaciones, e
 
 ## Contratos disponibles
 
+- [Integración de pendientes del MVP](entrega-pendientes-v1.md): filtros, transiciones, predicciones y documentos; implementación para revisión y activación operativa pendiente.
+
 - [Contrato inicial entre frontend y backend](frontend-backend.md)
 - [Contrato experimental de embeddings y recuperación](embeddings-recuperacion.md)
 - [Recuperación semántica V1 y estados de búsqueda](recuperacion-semantica-v1.md)

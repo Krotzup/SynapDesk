@@ -145,6 +145,7 @@ def test_no_proveedor_productivo_ni_registro_en_fabrica(ingreso):
     assert set(crear_aplicacion(ingreso["config"]).openapi()["paths"]) == {
         "/api/v1/health", "/api/v1/ready", "/api/v1/auth/csrf", "/api/v1/search",
         "/api/v1/tickets/{ticket_id}/recommendations",
+        "/api/v1/tickets/{ticket_id}/prediction", "/api/v1/documents", "/api/v1/documents/{document_id}",
         "/api/v1/recommendations/{recommendation_id}",
         "/api/v1/recommendations/{recommendation_id}/reviews"}
 
@@ -160,7 +161,7 @@ def test_lectura_local_no_reclasifica_cookie_ambigua_como_validacion(ingreso, ru
     motor.dialect.name = "postgresql"
     db = motor.connect.return_value.__enter__.return_value
     db.execute.return_value.one.return_value = (e["config"].postgres_db, e["config"].postgres_user)
-    db.scalar.return_value = "0007_recomendaciones_rag"
+    db.scalar.return_value = "0008_predicciones_ticket"
     perfil = preparar_perfil(e["config"], origen_publico=ORIGEN,
         nombre_sesion="synapdesk_session_dev", nombre_contexto="synapdesk_csrf_context_dev")
     app = crear_aplicacion_local(e["config"], motor, perfil, e["verificar"],

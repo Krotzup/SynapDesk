@@ -261,6 +261,7 @@ export const ticketsMock: TicketsService = {
         (!params?.status || ticket.status === params.status) &&
         (!params?.priority || ticket.priority === params.priority) &&
         (!params?.area || ticket.area === params.area) &&
+        (!params?.category || ticket.category === params.category) &&
         (!search || matchesSearch(ticket, search))
     );
     const sorted = [...filtered].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -305,8 +306,7 @@ export const ticketsMock: TicketsService = {
     return simulateLatency(ticket);
   },
 
-  // PATCH /tickets/{id} con { status } exclusivamente (MVP02). Solo cambia el estado y
-  // updatedAt: resolvedAt y las transiciones siguen pendientes en el contrato.
+  // Replica las transiciones y resolvedAt del contrato; los datos siguen siendo de ejemplo.
   updateStatus: (id, data) => {
     if (!TICKET_STATUSES.includes(data.status)) {
       return rejectWithApiError("VALIDATION_ERROR", "Los datos del ticket no son válidos.", [
@@ -325,8 +325,28 @@ export const ticketsMock: TicketsService = {
         "El servicio no está disponible en este momento. Intenta nuevamente."
       );
     }
+    if (data.expectedStatus && data.expectedStatus !== ticket.status) {
+      return rejectWithApiError("TICKET_STATE_CONFLICT", "El ticket cambió.", null, 409);
+    }
+    const transitions: Record<string, string[]> = {
+      open: ["in_progress", "resolved"],
+      in_progress: ["open", "resolved"],
+      resolved: ["in_progress", "closed"],
+      closed: ["in_progress"],
+    };
+    if (ticket.status !== data.status && !transitions[ticket.status].includes(data.status)) {
+      return rejectWithApiError(
+        "TICKET_TRANSITION_INVALID",
+        "La transición no está permitida.",
+        null,
+        409
+      );
+    }
+    if (ticket.status === data.status) return simulateLatency(ticket);
     ticket.status = data.status;
     ticket.updatedAt = new Date().toISOString();
+    if (data.status === "resolved") ticket.resolvedAt = ticket.updatedAt;
+    else if (data.status === "open" || data.status === "in_progress") ticket.resolvedAt = null;
     return simulateLatency(ticket);
   },
 };

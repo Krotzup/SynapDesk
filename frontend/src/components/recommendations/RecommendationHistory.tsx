@@ -2,6 +2,7 @@ import { RecommendationStatusBadge } from "@/components/ui/Badge";
 import { formatDateTime } from "@/lib/format";
 import { Recommendation } from "@/types";
 import { RecommendationSources } from "./RecommendationSources";
+import { RecommendationContent } from "./RecommendationContent";
 
 /**
  * Recomendaciones anteriores del ticket, de la más reciente a la más antigua. Muestra el
@@ -35,20 +36,37 @@ export function RecommendationHistory({ recommendations }: { recommendations: Re
                     Contenido original de la IA
                   </p>
                   <p className="text-xs text-[#0F172A] leading-relaxed whitespace-pre-line">
-                    {recommendation.content}
+                    <RecommendationContent
+                      content={recommendation.content}
+                      sources={recommendation.sources}
+                      recommendationId={recommendation.id}
+                    />
                   </p>
                 </div>
-                <RecommendationSources sources={recommendation.sources} />
+                <RecommendationSources
+                  sources={recommendation.sources}
+                  recommendationId={recommendation.id}
+                />
+                {recommendation.review && (
+                  <div className="space-y-1 text-xs text-[#475569]">
+                    <p>Revisada el {formatDateTime(recommendation.review.reviewedAt)}</p>
+                    {recommendation.review.modifiedContent && (
+                      <p className="whitespace-pre-line">
+                        Versión del especialista: {recommendation.review.modifiedContent}
+                      </p>
+                    )}
+                    {recommendation.review.feedback && (
+                      <p className="whitespace-pre-line">
+                        Comentario: {recommendation.review.feedback}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </details>
           </li>
         ))}
       </ol>
-      {/* El contrato todavía no permite consultar las revisiones (solo registrarlas). */}
-      <p className="mt-2 text-[11px] text-[#64748B]">
-        La fecha, la versión modificada y el comentario de cada revisión se mostrarán cuando el
-        contrato defina cómo consultarlos.
-      </p>
     </section>
   );
 }

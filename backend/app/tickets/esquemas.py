@@ -42,10 +42,23 @@ class TicketCreate(EsquemaTicket):
 class TicketPagination(EsquemaTicket):
     page: int = Field(default=1, ge=1)
     pageSize: int = Field(default=20, ge=1, le=100)
+    status: EstadoTicket | None = None
+    priority: PrioridadTicket | None = None
+    category: str | None = Field(default=None, max_length=150)
+    area: str | None = Field(default=None, max_length=150)
+    search: str | None = Field(default=None, max_length=150)
+
+    @field_validator("category", "area", "search")
+    @classmethod
+    def recortar_filtro(cls, value: str | None) -> str | None:
+        if value is not None and "\x00" in value:
+            raise ValueError("El filtro contiene caracteres no válidos.")
+        return value.strip() or None if value is not None else None
 
 
 class TicketStatusUpdate(EsquemaTicket):
     status: EstadoTicket
+    expectedStatus: EstadoTicket | None = None
 
 
 class UsuarioTicket(EsquemaTicket):
