@@ -145,6 +145,32 @@ def test_ancla_inexistente_se_rechaza():
     validar_enlace("CONTRIBUTING.md", "#idioma", {"CONTRIBUTING.md"})
 
 
+@pytest.mark.parametrize("cambio", [None, "p4", "decision_pendiente", "dto"])
+def test_contrato_p4_no_ratifica_decisiones_pendientes_ni_altera_dto(tmp_path, monkeypatch, cambio):
+    from herramientas import validar_ci
+    rutas = ("docs/contratos/auth07d3-compatibilidad-y-plan-integracion.md",
+             "backend/app/api/esquemas_auth.py")
+    for ruta in rutas:
+        contenido = (RAIZ / ruta).read_text(encoding="utf-8")
+        if cambio == "p4" and ruta.endswith(".md"):
+            contenido = contenido.replace(
+                "Implementada internamente para revocación y validada en testing aislado.",
+                "todavía no implementada")
+        elif cambio == "decision_pendiente" and ruta.endswith(".md"):
+            contenido = contenido.replace("| C01 | PROPUESTA |", "| C01 | APROBADA |")
+        elif cambio == "dto" and ruta.endswith(".py"):
+            contenido = contenido.replace("    email: ", "    campo_ajeno: str\n    email: ", 1)
+        destino = tmp_path / ruta
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        destino.write_text(contenido, encoding="utf-8")
+    monkeypatch.setattr(validar_ci, "RAIZ", tmp_path)
+    if cambio is None:
+        validar_ci.contratos()
+    else:
+        with pytest.raises(ValueError):
+            validar_ci.contratos()
+
+
 @pytest.mark.parametrize("regla,valor", [
     ("clave_privada", ("-" * 5 + "BEGIN PRIVATE KEY" + "-" * 5).encode()),
     ("token_github", ("ghp_" + "A" * 36).encode()),

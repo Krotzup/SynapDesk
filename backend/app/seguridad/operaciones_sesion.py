@@ -102,19 +102,19 @@ class ServicioLogout:
         try:
             with Session(self._motor) as db, transaccion_seguridad(db):
                 sesiones = ServicioSesiones(db, self._reloj)
-                actual = sesiones.consultar(credencial)
+                sesion_id, usuario_id = sesiones.consultar_para_cierre(credencial)
                 if not isinstance(token, SecretStr):
                     raise ErrorSeguridad(C.TOKEN_INVALIDO)
-                ServicioCsrf(db, self._config, self._reloj).validar_token(
+                ServicioCsrf(db, self._config, self._reloj).validar_token_para_cierre(
                     token, sesion=credencial)
                 # Revalidar después de esperar también el lock del contexto.
-                sesiones.consultar(credencial)
+                sesiones.consultar_para_cierre(credencial)
                 revocada = sesiones.revocar(credencial)
                 if not revocada:
                     raise ErrorSeguridad(C.SESION_REVOCADA)
                 ServicioAuditoria(db, self._reloj).registrar(
                     tipo=T.SESION_REVOCADA, resultado=R.EXITO, motivo=M.LOGOUT,
-                    usuario_id=actual.usuario.id, sesion_id=actual.id,
+                    usuario_id=usuario_id, sesion_id=sesion_id,
                     request_id=request_id)
         except ErrorSeguridad as error:
             if error.codigo in {C.SESION_INEXISTENTE, C.SESION_VENCIDA, C.SESION_REVOCADA}:

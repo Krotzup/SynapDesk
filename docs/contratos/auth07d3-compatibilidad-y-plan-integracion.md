@@ -50,7 +50,7 @@ PR32 se inspeccionó estáticamente; no se ejecutó su búsqueda/ML en el arnés
 | P1 | Rechazar cookies malformadas, duplicadas o de perfiles mezclados, sin convertirlas en anónimas. | Backend estricto; PR30 incumple dos casos reproducidos. Clasificación pública exacta de CookieAmbigua pendiente. |
 | P2 | Sin recuperación automática de sesión vencida, revocada o inválida. | La sesión presentada selecciona su rama. Limpieza explícita en logout no equivale a recuperación ni concede identidad. |
 | P3 | /me no renueva inactividad ni expiración absoluta. | ServicioConsultaSesion ya cumple: ocho horas absolutas y treinta minutos de inactividad no cambian. |
-| P4 | Logout puede revocar una sesión verificable de cuenta inactiva con sus controles. | Excepción limitada aprobada, todavía no implementada. No concede identidad activa, recursos o contexto CSRF nuevo. |
+| P4 | Logout puede revocar una sesión verificable de cuenta inactiva con sus controles. | Implementada internamente para revocación y validada en testing aislado. No concede identidad activa, recursos o contexto CSRF nuevo. |
 | P5 | Origin, servicio, IP, sesión y CSRF son independientes, según endpoint. | Bearer no acredita usuario/IP; no añadir IP o cuotas de login a me/logout por analogía. |
 | P6 | Conservar ApiErrorBody, requestId y no-store. | Cuatro campos dentro de error; sin name ni requestId adicional en AuthUser. |
 | P7 | Sin cuotas de ensayo en producción; cierre si falta política necesaria aprobada/configurada. | No modificar consumo de reservas o umbrales actuales mediante documentación. |
@@ -70,7 +70,7 @@ altas internas AUTH-07C.1/C.2 y su entrega externa de credenciales no cambian.
 | Cookies estrictas | P1, sin identidad ambigua | [lector](../../backend/app/api/cookies_auth.py) y [extraer_cookies](../../backend/app/api/adaptadores_auth.py) conservan originales y rechazan mezcla reservada | CONFORME en perfiles ensayados; rechazo público pendiente | Acordar clasificación; Valentina debe validar antes de filtrar. Configuración de nombres interoperable pendiente. |
 | Sin recuperación | P2 | Adaptador elige PruebaSesionLogin cuando hay cookie de sesión, incluso inválida | CONFORME CANDIDATO | Mantener rechazo; no usar contexto anónimo coexistente como fallback. |
 | /me sin actividad | P3 | [consulta](../../backend/app/seguridad/operaciones_sesion.py) no llama registrar_actividad ni emite cookies | CONFORME INTERNO | Pruebas de fecha antes/después y expiración a treinta minutos en integración futura. |
-| Logout inactivo | P4 | ServicioLogout usa ServicioSesiones.consultar; rechaza USUARIO_INACTIVO. [CSRF](../../backend/app/seguridad/csrf.py) también exige sesión/usuario activo | BRECHA DE IMPLEMENTACIÓN | Backend: capacidad estrecha de revocación, revalidación/locks/CSRF existentes adaptados solo a cierre; no relajar consulta general. |
+| Logout inactivo | P4 | [ServicioLogout](../../backend/app/seguridad/operaciones_sesion.py) usa verificación específica de cierre y [CSRF](../../backend/app/seguridad/csrf.py) comprueba un token existente ligado a esa sesión | CONFORME INTERNO / TESTING | Consulta general, emisión de sesiones/contextos/tokens y operaciones protegidas siguen exigiendo cuenta activa. No habilita rutas de staging. |
 | Origin / servicio | P5, Origin estricto y SEC-01B | [frontera](../../backend/app/api/dependencias_auth.py), [bootstrap](../../backend/app/api/csrf_auth.py); intermediario separado | CONFORME CANDIDATO | Componer por endpoint con precedencia explícita; probar pares de errores al registrar en otra tarea. |
 | IP | P9/P10 | obtener_ip_verificada siempre rechaza después de SEC-01B | CIERRE CORRECTO | Infraestructura y backend: acreditar fuente antes de diseñar adaptador productivo. |
 | Errores | P6 y contrato general 422 | [manejadores](../../backend/app/api/errores_auth.py) saneados, CookieAmbigua cae en 500 | PARCIAL / catálogo adicional PROPUESTA | No inventar COOKIE_INVALID u otro código; resolver clasificación antes de exponer. |
@@ -86,13 +86,13 @@ solo acredita rechazo previo a negocio, sin permiso de repetir la escritura.
 Actualizar ese comentario en una futura tarea de código no requiere ni implica
 modificar la política o activar rutas.
 
-### Excepción de logout inactivo: alcance implementable futuro
+### Excepción de logout inactivo: implementación acotada
 
 No reutilizar el DTO AuthUser como permiso. Identificar la sesión por una única
 credencial canónica, cargar cuenta/sesión/contexto bajo locks coherentes,
 verificar existencia, revocación, ocho horas, treinta minutos, rol admitido y
 token CSRF todavía válido ligado a esa sesión. Revalidar después de esperas.
-La inactividad de cuenta será la única condición exceptuada para **revocar**;
+La inactividad de cuenta es la única condición exceptuada para **revocar**;
 no exceptuar el vencimiento, la posesión o CSRF de una sesión revocable.
 
 Token inexistente/vencido/ajeno no permite revocación de esa sesión: 403 según
@@ -101,8 +101,12 @@ caso. Sesión inexistente/vencida/revocada confirmada conserva 204 idempotente,
 sin evento ficticio. No reactivar cuenta ni actividad, no otorgar permisos ni
 crear sesión/contexto/login. Cuenta inactiva sigue rechazada por me, bootstrap
 autenticado, login y administración. Revocación/contexto/auditoría deben ser
-atómicos; error de BD no se transforma en ausencia. Esto es una especificación,
-no una garantía ya probada por el servicio actual.
+atómicos; error de BD no se transforma en ausencia. Las regresiones de
+[operaciones de sesión](../../backend/pruebas/integracion/test_operaciones_sesion.py)
+y [HTTP local](../../backend/pruebas/integracion/test_ingreso_local_http.py)
+verifican P4 con PostgreSQL real: ambos roles, CSRF previo válido o rechazado,
+ausencia de emisión, otra sesión intacta, auditoría atómica y concurrencia con
+desactivación en ambos órdenes. Esta evidencia no acredita staging ni Render.
 
 ## 4. Decisiones adicionales que siguen pendientes
 
@@ -211,7 +215,7 @@ modificar sus expectativas para llamar conforme al defecto original.
 | A13 | Cuerpo lento/excesivo y presupuesto completo | Lectura inicial acotada, error sin entrada/secreto, plazo total por operación | Brecha estática en PR30; NO PROBADO como corrección | Valentina/PO |
 | A14 | PostgreSQL: commit visible desde otra conexión, fallo auditoría/constraint diferida | Sin respuesta/cookie de éxito antes del commit ni alta parcial | Suite D.1 incluida en 351 D.2: VERIFICADO INTERNO; HTTP real futuro pendiente | Backend |
 | A15 | /me repetido/SSR y reloj al límite de inactividad | No cambia actividad ni ocho horas, 401 al vencer | Servicio interno cumple P3; prueba futura del recorrido HTTP PENDIENTE | Backend |
-| A16 | Cuenta desactivada: token previo vigente vs inválido, revocación/locks/auditoría | Solo cierre verificado atómico; me/admin siguen rechazados, sin token nuevo | P4 NO IMPLEMENTADA; no reclamar aprobación del test anterior como evidencia | Backend |
+| A16 | Cuenta desactivada: token previo vigente vs inválido, revocación/locks/auditoría | Solo cierre verificado atómico; me/admin siguen rechazados, sin token nuevo | P4 implementada; regresiones PostgreSQL y HTTP local, sin acreditación productiva | Backend |
 | A17 | Cookie vencida/revocada con contexto anónimo coexistente | Rechazo csrf/login; logout explícito puede limpiar tras confirmación; luego nuevo flujo explícito | P2 presente en candidato; navegador y carreras PENDIENTES | Backend/Valentina |
 | A18 | Ruta específica search: servicio+usuario+CSRF y respuesta de dominio | Canal común, mismos controles, contrato de búsqueda preservado | PR32 inspección ESTÁTICA; ejecución PENDIENTE | América |
 | A19 | Dos usuarios SSR y pestañas login/logout simultáneas | Sin cookies globales/cache cruzada/borrado tardío; ningún retry de escritura | PR30_SSR_REAL_AISLADO local parcial; navegador/carreras PENDIENTES | Valentina/backend |
