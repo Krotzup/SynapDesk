@@ -14,7 +14,8 @@ const { window } = dom;
 
 // Globales del navegador que usan React y Testing Library. Los que Node ya trae (fetch, URL,
 // AbortController, etc.) se conservan.
-const ASSIGNED = new Set(["window", "document", "navigator"]);
+// FormData también se toma de jsdom: el de Node no acepta un <form> de jsdom en el constructor.
+const ASSIGNED = new Set(["window", "document", "navigator", "FormData"]);
 for (const key of Object.getOwnPropertyNames(window)) {
   if (ASSIGNED.has(key) || key in globalThis || key.startsWith("_")) continue;
   Object.defineProperty(globalThis, key, {

@@ -42,7 +42,7 @@ function generalErrorMessage(error: unknown): string {
       return "No tienes permiso para crear tickets.";
     case "VALIDATION_ERROR":
       return "Revisa los datos del ticket.";
-    // CSRF_INVALID llega aquí solo si también falló el único reintento de api.ts.
+    // P8: api.ts no reintenta; descarta el token y la próxima acción manual pide uno nuevo.
     case "CSRF_INVALID":
     case "ORIGIN_INVALID":
       return "No se pudo validar la solicitud. Recarga la página e intenta de nuevo.";
