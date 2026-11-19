@@ -46,7 +46,7 @@ de replay ni acreditación de despliegue.
 | C07 | SEC-01B privado y clave de evidencia/audiencia efímeras, no NEXT_PUBLIC ni persistencia | Nombre actual de variable de servicio continúa provisional |
 | C08 | Fuente local observada, evidencia autenticada y pruebas de rechazo | Render sigue PENDIENTE_DE_EVIDENCIA |
 | C09 | Origin antes de JSON en login; /me sin Origin permitido; sesión/contexto según rama presentada | Otros detalles interoperables pendientes conservan su estado |
-| P4 | Sin logout ni administración en la composición | No bloquea me/lecturas; no se implementa aquí |
+| P4 | MVP04/MVP09 sin logout; MVP10 conecta el logout existente sólo en testing. Sin administración | Mantiene el cierre de la fábrica habitual y los contratos existentes |
 
 Las cuentas de ensayo son filas reales con Argon2id y rol persistido, preparadas
 solo en la base exclusiva. No constituyen identidades productivas ni sesiones
@@ -63,7 +63,11 @@ extrema corregida en #39; el parser HTTP no añade el límite antiguo de nueve d
 [app.aplicacion](../../backend/app/aplicacion.py)
 no importa el paquete ni habilita esas rutas. Su CSRF permanece cerrado y login/me
 siguen ausentes. No hay flag de producción para activar el ensayo o aceptar
-una IP declarada. No se registra logout ni administración.
+una IP declarada. La composición MVP09 no registraba logout. MVP10 conecta
+`POST /api/v1/auth/logout` mediante SolicitudLogout y AdaptadorAuth existentes,
+con cuerpo {}, respuesta 204, revocación persistente y rechazos Origin/CSRF
+ya contratados. Conserva TLS, SEC-01B y evidencia local antes del adaptador;
+no altera DTO ni el contrato público V1. No se registra administración.
 
 La [guía ejecutable](../../backend/herramientas/ingreso_local/README.md) describe
 recursos, pruebas y limpieza. MVP09 conserva la política OWS/NBSP ya fusionada de

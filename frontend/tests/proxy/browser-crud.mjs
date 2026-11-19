@@ -53,7 +53,9 @@ try {
   browser = await chromium.launch({ channel: "msedge", executablePath: result.executable, headless: true });
   result.browser = browser.version();
   const privateCookies = [];
-  for (const account of config.accounts) {
+  const orderedAccounts = [...config.accounts].sort((a, b) =>
+    Number(b.role === "admin") - Number(a.role === "admin"));
+  for (const account of orderedAccounts) {
     const role = account.role;
     stage = role + "_login";
     const context = await browser.newContext();
@@ -85,9 +87,10 @@ try {
     const me = await browserRequest(page, "/api/v1/auth/me", "GET");
     check(role + "_me_persisted_session", me.status === 200 && me.data.user.role === role);
     await page.goto(config.origin + "/tickets?status=open", {waitUntil: "domcontentloaded"});
-    const unsupportedFilter = page.getByRole("alert").filter({ hasText: "Los filtros todavía no están disponibles." });
-    await unsupportedFilter.waitFor();
-    check(role + "_unsupported_filter_explicit", await unsupportedFilter.isVisible());
+    const filtersNotice = page.getByText("Los filtros y la búsqueda de tickets se habilitarán cuando el backend los implemente.", { exact: true });
+    await filtersNotice.waitFor();
+    check(role + "_unsupported_filters_disabled", await filtersNotice.isVisible() &&
+      await page.locator("#ticket-status").isDisabled() && await page.locator("#ticket-priority").isDisabled());
     await page.goto(config.origin + "/tickets", {waitUntil: "domcontentloaded"});
     await page.getByRole("heading", { name: "Gestión de tickets", exact: true }).waitFor();
     stage = role + "_new_ticket_page";
@@ -128,8 +131,10 @@ try {
     await page.getByRole("link", { name: title, exact: true }).first().click();
     await page.getByRole("heading", { name: title, exact: true }).waitFor();
     check(role + "_detail_browser", await page.getByText(description, { exact: true }).isVisible());
-    check(role + "_optional_recommendations_do_not_block", await page.getByRole("status").filter({
-      hasText: "No se pudieron cargar las recomendaciones. El ticket sigue disponible." }).isVisible());
+    const optionalRecommendations = page.getByRole("alert").filter({
+      hasText: "No se pudieron cargar las recomendaciones del ticket." });
+    await optionalRecommendations.waitFor();
+    check(role + "_optional_recommendations_do_not_block", await optionalRecommendations.isVisible());
     stage = role + "_status";
     const target = role === "agent" ? "in_progress" : "resolved";
     await page.getByLabel("Cambiar estado", { exact: true }).selectOption(target);
@@ -152,7 +157,7 @@ try {
     stage = role + "_security";
     const tokenResponse = await browserRequest(page, "/api/local/csrf", "POST");
     check(role + "_session_csrf", tokenResponse.status === 200);
-    const token = tokenResponse.data.csrfToken;
+    let token = tokenResponse.data.csrfToken;
     secrets.push(token);
     const invalidState = await browserRequest(page, "/api/v1/tickets/" + ticket.id, "PATCH", { status: "invalid" }, token);
     check(role + "_invalid_state", invalidState.status === 422);
@@ -162,7 +167,7 @@ try {
     check(role + "_reject_unrelated_field", extras.status === 422);
     const cookies = await context.cookies();
     secrets.push(...cookies.map(c => c.value));
-    const cookie = cookies.map(c => `${c.name}=${c.value}`).join("; ");
+    let cookie = cookies.map(c => `${c.name}=${c.value}`).join("; ");
     privateCookies.push({ role, cookie });
     const headers = { Cookie: cookie, Origin: config.origin, "Content-Type": "application/json", "X-CSRF-Token": token };
     const path = "/api/v1/tickets/" + ticket.id;
@@ -171,6 +176,39 @@ try {
     check(role + "_anonymous_read", (await raw(path)).status === 401);
     check(role + "_anonymous_create", (await raw("/api/v1/tickets", { Origin: config.origin, "Content-Type": "application/json" }, "POST", { title, description })).status === 401);
     await checkpoint(account, ticket, "negative_unchanged");
+    stage = role + "_logout";
+    const invalidLogout = await browserRequest(page, "/api/v1/auth/logout", "POST", {},
+      randomBytes(32).toString("base64url"));
+    check(role + "_logout_invalid_csrf", invalidLogout.status === 403);
+    check(role + "_logout_rejection_keeps_session", (await browserRequest(page, "/api/v1/auth/me", "GET")).status === 200);
+    await page.getByRole("button", { name: "Menú de usuario: " + account.email, exact: true }).click();
+    const logoutResponse = responseFor(page, "/api/v1/auth/logout", "POST");
+    await page.getByRole("button", { name: "Cerrar sesión", exact: true }).click();
+    check(role + "_logout_browser_http204", (await logoutResponse).status() === 204);
+    await page.waitForURL(config.origin + "/login");
+    check(role + "_logout_cookie_removed", !(await context.cookies()).some(c => c.name === "synapdesk_session_dev"));
+    check(role + "_logout_me_rejected", (await browserRequest(page, "/api/v1/auth/me", "GET")).status === 401);
+    check(role + "_logout_old_cookie_rejected", (await raw("/api/v1/auth/me", { Cookie: cookie })).status === 401);
+    await checkpoint(account, ticket, "logged_out");
+
+    // Segunda sesión HTTP para probar revocación/inactividad sin confundirlas con logout.
+    stage = role + "_security_relogin";
+    await page.waitForFunction(() => !document.querySelector('button[type="submit"]')?.disabled);
+    await page.getByLabel("Correo electrónico", { exact: true }).fill(account.email);
+    await page.getByLabel("Contraseña", { exact: true }).fill(account.password);
+    const reloginResponse = responseFor(page, "/api/v1/auth/login", "POST");
+    await page.getByRole("button", { name: "Iniciar sesión", exact: true }).click();
+    check(role + "_security_relogin_http200", (await reloginResponse).status() === 200);
+    check(role + "_security_relogin_me", (await browserRequest(page, "/api/v1/auth/me", "GET")).data.user.role === role);
+    const freshCsrf = await browserRequest(page, "/api/local/csrf", "POST");
+    check(role + "_security_relogin_csrf", freshCsrf.status === 200);
+    token = freshCsrf.data.csrfToken;
+    const freshCookies = await context.cookies();
+    secrets.push(token, ...freshCookies.map(c => c.value));
+    cookie = freshCookies.map(c => `${c.name}=${c.value}`).join("; ");
+    privateCookies.at(-1).cookie = cookie;
+    await page.goto(config.origin + "/tickets/" + ticket.id, { waitUntil: "domcontentloaded" });
+    await page.getByRole("heading", { name: title, exact: true }).waitFor();
     await checkpoint(account, ticket, role === "agent" ? "revoke" : "deactivate");
     const rejectedWrite = await browserRequest(page, path, "PATCH", { status: "closed" }, token);
     check(role + "_" + (role === "agent" ? "revoked_session" : "inactive_account") + "_write", rejectedWrite.status === 401);

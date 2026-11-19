@@ -13,7 +13,7 @@ from app.api.adaptadores_tickets import AdaptadorTickets
 from app.api.cookies_auth import CookieAmbigua, PerfilCookies
 from app.api.dependencias_auth import exigir_origin, obtener_intermediario
 from app.api.errores_auth import CodigoHttp, registrar_errores, respuesta_error, traducir_error
-from app.api.esquemas_auth import SolicitudLogin
+from app.api.esquemas_auth import SolicitudLogin, SolicitudLogout
 from app.api.salud import router as router_salud
 from app.configuracion import Configuracion
 from herramientas.ingreso_local.evidencia import VerificadorIngresoLocal, exigir_testing_propio
@@ -131,6 +131,10 @@ def crear_aplicacion_local(config: Configuracion, motor: Engine, perfil: PerfilC
             return respuesta_error(request, CodigoHttp.VALIDATION_ERROR)
         except Exception as error:
             return respuesta_error(request, traducir_error(error))
+
+    @app.post("/api/v1/auth/logout")
+    async def logout(request: Request):
+        return await escritura(request, SolicitudLogout, auth.logout)
 
     @app.get("/api/v1/tickets")
     def listado(request: Request):

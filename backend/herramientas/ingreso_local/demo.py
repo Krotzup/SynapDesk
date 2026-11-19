@@ -58,7 +58,11 @@ def comprobar_punto_sql(motor, solicitud, cuentas, evidencia):
         assert db.scalar(select(func.count(Ticket.id)).where(Ticket.titulo == fila.titulo)) == 1
         evidencia.setdefault("sql_checkpoints", []).append(dict(role=cuenta["role"], phase=fase,
             ticket_id=str(fila.id), status=fila.estado, unique_row=True))
-        if fase == "revoke":
+        if fase == "logged_out":
+            sesiones = list(db.scalars(select(Sesion).where(Sesion.usuario_id == UUID(cuenta["id"]))))
+            assert len(sesiones) == 1 and sesiones[0].revocada_en is not None
+            evidencia["sql_checkpoints"][-1]["session_revoked"] = True
+        elif fase == "revoke":
             db.execute(update(Sesion).where(Sesion.usuario_id == UUID(cuenta["id"])).values(
                 revocada_en=func.clock_timestamp(), motivo_revocacion="individual"))
             db.commit()
@@ -132,8 +136,12 @@ def ejecutar(frontend: Path, reporte: Path, driver: Path | None):
         raise ValueError("El reporte ya existe; conservar evidencia anterior.")
     carpeta = BACKEND / (".arnes-auth07d2-" + uuid4().hex)
     carpeta.mkdir()
-    evidencia = dict(task="SYNAPDESK-MVP09-PREPARE-CRUD-PUBLICATION",
-        production_enabled=False, base_main="5a73f024d6a3ef2476120b18042592cc017bb539", browser_verified=False)
+    evidencia = dict(task="SYNAPDESK-MVP12-PREPARE-PR52-NONDESTRUCTIVE-UPDATE",
+        source_sha="ba2422fadff2cab93ab842a6ecdd3990f1434471",
+        logout_sha="c81367aae9a7213581afb02f69976e91ba39a5a0",
+        reconciliation_sha="9c13277635e3e0838c46a05b863a502cd2ec7fef",
+        main_merge_sha="4302efa92e98eade122728faccba91a90e88e362",
+        production_enabled=False, base_main="ca1d572c35472af525e4a2d85bf38881265e5818", browser_verified=False)
     fuentes = [BACKEND / p for p in (
         "app/api/adaptadores_auth.py", "app/api/adaptadores_tickets.py",
         "app/tickets/servicio.py", "app/tickets/repositorio.py",
@@ -159,6 +167,8 @@ def ejecutar(frontend: Path, reporte: Path, driver: Path | None):
             datos.update(postgres_db=nombre, auth_intermediario=politica([servicio]),
                 auth_origenes_permitidos=[origen], auth_proxies_autorizados=["127.0.0.1/32"])
             config = Configuracion(_env_file=None, **datos)
+            assert config.app_env == "testing"
+            evidencia["app_env"] = config.app_env
             perfil = preparar_perfil(config, origen_publico=origen,
                 nombre_sesion="synapdesk_session_dev", nombre_contexto="synapdesk_csrf_context_dev")
             verificador = VerificadorIngresoLocal(config, clave, audiencia, ventana_segundos=30, capacidad_nonces=2048)

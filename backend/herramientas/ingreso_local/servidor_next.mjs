@@ -25,6 +25,7 @@ const application = next({dev: true, dir: config.project, hostname: '127.0.0.1',
 await application.prepare();
 const handle = application.getRequestHandler();
 const allowed = new Map([['/api/v1/auth/csrf', 'GET'], ['/api/v1/auth/login', 'POST'], ['/api/v1/auth/me', 'GET']]);
+allowed.set('/api/v1/auth/logout', 'POST');
 allowed.set('/api/local/csrf', 'POST');
 const failure = response => {
   response.writeHead(503, {'Content-Type': 'application/json', 'Cache-Control': 'no-store'});
