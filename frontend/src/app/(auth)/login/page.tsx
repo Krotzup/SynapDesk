@@ -8,8 +8,10 @@ export default function LoginPage() {
       {/* Logo y título */}
       <div className="text-center space-y-2">
         <div className="flex items-center justify-center gap-2 mb-4">
-          <span className="text-[#2563EB] text-3xl font-bold">⚡</span>
-          <span className="text-2xl font-semibold tracking-tight text-[#0F172A]">SynapDesk</span>
+          <span aria-hidden="true" className="text-[#2563EB] text-3xl font-bold">
+            ⚡
+          </span>
+          <h1 className="text-2xl font-semibold tracking-tight text-[#0F172A]">SynapDesk</h1>
         </div>
         <p className="text-sm text-[#475569]">Inicia sesión para continuar</p>
       </div>

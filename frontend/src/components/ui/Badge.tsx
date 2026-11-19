@@ -8,8 +8,8 @@ import {
 // ─── Badge de prioridad ───────────────────────────────────────────────────────
 
 const priorityStyles: Record<TicketPriority, string> = {
-  low: "bg-[#DCFCE7] text-[#16A34A]",
-  medium: "bg-[#FEF9C3] text-[#D97706]",
+  low: "bg-[#DCFCE7] text-[#15803D]",
+  medium: "bg-[#FEF9C3] text-[#B45309]",
   high: "bg-[#FEE2E2] text-[#991B1B]",
 };
 
@@ -38,8 +38,8 @@ export function PriorityBadge({ priority }: PriorityBadgeProps) {
 
 const statusStyles: Record<TicketStatus, string> = {
   open: "bg-[#DBEAFE] text-[#1D4ED8]",
-  in_progress: "bg-[#FEF9C3] text-[#D97706]",
-  resolved: "bg-[#DCFCE7] text-[#16A34A]",
+  in_progress: "bg-[#FEF9C3] text-[#B45309]",
+  resolved: "bg-[#DCFCE7] text-[#15803D]",
   closed: "bg-[#F1F5F9] text-[#475569]",
 };
 
@@ -68,8 +68,8 @@ export function StatusBadge({ status }: StatusBadgeProps) {
 
 const documentStatusStyles: Record<DocumentProcessingStatus, string> = {
   pending: "bg-[#F1F5F9] text-[#475569]",
-  processing: "bg-[#FEF9C3] text-[#D97706]",
-  processed: "bg-[#DCFCE7] text-[#16A34A]",
+  processing: "bg-[#FEF9C3] text-[#B45309]",
+  processed: "bg-[#DCFCE7] text-[#15803D]",
   failed: "bg-[#FEE2E2] text-[#991B1B]",
 };
 

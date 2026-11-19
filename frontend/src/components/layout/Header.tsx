@@ -234,17 +234,24 @@ export function Header({ isNavOpen, onOpenNav }: HeaderProps) {
           ref={userTriggerRef}
           type="button"
           onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-          // El nombre incluye el correo visible (WCAG 2.5.3, etiqueta en el nombre).
-          aria-label={`Menú de usuario: ${user.email}`}
           aria-expanded={isUserMenuOpen}
           aria-controls="menu-usuario"
           className="flex items-center gap-2.5 cursor-pointer rounded-full px-2.5 py-1.5 hover:bg-[#F1F5F9] transition-colors select-none outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB]"
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#6366F1] text-xs font-bold text-white">
+          <div
+            aria-hidden="true"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-[#4F46E5] text-xs font-bold text-white"
+          >
             {initialsFromEmail(user.email)}
           </div>
+          {/* El nombre accesible sale de este texto, en todos los anchos, e incluye el correo
+              visible (WCAG 2.5.3). Las iniciales y el correo visible quedan fuera del nombre. */}
+          <span className="sr-only">Menú de usuario: {user.email}</span>
           {/* Bajo 768 px solo el avatar: el correo y el rol están dentro del menú. */}
-          <span className="hidden text-sm font-semibold text-[#0F172A] md:inline">
+          <span
+            aria-hidden="true"
+            className="hidden text-sm font-semibold text-[#0F172A] md:inline"
+          >
             {user.email}
           </span>
           <svg
@@ -267,7 +274,7 @@ export function Header({ isNavOpen, onOpenNav }: HeaderProps) {
             >
               <div className="px-3 py-2 border-b border-[#F1F5F9]">
                 <p className="font-bold text-sm break-all">{user.email}</p>
-                <p className="text-[#94A3B8] text-[11px] mt-0.5">{roleLabels[user.role]}</p>
+                <p className="text-[#64748B] text-[11px] mt-0.5">{roleLabels[user.role]}</p>
               </div>
               <div className="pt-2">
                 <Button

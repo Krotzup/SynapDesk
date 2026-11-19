@@ -48,7 +48,7 @@ export async function DocumentList({ page, pageSize }: DocumentListProps) {
   const documents = result.items;
   if (documents.length === 0) {
     return (
-      <p className="py-10 px-4 text-center text-sm text-[#94A3B8]">
+      <p className="py-10 px-4 text-center text-sm text-[#64748B]">
         {result.totalItems > 0 ? (
           <>
             Esta página no tiene documentos.{" "}
@@ -78,10 +78,10 @@ export async function DocumentList({ page, pageSize }: DocumentListProps) {
             {document.description && (
               <p className="text-xs text-[#64748B] line-clamp-2">{document.description}</p>
             )}
-            <p className="text-xs text-[#94A3B8] break-all">
+            <p className="text-xs text-[#64748B] break-all">
               {document.originalFilename} · {formatContentType(document.contentType)}
             </p>
-            <p className="text-xs text-[#94A3B8]">
+            <p className="text-xs text-[#64748B]">
               {document.uploadedBy.name} · {formatDateTime(document.createdAt)}
             </p>
           </li>
@@ -114,7 +114,7 @@ export async function DocumentList({ page, pageSize }: DocumentListProps) {
                   <p className="max-w-48 truncate" title={document.originalFilename}>
                     {document.originalFilename}
                   </p>
-                  <p className="text-[11px] text-[#94A3B8]">
+                  <p className="text-[11px] text-[#64748B]">
                     {formatContentType(document.contentType)}
                   </p>
                 </td>
@@ -124,7 +124,7 @@ export async function DocumentList({ page, pageSize }: DocumentListProps) {
                 <td className="py-4 px-4 hidden lg:table-cell font-medium text-[#0F172A]">
                   {document.uploadedBy.name}
                 </td>
-                <td className="py-4 px-4 hidden xl:table-cell text-[#94A3B8] whitespace-nowrap">
+                <td className="py-4 px-4 hidden xl:table-cell text-[#64748B] whitespace-nowrap">
                   {formatDateTime(document.createdAt)}
                 </td>
               </tr>
