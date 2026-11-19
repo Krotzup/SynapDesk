@@ -100,3 +100,11 @@ test("SSR rechaza Origin ajeno, falta de proyección y credencial cambiada", () 
   assert.throws(() => seal(navigation, "GET", "/api/v1/tickets", ssrHeaders(), key, "audiencia", projectCookie, {ssr:true, publicOrigin:"https://ajeno.invalid"}));
   assert.throws(() => seal(navigation, "GET", "/api/v1/tickets", new Headers({cookie:sessionCookie + "x"}), key, "audiencia", projectCookie, ssr));
 });
+
+
+test("búsqueda conserva método/ruta y rechaza la traducción a otra operación", () => {
+  const context = capture(request("POST", "/api/v1/search"));
+  assert.doesNotThrow(() => seal(context, "POST", "/api/v1/search", headers(), key, "audiencia"));
+  assert.throws(() => seal(context, "GET", "/api/v1/search", headers(), key, "audiencia"));
+  assert.throws(() => seal(context, "POST", "/api/v1/tickets", headers(), key, "audiencia"));
+});

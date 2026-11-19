@@ -27,6 +27,7 @@ const handle = application.getRequestHandler();
 const allowed = new Map([['/api/v1/auth/csrf', 'GET'], ['/api/v1/auth/login', 'POST'], ['/api/v1/auth/me', 'GET']]);
 allowed.set('/api/v1/auth/logout', 'POST');
 allowed.set('/api/local/csrf', 'POST');
+allowed.set('/api/v1/search', 'POST');
 const failure = response => {
   response.writeHead(503, {'Content-Type': 'application/json', 'Cache-Control': 'no-store'});
   response.end(JSON.stringify({error: {code: 'SERVICE_UNAVAILABLE',
@@ -57,7 +58,7 @@ const server = http.createServer((request, response) => {
       /^\/api\/v1\/recommendations\/[0-9a-f-]{36}\/reviews$/i.test(pathname))));
   const interfaz = request.method === 'GET' && (!pathname.startsWith('/api/') &&
     (pathname === '/' || pathname === '/login' || pathname === '/inicio' ||
-      pathname === '/tickets' || pathname === '/tickets/nuevo' || /^\/tickets\/[0-9a-f-]{36}$/i.test(pathname) ||
+      pathname === '/busqueda' || pathname === '/tickets' || pathname === '/tickets/nuevo' || /^\/tickets\/[0-9a-f-]{36}$/i.test(pathname) ||
       pathname.startsWith('/_next/') || pathname === '/favicon.ico'));
   if (allowed.get(request.url) !== request.method && !lecturaTickets && !escrituraTickets &&
       !recomendaciones && !interfaz) {
