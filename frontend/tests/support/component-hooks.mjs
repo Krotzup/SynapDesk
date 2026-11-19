@@ -8,6 +8,7 @@ const stub = (file) => ({ url: pathToFileURL(path.join(here, file)).href, shortC
 
 export async function resolve(specifier, context, next) {
   if (specifier === "next/navigation") return stub("next-navigation-stub.mjs");
+  if (specifier === "next/server") return stub("next-server-stub.mjs");
   if (specifier === "next/link") return stub("next-link-stub.mjs");
   return next(specifier, context);
 }

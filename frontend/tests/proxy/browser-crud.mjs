@@ -305,7 +305,7 @@ try {
           const sourceDetails = page.locator(
             `#source-${draft.id}-${draft.sources[0].documentChunkId}`
           );
-          check(role + "_rag_source_opened", await sourceDetails.getAttribute("open") !== null);
+          check(role + "_rag_source_opened", (await sourceDetails.getAttribute("open")) !== null);
           stage = role + "_rag_review";
           const reviewResponse = responseFor(
             page,

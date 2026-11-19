@@ -207,13 +207,61 @@ quedan bajo `artifacts/rag-integrado-draft-v3.json` y
 `artifacts/rag-integrado-abstention-v1.json`, excluidos de Git.
 Los proveedores de recuperación/generación son sintéticos en estos recorridos:
 esto acredita integración y revisión humana, no calidad, tokens o latencia de
-Gemini real. La matriz MLOps, consultas reales anonimizadas con etiquetas
-independientes, cuota del proyecto Gemini, artefacto autorizado y mapeos siguen
-pendientes y se solicitaron en un comentario del PR #60.
+Gemini real. Se recibió posteriormente el extracto de la matriz EA3, sección
+2.4, descrito en [evaluación RAG EA3](../ml/evaluacion-rag-ea3.md). Su definición
+ya está incorporada y cuenta con un evaluador local; su ejecución con evidencia
+real sigue pendiente. Consultas reales anonimizadas con etiquetas independientes,
+cuota del proyecto Gemini, artefacto autorizado y mapeos siguen pendientes y se
+solicitaron en un comentario del PR #60.
 
 Se aprobaron además 39 integraciones PostgreSQL del conjunto conciliado y
 48 pruebas Node del protocolo de ingreso. El alcance adicional se limita a la
-parte ML/LLM/RAG; HU10 queda fuera de esta ronda por indicación del solicitante.
+parte ML/LLM/RAG. HU10, inicialmente excluida, se incorpora por solicitud
+posterior explícita como función optativa descrita abajo; no constituye una
+ratificación del PO sobre su activación en el MVP.
+
+## HU10: métricas de revisiones de IA, optativas
+
+`METRICS_AI_ENABLED=false` por defecto. Al habilitarlo se registra
+`GET /api/v1/metrics/recommendations`, independiente de la generación Gemini y
+de las rutas de tickets. Requiere la misma identidad de sesión de la aplicación
+(agente o administrador), origen/canal interno configurado y responde con
+`Cache-Control: no-store`. En el ensayo local también exige el sello de ingreso.
+No expone consultas, contenidos, autores ni identificadores personales.
+
+Respuesta: `recommendationsAccepted`, `recommendationsModified` y
+`recommendationsRejected`, enteros no negativos que cuentan las decisiones de
+la tabla inmutable de revisiones en una sola consulta/snapshot. Son conteos
+globales históricos; no hay filtros, ventanas temporales ni tasas inferidas.
+Una tabla vacía devuelve tres ceros; los borradores pendientes no se cuentan.
+Aceptar, modificar o rechazar no equivale a resolver un ticket ni a medir la
+exactitud del modelo. No requiere migraciones adicionales a la 0007 existente.
+
+Sin sesión válida aplica el contrato de autenticación existente. Si no hay
+base o falla la lectura responde 503 `METRICS_UNAVAILABLE`; no sustituye el
+error por ceros. Apagado, la ruta no se registra (404).
+
+La sección de `/metricas` se habilita con la variable exclusiva de servidor
+`AI_REVIEW_METRICS_ENABLED=true` y exige también el flag del backend. Sin ella
+no consulta esta ruta. Los datos de ejemplo no inventan conteos de revisiones.
+El Blueprint conserva ambos flags en false; no se aplicó en Render ni autoriza
+recursos de pago. La conformidad frontend anterior correspondía a 607482a;
+esta sección nueva necesita su propia revisión.
+
+- [ ] PO: ratificar inclusión/activación de HU10 y alcance de conteos globales.
+- [ ] Felipe: revisar endpoint, permisos y configuración del ingreso.
+- [ ] Responsable frontend: revisar la sección optativa nueva.
+
+Las decisiones de transiciones, 409, formatos, mapeos, «Aceptar y resolver»,
+proveedor LLM y datos enviados a Gemini siguen pendientes de sus responsables.
+
+Validación de esta ampliación: 24 pruebas focalizadas de matriz/CLI/HU10,
+5 integraciones PostgreSQL (migraciones hasta 0008 y base temporal eliminada),
+49 pruebas del protocolo de ingreso y 59 pruebas de componentes. La suite
+unitaria amplia aprobó 1.083 pruebas, complementadas por la ejecución focalizada
+final de 24. Compilación de producción y TypeScript
+aprobados. Estas comprobaciones no ejecutan la matriz con Gemini real ni
+acreditan calidad del modelo o ratificaciones del equipo.
 
 ### Evidencia anterior
 

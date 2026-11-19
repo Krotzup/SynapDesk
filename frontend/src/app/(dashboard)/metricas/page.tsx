@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { MetricsSummary, MetricsSummaryFallback } from "@/components/metrics/MetricsSummary";
 import { USE_MOCKS } from "@/lib/config";
+import { ReviewMetrics } from "@/components/metrics/ReviewMetrics";
 
 export default function MetricasPage() {
   return (
@@ -9,7 +10,7 @@ export default function MetricasPage() {
         <div>
           <h1 className="text-2xl font-bold text-[#0F172A]">Reportes y Métricas</h1>
           <p className="text-sm text-[#64748B] mt-1">
-            Cantidad de tickets por estado. Otras métricas se agregarán cuando se aprueben.
+            Consulta los conteos de tickets por estado y las métricas habilitadas.
           </p>
         </div>
 
@@ -22,6 +23,9 @@ export default function MetricasPage() {
 
         <Suspense fallback={<MetricsSummaryFallback />}>
           <MetricsSummary />
+        </Suspense>
+        <Suspense fallback={<p>Cargando revisiones de IA…</p>}>
+          <ReviewMetrics />
         </Suspense>
       </div>
     </div>

@@ -28,6 +28,8 @@ services:
         value: "false"
       - key: TICKETS_HTTP_ENABLED
         value: "false"
+      - key: METRICS_AI_ENABLED
+        value: "false"
       - key: POSTGRES_HOST
         sync: false
       - key: POSTGRES_DB
@@ -52,6 +54,8 @@ services:
         value: "22"
       - key: NEXT_TELEMETRY_DISABLED
         value: "1"
+      - key: AI_REVIEW_METRICS_ENABLED
+        value: "false"
       - key: NEXT_PUBLIC_USE_MOCKS
         value: "false"
       - key: AUTH_COOKIE_PROFILE

@@ -129,3 +129,13 @@ test("búsqueda conserva método/ruta y rechaza la traducción a otra operación
   assert.throws(() => seal(context, "GET", "/api/v1/search", headers(), key, "audiencia"));
   assert.throws(() => seal(context, "POST", "/api/v1/tickets", headers(), key, "audiencia"));
 });
+
+test("HU10 admite navegación y lectura sellada, rechaza escritura y parámetros", () => {
+  assert.equal(rutaPermitida('GET', '/metricas'), true);
+  assert.equal(rutaPermitida('GET', '/api/v1/metrics/recommendations'), true);
+  assert.equal(rutaPermitida('POST', '/api/v1/metrics/recommendations'), false);
+  assert.equal(rutaPermitida('GET', '/api/v1/metrics/recommendations?all=true'), false);
+  const context = capture(request('GET', '/metricas', ['Cookie', sessionCookie]));
+  assert.doesNotThrow(() => seal(context, 'GET', '/api/v1/metrics/recommendations', ssrHeaders(), key, 'audiencia', projectCookie, ssr));
+  assert.throws(() => seal(context, 'POST', '/api/v1/metrics/recommendations', ssrHeaders(), key, 'audiencia', projectCookie, ssr));
+});
