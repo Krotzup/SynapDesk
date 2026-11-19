@@ -15,7 +15,7 @@ from app.api.dependencias_auth import exigir_origin, obtener_intermediario
 from app.api.errores_auth import CodigoHttp, registrar_errores, respuesta_error, traducir_error
 from app.api.esquemas_auth import DetalleValidacion, SolicitudLogin, SolicitudLogout
 from app.api.salud import router as router_salud
-from app.api.busqueda import error_response
+from app.api.busqueda import error_response, router as router_busqueda
 from app.api.recomendaciones import router as router_recomendaciones
 from app.api.predicciones import router as router_predicciones
 from app.api.documentos import router as router_documentos
@@ -77,6 +77,27 @@ def crear_aplicacion_local(config: Configuracion, motor: Engine, perfil: PerfilC
             except Exception as error:
                 return respuesta_error(request, traducir_error(error))
         return await siguiente(request)
+
+    if config.search_enabled:
+        if config.auth_cookie_profile != "local" or config.search_cookie_name != perfil.nombre_sesion:
+            raise ValueError("La búsqueda local requiere las cookies del ensayo.")
+        app.include_router(router_busqueda, prefix="/api/v1")
+
+        @app.exception_handler(ErrorRecuperacion)
+        async def error_busqueda(request, error):
+            return error_response(error.code, error.message, error.status)
+
+        @app.middleware("http")
+        async def ingreso_busqueda(request: Request, siguiente):
+            if request.url.path == "/api/v1/search":
+                try:
+                    exigir_origin(request, config)
+                    obtener_intermediario(request)
+                    extraer_cookies(request, perfil)
+                    verificador(request)
+                except Exception as error:
+                    return respuesta_error(request, traducir_error(error))
+            return await siguiente(request)
 
     if config.rag_enabled:
         if config.auth_cookie_profile != "local" or config.rag_public_origin != perfil.origen_publico:

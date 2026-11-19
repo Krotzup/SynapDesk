@@ -180,12 +180,6 @@ PLANTILLAS = {
 }
 PLANTILLA_URL = (b"SYNAPDESK_SEMANTIC_DATABASE_URL=postgresql" +
                  b"://synapdesk_test:reemplazar_con_clave_testing_local@localhost:5433/synapdesk_semantic_test")
-# Excepción para un blob histórico del PR que ya no existe en HEAD. El escáner
-# también revisa commits anteriores; este caso dinámico no contiene una clave literal.
-ASIGNACION_DINAMICA_TESTING = (
-    "backend/herramientas/ingreso_local/demo.py",
-    b"POSTGRES_TEST_PASSWORD=principal.postgres_password.get_secret_value())",
-)
 
 
 def alcance_secretos(ruta):
@@ -205,9 +199,7 @@ def hallazgos(ruta, datos):
                 linea.strip() in PLANTILLAS or (
                     regla == "url_postgresql" and
                     linea == PLANTILLA_URL))
-            dinamica_testing = (regla == "variable_secreta" and
-                               (ruta, linea.strip()) == ASIGNACION_DINAMICA_TESTING)
-            if not plantilla and not dinamica_testing:
+            if not plantilla:
                 encontrados.append({"path": ruta, "line": numero, "rule": regla})
     return encontrados
 

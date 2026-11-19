@@ -34,7 +34,7 @@ def http_local(tickets, configuracion_bd_test):
     datos.update({k: v for k, v in configuracion_login().model_dump().items() if k.startswith("auth_")})
     servicio, clave, audiencia = credencial(), secrets.token_bytes(32), uuid4().hex
     datos.update(auth_intermediario=politica([servicio]), auth_origenes_permitidos=[ORIGEN],
-                 auth_proxies_autorizados=["127.0.0.1/32"])
+                 auth_proxies_autorizados=["127.0.0.1/32"], search_enabled=True, auth_cookie_profile="local")
     config = Configuracion(_env_file=None, **datos)
     perfil = preparar_perfil(config, origen_publico=ORIGEN,
         nombre_sesion="synapdesk_session_dev", nombre_contexto="synapdesk_csrf_context_dev")
@@ -61,7 +61,7 @@ def http_local(tickets, configuracion_bd_test):
             if not evidencia:
                 headers.pop("X-SynapDesk-Ingress-Evidence")
             return cliente.request(metodo, ruta, headers=headers, json=cuerpo)
-        yield dict(tickets, obtener=solicitar, solicitar=solicitar)
+        yield dict(tickets, obtener=solicitar, solicitar=solicitar, app=app, config=config)
 
 
 @pytest.mark.parametrize("actor", [0, 1], ids=["admin", "agent"])
@@ -270,3 +270,29 @@ def test_sello_valido_llega_a_autorizacion_de_asistencia(http_local, ruta, modul
         response = http_local["solicitar"](ruta, 0)
     assert response.status_code == 403
     identidad.assert_called_once()
+
+
+@pytest.mark.parametrize("actor", [0, 1])
+def test_busqueda_sesion_csrf_e_ingreso_reales(http_local, actor):
+    from app.seguridad.csrf import ServicioCsrf
+    from app.seguridad.transacciones import transaccion_seguridad
+    from herramientas.ingreso_local.rag_ensayo import RecuperacionSintetica
+    e = http_local
+    e["app"].state.recuperacion = RecuperacionSintetica()
+    with Session(e["motor"]) as db, transaccion_seguridad(db):
+        token = ServicioCsrf(db, e["config"]).emitir_token(sesion=e["referencias"][actor].credencial).token.get_secret_value()
+    def search(**kwargs):
+        return e["solicitar"]("/api/v1/search", actor, metodo="POST", cuerpo={"query": "Consultar DNS", "limit": 3}, **kwargs)
+    assert search(token=token, evidencia=False).status_code == 503
+    assert search(token=token, origen="https://ajeno.invalid").status_code == 403
+    assert search(token="invalido").status_code == 403
+    result = search(token=token)
+    assert result.status_code == 200, result.text
+    assert result.json()["status"] == "results" and result.json()["items"]
+    assert result.headers["cache-control"] == "no-store"
+    e["app"].state.recuperacion = None
+    assert search(token=token).json()["error"]["code"] == "SEARCH_UNAVAILABLE"
+    with e["motor"].begin() as db:
+        from sqlalchemy import func
+        db.execute(update(Sesion).where(Sesion.usuario_id == e["usuarios"][actor]).values(revocada_en=func.clock_timestamp()))
+    assert search(token=token).status_code == 401

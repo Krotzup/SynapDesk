@@ -164,3 +164,7 @@ Cada solicitud y confirmación SQL usa un archivo nuevo por secuencia, publicado
 de forma atómica. Así Edge no lee JSON parcial ni se reemplaza un archivo que
 el otro proceso pueda tener abierto en Windows. Un bloqueo transitorio al
 publicar la respuesta se tolera hasta dos segundos, sin repetir operaciones SQL.
+
+## Búsqueda sin Gemini
+
+El [recorrido HU07](../../../docs/gestion/busqueda-ensayo-protegido.md) agrega `--search` y `--search-fixture`, con sesión/CSRF reales y una base de testing exclusiva. No cambia la política de relevancia.
