@@ -1,50 +1,69 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { metricsService } from "@/services/metrics";
+import { ticketListHrefForStatus } from "@/lib/ticket-filters";
 import { Metrics } from "@/types";
 
 type CountKey = "totalTickets" | "openTickets" | "inProgressTickets" | "resolvedTickets";
 
-// Cada estado enlaza al listado de tickets con el filtro correspondiente.
-const statusItems: { key: CountKey; label: string; color: string; href: string }[] = [
+// Cada estado enlaza al listado con su filtro, solo si los filtros están habilitados.
+const statusItems: { key: CountKey; label: string; color: string; href?: string }[] = [
   { key: "totalTickets", label: "Todos", color: "#38BDF8", href: "/tickets" },
-  { key: "openTickets", label: "Abiertos", color: "#38BDF8", href: "/tickets?status=open" },
+  {
+    key: "openTickets",
+    label: "Abiertos",
+    color: "#38BDF8",
+    href: ticketListHrefForStatus("open"),
+  },
   {
     key: "inProgressTickets",
     label: "En Proceso",
     color: "#F59E0B",
-    href: "/tickets?status=in_progress",
+    href: ticketListHrefForStatus("in_progress"),
   },
   {
     key: "resolvedTickets",
     label: "Resueltos",
     color: "#10B981",
-    href: "/tickets?status=resolved",
+    href: ticketListHrefForStatus("resolved"),
   },
 ];
 
 function StatusList({ summary }: { summary: Metrics | null }) {
   return (
     <div className="flex flex-col gap-1">
-      {statusItems.map((item) => (
-        <Link
-          key={item.key}
-          href={item.href}
-          className="flex items-center justify-between text-[13px] rounded-lg px-2 py-1.5 -mx-2 hover:bg-[#1E293B]/50 transition-colors"
-        >
-          <span className="flex items-center gap-3">
-            <span
-              className="h-2 w-2 rounded-full shrink-0"
-              style={{ backgroundColor: item.color }}
-              aria-hidden="true"
-            />
-            <span className="text-[#94A3B8]">{item.label}</span>
-          </span>
-          <span className="min-w-[24px] text-center text-[11px] font-bold text-[#94A3B8] bg-[#1E293B] rounded-full px-2 py-0.5">
-            {summary ? summary[item.key] : "–"}
-          </span>
-        </Link>
-      ))}
+      {statusItems.map((item) => {
+        const content = (
+          <>
+            <span className="flex items-center gap-3">
+              <span
+                className="h-2 w-2 rounded-full shrink-0"
+                style={{ backgroundColor: item.color }}
+                aria-hidden="true"
+              />
+              <span className="text-[#94A3B8]">{item.label}</span>
+            </span>
+            <span className="min-w-[24px] text-center text-[11px] font-bold text-[#94A3B8] bg-[#1E293B] rounded-full px-2 py-0.5">
+              {summary ? summary[item.key] : "–"}
+            </span>
+          </>
+        );
+        const className =
+          "flex items-center justify-between text-[13px] rounded-lg px-2 py-1.5 -mx-2";
+        return item.href ? (
+          <Link
+            key={item.key}
+            href={item.href}
+            className={`${className} hover:bg-[#1E293B]/50 transition-colors`}
+          >
+            {content}
+          </Link>
+        ) : (
+          <div key={item.key} className={className}>
+            {content}
+          </div>
+        );
+      })}
     </div>
   );
 }

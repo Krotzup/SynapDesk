@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { metricsService } from "@/services/metrics";
+import { ticketListHrefForStatus } from "@/lib/ticket-filters";
 import { Metrics } from "@/types";
 import { SectionError } from "./SectionError";
 
 interface SummaryCard {
   label: string;
   value: (summary: Metrics) => number;
-  // Sin href: no hay un filtro que agrupe varios estados en el listado.
+  // Sin href: no hay un filtro que agrupe varios estados, o los filtros están desactivados.
   href?: string;
   color: string;
   iconBg: string;
@@ -27,7 +28,7 @@ const cards: SummaryCard[] = [
   {
     label: "Abiertos",
     value: (summary) => summary.openTickets,
-    href: "/tickets?status=open",
+    href: ticketListHrefForStatus("open"),
     color: "text-[#1D4ED8]",
     iconBg: "bg-[#DBEAFE] text-[#1D4ED8]",
     iconPath:
@@ -36,7 +37,7 @@ const cards: SummaryCard[] = [
   {
     label: "En proceso",
     value: (summary) => summary.inProgressTickets,
-    href: "/tickets?status=in_progress",
+    href: ticketListHrefForStatus("in_progress"),
     color: "text-[#D97706]",
     iconBg: "bg-[#FEF3C7] text-[#D97706]",
     iconPath: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
@@ -44,7 +45,7 @@ const cards: SummaryCard[] = [
   {
     label: "Resueltos",
     value: (summary) => summary.resolvedTickets,
-    href: "/tickets?status=resolved",
+    href: ticketListHrefForStatus("resolved"),
     color: "text-[#10B981]",
     iconBg: "bg-[#D1FAE5] text-[#10B981]",
     iconPath: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z",
