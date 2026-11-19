@@ -1,0 +1,147 @@
+{
+  "date": "2026-11-19",
+  "commit": "457f6027b21ef953b962503fd44814f614b69b3e",
+  "scope": "local-testing",
+  "originalLocalReport": "rag-browser-live-502957c0.json",
+  "mode": "live",
+  "browserChannel": "msedge",
+  "passed": true,
+  "checks": 102,
+  "generationHttpStatus": 201,
+  "reviewHttpStatus": 204,
+  "reviewVerified": true,
+  "appEnv": "testing",
+  "databaseClientPort": 5433,
+  "isolatedTestingCredentialsVerified": true,
+  "recommendationAcceptedInSql": true,
+  "ticketRemainedOpenAtReview": true,
+  "cleanup": {
+    "database_deleted": true,
+    "next_stopped": true,
+    "fastapi_stopped": true,
+    "temporary_deleted": true
+  },
+  "sourceManifest": [
+    {
+      "path": "backend/app/api/adaptadores_auth.py",
+      "sha256": "35befa61cd52b33f2dd097133183e46465570a94d9ea2340915ca8221f1d328c"
+    },
+    {
+      "path": "backend/app/api/adaptadores_tickets.py",
+      "sha256": "274f7ebf6a5f99999447c03d97b13304ef5dabbc72deea21df67b0435d0879f8"
+    },
+    {
+      "path": "backend/app/tickets/servicio.py",
+      "sha256": "4b7628710e865c1d2728122dc09628a9fc72f11174952d8f73a39c0f6292e092"
+    },
+    {
+      "path": "backend/app/tickets/repositorio.py",
+      "sha256": "afb1bd645f3429adb752d5f79eccd1083ad6477e82f7d60ec63aae4e381fec69"
+    },
+    {
+      "path": "backend/herramientas/ingreso_local/aplicacion.py",
+      "sha256": "ac7974dee8f8b29f5d17b3fdc32e9cd174bec3516d5ddfcda5bd7a165a63803e"
+    },
+    {
+      "path": "backend/herramientas/ingreso_local/evidencia.py",
+      "sha256": "0bb820e6aee28dd041b3fe749379bf9e471e3c5c09d86b6f8284e44c05c35422"
+    },
+    {
+      "path": "backend/herramientas/ingreso_local/protocolo.mjs",
+      "sha256": "e080dcdc31ba9035b71ef64f7c1d19a0958bd8b01dfbb0e5e49279b04a5ae405"
+    },
+    {
+      "path": "backend/herramientas/ingreso_local/servidor_next.mjs",
+      "sha256": "b0193a036c4f4595830a2214ecf19f10053dc6491756b3e2428ce6a0bd5c42c0"
+    },
+    {
+      "path": "backend/herramientas/ingreso_local/demo.py",
+      "sha256": "fe4a1d685ad78dc90b81a7e8caef2e65ec31f145f1c0ebcf27f791d5134ed1f8"
+    },
+    {
+      "path": "backend/herramientas/ingreso_local/rag_ensayo.py",
+      "sha256": "d21a454e34e60ad2b3e840287aef097042b2a3623637837cbb6eb09ce03f7dc2"
+    },
+    {
+      "path": "backend/app/api/recomendaciones.py",
+      "sha256": "4c3d75d8e8d24f12a22662933cb53c5ca800388a7f59ac2dbd5fd79e3c8c6316"
+    },
+    {
+      "path": "backend/app/recomendaciones/generacion.py",
+      "sha256": "d548f815aa85d7959389bd8ca7d8cd48a40a2a6462d50c9e78f7ce985068f465"
+    },
+    {
+      "path": "frontend/src/lib/backend-proxy.ts",
+      "sha256": "0d9567b64db6c74073f513254ed2e191f834de8ea2aa5cc3b8e5789b18961568"
+    },
+    {
+      "path": "frontend/src/lib/api.ts",
+      "sha256": "e1fcbebc8786c3ed504e613b33776011aba3ea99262accffdbe0714284f68929"
+    },
+    {
+      "path": "frontend/src/lib/csrf.ts",
+      "sha256": "3cce9fd2eae28ea198f2d6a482232a8c61c21e86c0df54b005ded9bf4535f22a"
+    },
+    {
+      "path": "frontend/src/lib/transport/client.ts",
+      "sha256": "6d032210afdff3cef5a3d14ed58b1f90704b7e435480c4a280a1fca568f26129"
+    },
+    {
+      "path": "frontend/src/lib/transport/server.ts",
+      "sha256": "c867a5b9727fcfe5b3e70820053d2c741f04839b7fb06b5f84d427b2c175cc1d"
+    },
+    {
+      "path": "frontend/src/services/auth.ts",
+      "sha256": "ab2e64972c8d4544921852f31fbe7b2df1301820ba75f7ec59525740a2244862"
+    },
+    {
+      "path": "frontend/src/services/tickets.ts",
+      "sha256": "6a628fe438a1fb1f70d73277ec212d0481c830828c506d6ad0dc6e36d864a2e4"
+    },
+    {
+      "path": "frontend/src/app/api/v1/[...path]/route.ts",
+      "sha256": "a1ea10217a0d0163205eb4ee284ab44d40495ba0e4e9ecd611af1ce4d8e1063f"
+    },
+    {
+      "path": "frontend/src/app/api/local/csrf/route.ts",
+      "sha256": "d1f8b66ae0278f1e4080b8d3ddbd4bc139efde441bc415afa4ab41deecb9deb9"
+    },
+    {
+      "path": "frontend/src/components/auth/LoginForm.tsx",
+      "sha256": "7508c6e82bb186bb97a9a2de4405072302a68870642ea259d25bccd0b8c1ef24"
+    },
+    {
+      "path": "frontend/src/components/tickets/TicketStatusControl.tsx",
+      "sha256": "18acce240bb2c373d7333d036f63b23086ff7de5610699335f7477b4f6832cd4"
+    },
+    {
+      "path": "frontend/src/app/(dashboard)/layout.tsx",
+      "sha256": "e701c3228500e55fcb4d4b9280d30390404250690170d12b2c94b1e48706bd0e"
+    },
+    {
+      "path": "frontend/src/app/(dashboard)/tickets/page.tsx",
+      "sha256": "689e532c6a2a857025cb238cb81e4b2478d706c518a2630b1f80eb35f6ef14a5"
+    },
+    {
+      "path": "frontend/src/app/(dashboard)/tickets/[id]/page.tsx",
+      "sha256": "6f012f041858dc4fec6a33e0603edfae91d46604fbea30e67e673d81ca4d7481"
+    },
+    {
+      "path": "frontend/src/app/(dashboard)/inicio/page.tsx",
+      "sha256": "bef6d0255bc3b3642def1394ec1282155a8bb879b3825e57b75c3925e3709408"
+    },
+    {
+      "path": "frontend/tests/proxy/rag-result.mjs",
+      "sha256": "4ca959d7f8b65555e655d1772f170c38a898ebba6c1321faf6f1edd45d8f19ac"
+    },
+    {
+      "path": "frontend/tests/proxy/browser-crud.mjs",
+      "sha256": "a23c478bf98069bc462dfff3826462c099f0b6a8290fc3f6dfe38d2da7c31f37"
+    }
+  ],
+  "limits": [
+    "Automated review exercises persistence; it does not certify semantic quality.",
+    "Evidence applies to this commit, not automatically to later commits.",
+    "A formal GitHub PR approval is a separate action by a reviewer."
+  ]
+}

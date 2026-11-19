@@ -12,12 +12,14 @@ from fastapi import Request
 from fastapi.testclient import TestClient
 from pydantic import SecretBytes
 import pytest
-from sqlalchemy import delete, event, select
+from sqlalchemy import delete, event, select, update
 from sqlalchemy.orm import Session
 
 from app.api.cookies_auth import preparar_perfil
 from app.configuracion import Configuracion
-from app.persistencia.modelos import EventoAutenticacion, Sesion, Ticket as TicketORM
+from app.persistencia.modelos import (
+    ContextoCsrf, EventoAutenticacion, Sesion, Ticket as TicketORM, TokenCsrf, Usuario,
+)
 from app.tickets.esquemas import TicketCreate
 from herramientas.ingreso_local.aplicacion import crear_aplicacion_local
 from herramientas.ingreso_local.evidencia import DOMINIO, VerificadorIngresoLocal, huella_controles
@@ -112,6 +114,81 @@ def test_logout_local_reutiliza_csrf_origin_procedencia_y_revocacion_sql(logout_
     assert pedir("/api/v1/auth/me", actor).status_code == 401
     assert pedir("/api/v1/tickets", actor).status_code == 401
     assert pedir("/api/v1/auth/logout", actor, "POST", cuerpo={}).status_code == 204
+
+
+@pytest.mark.parametrize("actor", [0, 1], ids=["admin", "agent"])
+def test_logout_inactivo_solo_revoca_sesion_verificable_sin_mutaciones_ajenas(logout_local, actor):
+    e = logout_local
+    pedir = e["solicitar"]
+    otro = 1 - actor
+    tokens = [pedir("/api/v1/auth/csrf", n).json()["csrfToken"] for n in (0, 1)]
+    existente = e["servicio"].crear(e["referencias"][actor], TicketCreate(
+        title="Ticket protegido de cuenta inactiva", description="Debe persistir sin modificación."))
+
+    def filas_sql(modelo):
+        with e["motor"].connect() as db:
+            return db.execute(select(modelo.__table__).order_by(modelo.id)).all()
+
+    tablas = (TicketORM, Sesion, ContextoCsrf, TokenCsrf)
+    antes = {m: filas_sql(m) for m in tablas}
+    sesion_ajena_id = next(s.id for s in antes[Sesion] if s.usuario_id == e["usuarios"][otro])
+    with e["motor"].begin() as db:
+        db.execute(update(Usuario).where(Usuario.id == e["usuarios"][actor]).values(activo=False))
+    for ruta, metodo, cuerpo in (
+        ("/api/v1/auth/me", "GET", None),
+        ("/api/v1/auth/csrf", "GET", None),
+        ("/api/v1/tickets", "GET", None),
+        (f"/api/v1/tickets/{existente.id}", "GET", None),
+        ("/api/v1/metrics/summary", "GET", None),
+        ("/api/v1/tickets", "POST", dict(title="Ticket prohibido", description="No debe insertarse.")),
+        (f"/api/v1/tickets/{existente.id}", "PATCH", dict(status="closed")),
+        ("/api/v1/auth/login", "POST", dict(email="inactivo@example.invalid", password="no-es-credencial-real")),
+    ):
+        respuesta = pedir(ruta, actor, metodo, cuerpo=cuerpo, token=tokens[actor])
+        assert respuesta.status_code == 401
+        assert "set-cookie" not in respuesta.headers
+    assert {m: filas_sql(m) for m in tablas} == antes
+
+    for cambios, esperado in (
+        (dict(token=None), 403),
+        (dict(token="invalido"), 403),
+        (dict(token=tokens[otro]), 403),
+        (dict(origen="https://ajeno.invalid"), 403),
+        (dict(evidencia=False), 503),
+        (dict(cuerpo={"sesion_id": str(sesion_ajena_id)}), 422),
+    ):
+        argumentos = dict(cuerpo={}, token=tokens[actor]) | cambios
+        respuesta = pedir("/api/v1/auth/logout", actor, "POST", **argumentos)
+        assert respuesta.status_code == esperado
+        assert "set-cookie" not in respuesta.headers
+        assert {m: filas_sql(m) for m in tablas} == antes
+
+    respuesta = pedir("/api/v1/auth/logout", actor, "POST", cuerpo={}, token=tokens[actor])
+    assert respuesta.status_code == 204 and not respuesta.content
+    assert respuesta.headers["cache-control"] == "no-store"
+    assert "Max-Age=0" in respuesta.headers["set-cookie"]
+    with Session(e["motor"]) as db:
+        usuario = db.get(Usuario, e["usuarios"][actor])
+        assert usuario.activo is False and usuario.rol == ("admin" if actor == 0 else "agent")
+        propia = db.scalar(select(Sesion).where(Sesion.usuario_id == usuario.id))
+        assert propia.revocada_en is not None
+        contexto = db.scalar(select(ContextoCsrf).where(ContextoCsrf.sesion_id == propia.id))
+        assert contexto.revocado_en is not None
+        assert all(t.invalidado_en is not None for t in db.scalars(
+            select(TokenCsrf).where(TokenCsrf.contexto_id == contexto.id)))
+        ajena = db.scalar(select(Sesion).where(Sesion.usuario_id == e["usuarios"][otro]))
+        assert ajena.revocada_en is None
+        contexto_ajeno = db.scalar(select(ContextoCsrf).where(ContextoCsrf.sesion_id == ajena.id))
+        assert contexto_ajeno.revocado_en is None
+        assert all(t.invalidado_en is None for t in db.scalars(
+            select(TokenCsrf).where(TokenCsrf.contexto_id == contexto_ajeno.id)))
+        assert propia.ultima_actividad == next(f.ultima_actividad for f in antes[Sesion] if f.id == propia.id)
+    assert filas_sql(TicketORM) == antes[TicketORM]
+    assert all(len(filas_sql(m)) == len(antes[m]) for m in tablas)
+    assert pedir("/api/v1/auth/me", actor).status_code == 401
+    assert pedir("/api/v1/tickets", actor).status_code == 401
+    assert pedir("/api/v1/auth/logout", actor, "POST", cuerpo={}).status_code == 204
+    assert pedir("/api/v1/auth/me", otro).status_code == 200
 
 
 @pytest.fixture

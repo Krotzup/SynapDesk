@@ -136,12 +136,13 @@ def test_logout_revoca_contexto_tokens_y_conserva_otro_dispositivo(operaciones, 
         assert secreto.get_secret_value() not in texto
 
 
+@pytest.mark.parametrize("inactiva", [False, True], ids=["activa", "inactiva"])
 @pytest.mark.parametrize("caso,codigo", [("ausente", C.TOKEN_INVALIDO),
     ("malformado", C.TOKEN_INVALIDO), ("otro", C.TOKEN_INVALIDO),
     ("ajeno", C.TOKEN_INVALIDO), ("anonimo", C.TOKEN_INVALIDO),
     ("vencido", C.TOKEN_VENCIDO), ("invalidado", C.TOKEN_INVALIDO),
     ("contexto_revocado", C.CONTEXTO_INVALIDO), ("contexto_vencido", C.CONTEXTO_INVALIDO)])
-def test_csrf_rechazado_sin_revocar_y_con_auditoria(operaciones, caso, codigo):
+def test_csrf_rechazado_sin_revocar_y_con_auditoria(operaciones, caso, codigo, inactiva):
     e = operaciones
     token = e["token"]
     if caso == "ausente":
@@ -171,6 +172,9 @@ def test_csrf_rechazado_sin_revocar_y_con_auditoria(operaciones, caso, codigo):
                 contexto = db.scalar(select(ContextoCsrf).where(ContextoCsrf.sesion_id == e["sesion_id"]))
                 e["ahora"] += timedelta(seconds=1)
                 contexto.expira_en = e["ahora"]
+    if inactiva:
+        with e["motor"].begin() as db:
+            db.execute(update(Usuario).where(Usuario.id == e["usuario"].id).values(activo=False))
     with pytest.raises(ErrorSeguridad) as error:
         e["logout"].cerrar(e["referencia"], token=token)
     assert error.value.codigo == codigo
@@ -190,8 +194,9 @@ def test_token_reutilizable_hasta_revocacion_y_logout_repetido_idempotente(opera
     assert len(eventos_logout(e)) == 1
 
 
+@pytest.mark.parametrize("inactiva", [False, True], ids=["activa", "inactiva"])
 @pytest.mark.parametrize("caso", ["desconocida", "vencida", "revocada"])
-def test_logout_idempotente_solo_ausencia_confirmada_en_bd(operaciones, caso):
+def test_logout_idempotente_solo_ausencia_confirmada_en_bd(operaciones, caso, inactiva):
     e = operaciones
     referencia = e["referencia"]
     if caso == "desconocida":
@@ -200,19 +205,78 @@ def test_logout_idempotente_solo_ausencia_confirmada_en_bd(operaciones, caso):
         e["ahora"] += timedelta(minutes=30)
     else:
         cerrar(e)
+    if inactiva:
+        with e["motor"].begin() as db:
+            db.execute(update(Usuario).where(Usuario.id == e["usuario"].id).values(activo=False))
     antes = len(eventos_logout(e))
     assert e["logout"].cerrar(referencia).revocada is False
     assert len(eventos_logout(e)) == antes
 
 
-def test_cuenta_inactiva_cierra_rama_no_definida_sin_fingir_revocacion(operaciones):
+@pytest.mark.parametrize("rol", ["admin", "agent"])
+def test_cuenta_inactiva_revoca_solo_sesion_propia_sin_autorizar_ni_emitir(operaciones, rol):
+    e = operaciones
+    otra = login(e).sesion
+    with Session(e["motor"]) as db, transaccion_seguridad(db):
+        otro_token = ServicioCsrf(db, e["config"], e["reloj"]).emitir_token(sesion=otra.credencial)
+    with e["motor"].begin() as db:
+        db.execute(update(Usuario).where(Usuario.id == e["usuario"].id).values(activo=False, rol=rol))
+    antes = {m: len(filas(e, m)) for m in (Sesion, ContextoCsrf, TokenCsrf)}
+    with pytest.raises(ErrorSeguridad) as error:
+        e["consulta"].consultar(e["referencia"])
+    assert error.value.codigo == C.USUARIO_INACTIVO
+    for operacion in ("sesion", "contexto", "token", "validacion_general"):
+        with pytest.raises(ErrorSeguridad) as error:
+            with Session(e["motor"]) as db, transaccion_seguridad(db):
+                csrf = ServicioCsrf(db, e["config"], e["reloj"])
+                if operacion == "sesion":
+                    ServicioSesiones(db, e["reloj"]).crear(e["usuario"].id)
+                elif operacion == "contexto":
+                    csrf.obtener_autenticado(e["referencia"].credencial)
+                elif operacion == "token":
+                    csrf.emitir_token(sesion=e["referencia"].credencial)
+                else:
+                    csrf.validar_token(e["token"], sesion=e["referencia"].credencial)
+        assert error.value.codigo == C.USUARIO_INACTIVO
+    inicial = estado(e)
+    assert cerrar(e).revocada is True
+    assert estado(e)[0] is not None and estado(e)[1:] == inicial[1:]
+    assert {m: len(filas(e, m)) for m in antes} == antes
+    with Session(e["motor"]) as db:
+        assert db.get(Usuario, e["usuario"].id).activo is False
+        assert db.get(Usuario, e["usuario"].id).rol == rol
+        assert db.get(Sesion, otra.id).revocada_en is None
+        assert db.scalar(select(ContextoCsrf).where(
+            ContextoCsrf.sesion_id == otra.id)).revocado_en is None
+        assert db.scalar(select(TokenCsrf).where(
+            TokenCsrf.contexto_id == otro_token.contexto_id)).invalidado_en is None
+        propio = db.scalar(select(ContextoCsrf).where(ContextoCsrf.sesion_id == e["sesion_id"]))
+        assert propio.revocado_en is not None
+        assert all(t.invalidado_en is not None for t in db.scalars(
+            select(TokenCsrf).where(TokenCsrf.contexto_id == propio.id)))
+    assert len(eventos_logout(e)) == 1
+    assert eventos_logout(e)[0].usuario_id == e["usuario"].id
+    assert eventos_logout(e)[0].sesion_id == e["sesion_id"]
+    assert e["logout"].cerrar(e["referencia"]).revocada is False
+    with pytest.raises(ErrorSeguridad) as error:
+        e["consulta"].consultar(e["referencia"])
+    assert error.value.codigo == C.SESION_REVOCADA
+
+
+def test_logout_inactivo_sin_contexto_previo_no_crea_contexto_ni_token(operaciones):
     e = operaciones
     with e["motor"].begin() as db:
+        contexto_id = db.scalar(select(ContextoCsrf.id).where(
+            ContextoCsrf.sesion_id == e["sesion_id"]))
+        db.execute(delete(TokenCsrf).where(TokenCsrf.contexto_id == contexto_id))
+        db.execute(delete(ContextoCsrf).where(ContextoCsrf.id == contexto_id))
         db.execute(update(Usuario).where(Usuario.id == e["usuario"].id).values(activo=False))
+    antes = {m: len(filas(e, m)) for m in (Sesion, ContextoCsrf, TokenCsrf)}
     with pytest.raises(ErrorSeguridad) as error:
         cerrar(e)
-    assert error.value.codigo == C.USUARIO_INACTIVO
+    assert error.value.codigo == C.CONTEXTO_INVALIDO
     assert estado(e)[0] is None and not eventos_logout(e)
+    assert {m: len(filas(e, m)) for m in antes} == antes
 
 
 @pytest.mark.parametrize("operacion", ["consulta", "logout"])
@@ -234,8 +298,12 @@ def test_fallo_real_conexion_no_equivale_a_sesion_ausente(operaciones, configura
     assert estado(e)[0] is None
 
 
-def test_fallo_auditoria_revierte_revocacion_y_csrf(operaciones, monkeypatch):
+@pytest.mark.parametrize("inactiva", [False, True], ids=["activa", "inactiva"])
+def test_fallo_auditoria_revierte_revocacion_y_csrf(operaciones, monkeypatch, inactiva):
     e = operaciones
+    if inactiva:
+        with e["motor"].begin() as db:
+            db.execute(update(Usuario).where(Usuario.id == e["usuario"].id).values(activo=False))
     original = ServicioAuditoria.registrar
 
     def fallar(self, **datos):
@@ -305,8 +373,12 @@ def observar_pid(e, monkeypatch):
     return listo, pid
 
 
-def test_dos_logouts_concurrentes_una_revocacion_un_evento(operaciones):
+@pytest.mark.parametrize("inactiva", [False, True], ids=["activa", "inactiva"])
+def test_dos_logouts_concurrentes_una_revocacion_un_evento(operaciones, inactiva):
     e = operaciones
+    if inactiva:
+        with e["motor"].begin() as db:
+            db.execute(update(Usuario).where(Usuario.id == e["usuario"].id).values(activo=False))
     barrera = Barrier(2)
 
     def ejecutar():
@@ -344,24 +416,96 @@ def test_consulta_relee_cambio_confirmado_tras_espera_real(operaciones, monkeypa
             assert error.value.codigo == (C.SESION_REVOCADA if cambio == "revocacion" else C.USUARIO_INACTIVO)
 
 
+def test_logout_espera_desactivacion_y_revoca_sin_recuperar_privilegios(operaciones, monkeypatch):
+    e = operaciones
+    original = ServicioSesiones.consultar_para_cierre
+    listo, pid = Event(), []
+
+    def consultar_para_cierre(self, credencial):
+        pid.append(self.db.scalar(text("SELECT pg_backend_pid()")))
+        listo.set()
+        return original(self, credencial)
+
+    monkeypatch.setattr(ServicioSesiones, "consultar_para_cierre", consultar_para_cierre)
+    inicial = estado(e)
+    with ThreadPoolExecutor(1) as pool:
+        with e["motor"].begin() as db:
+            db.execute(update(Usuario).where(Usuario.id == e["usuario"].id).values(activo=False))
+            futuro = pool.submit(cerrar, e)
+            assert listo.wait(5)
+            esperar_bloqueado(e["motor"], pid[0])
+        assert futuro.result(timeout=5).revocada
+    assert estado(e)[0] is not None and estado(e)[1:] == inicial[1:]
+    assert len(eventos_logout(e)) == 1
+    with Session(e["motor"]) as db:
+        assert db.get(Usuario, e["usuario"].id).activo is False
+    with pytest.raises(ErrorSeguridad) as error:
+        e["consulta"].consultar(e["referencia"])
+    assert error.value.codigo == C.SESION_REVOCADA
+
+
+def test_desactivacion_espera_logout_y_no_revierte_revocacion(operaciones, monkeypatch):
+    e = operaciones
+    original = ServicioSesiones.consultar_para_cierre
+    bloqueado, liberar, desactivacion = Event(), Event(), Event()
+    pid = []
+
+    def consultar_para_cierre(self, credencial):
+        resultado = original(self, credencial)
+        if not bloqueado.is_set():
+            bloqueado.set()
+            assert liberar.wait(5)
+        return resultado
+
+    def desactivar():
+        with e["motor"].begin() as db:
+            pid.append(db.scalar(text("SELECT pg_backend_pid()")))
+            desactivacion.set()
+            db.execute(update(Usuario).where(Usuario.id == e["usuario"].id).values(activo=False))
+
+    monkeypatch.setattr(ServicioSesiones, "consultar_para_cierre", consultar_para_cierre)
+    inicial = estado(e)
+    with ThreadPoolExecutor(2) as pool:
+        logout = pool.submit(cerrar, e)
+        try:
+            assert bloqueado.wait(5)
+            desactivar_futuro = pool.submit(desactivar)
+            assert desactivacion.wait(5)
+            esperar_bloqueado(e["motor"], pid[0])
+        finally:
+            liberar.set()
+        assert logout.result(timeout=5).revocada
+        desactivar_futuro.result(timeout=5)
+    assert estado(e)[0] is not None and estado(e)[1:] == inicial[1:]
+    assert len(eventos_logout(e)) == 1
+    with Session(e["motor"]) as db:
+        assert db.get(Usuario, e["usuario"].id).activo is False
+    with pytest.raises(ErrorSeguridad) as error:
+        e["consulta"].consultar(e["referencia"])
+    assert error.value.codigo == C.SESION_REVOCADA
+
+
 def test_me_autorizado_antes_logout_no_se_deshace_retroactivamente(operaciones, monkeypatch):
     e = operaciones
     original = ServicioSesiones.consultar
+    original_cierre = ServicioSesiones.consultar_para_cierre
     autorizado, liberar = Event(), Event()
     logout_iniciado = Event()
     pid = []
 
     def consultar(self, credencial):
-        if autorizado.is_set():
-            pid.append(self.db.scalar(text("SELECT pg_backend_pid()")))
-            logout_iniciado.set()
-            return original(self, credencial)
         resultado = original(self, credencial)
         autorizado.set()
         assert liberar.wait(5)
         return resultado
 
+    def consultar_para_cierre(self, credencial):
+        pid.append(self.db.scalar(text("SELECT pg_backend_pid()")))
+        logout_iniciado.set()
+        return original_cierre(self, credencial)
+
     monkeypatch.setattr(ServicioSesiones, "consultar", consultar)
+    monkeypatch.setattr(ServicioSesiones, "consultar_para_cierre", consultar_para_cierre)
     with ThreadPoolExecutor(2) as pool:
         consulta = pool.submit(e["consulta"].consultar, e["referencia"])
         assert autorizado.wait(5)

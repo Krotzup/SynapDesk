@@ -75,13 +75,24 @@ class ServicioSesiones:
             raise ErrorSeguridad(CodigoSeguridad.ROL_INVALIDO)
 
     @staticmethod
-    def _validar(sesion: Sesion, usuario: Usuario, ahora: datetime) -> None:
+    def _validar_vigencia(sesion: Sesion, ahora: datetime) -> None:
         if sesion.revocada_en is not None:
             raise ErrorSeguridad(CodigoSeguridad.SESION_REVOCADA)
         if ahora >= min(sesion.expira_en, sesion.creado_en + DURACION_ABSOLUTA,
                         sesion.ultima_actividad + INACTIVIDAD_MAXIMA):
             raise ErrorSeguridad(CodigoSeguridad.SESION_VENCIDA)
+
+    @staticmethod
+    def _validar(sesion: Sesion, usuario: Usuario, ahora: datetime) -> None:
+        ServicioSesiones._validar_vigencia(sesion, ahora)
         ServicioSesiones._validar_usuario(usuario)
+
+    @staticmethod
+    def _validar_para_cierre(sesion: Sesion, usuario: Usuario, ahora: datetime) -> None:
+        # P4 exceptúa sólo el estado activo; no autoriza operaciones protegidas.
+        ServicioSesiones._validar_vigencia(sesion, ahora)
+        if usuario.rol not in {"admin", "agent"}:
+            raise ErrorSeguridad(CodigoSeguridad.ROL_INVALIDO)
 
     def _bloquear_id(self, sesion_id: UUID) -> tuple[Sesion, Usuario]:
         usuario_id = self.db.scalar(select(Sesion.usuario_id).where(Sesion.id == sesion_id))
@@ -152,6 +163,13 @@ class ServicioSesiones:
             self._validar(sesion, usuario, instante(self.db, self.reloj))
             return SesionConsultada(sesion.id, Identidad(usuario.id, usuario.correo, usuario.rol),
                                     sesion.ultima_actividad, sesion.expira_en)
+
+    def consultar_para_cierre(self, credencial: str | SecretStr) -> tuple[UUID, UUID]:
+        """Verifica posesión y vigencia para revocar; no entrega una identidad autorizada."""
+        with operacion_bd(self.db):
+            sesion, usuario = self._bloquear_credencial(credencial)
+            self._validar_para_cierre(sesion, usuario, instante(self.db, self.reloj))
+            return sesion.id, usuario.id
 
     def registrar_actividad(self, credencial: str | SecretStr) -> SesionConsultada:
         """Solo tras autorización del llamador; consultar/CSRF no la invocan."""

@@ -127,7 +127,7 @@ def contratos():
             or any(not estado.strip().startswith(("PROPUESTA", "PENDIENTE")) for _, estado in decisiones)):
         raise ErrorControl("Se alteró el estado pendiente de C01–C09.")
     p4 = next(linea for linea in texto.splitlines() if linea.startswith("| P4 |"))
-    if "todavía no implementada" not in p4:
+    if "Implementada internamente para revocación y validada en testing aislado." not in p4:
         raise ErrorControl("Revisar explícitamente el estado contractual vigente de P4.")
     arbol = ast.parse((RAIZ / "backend/app/api/esquemas_auth.py").read_text(encoding="utf-8"))
     for clase, esperado in {"ApiErrorBody": {"code", "message", "details", "requestId"},
