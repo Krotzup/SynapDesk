@@ -7,7 +7,7 @@ de prueba solo en un archivo privado temporal, nunca en la salida.
 """
 import argparse
 import base64
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 import hashlib
 import http.client
 import json
@@ -22,7 +22,7 @@ from time import monotonic, sleep
 from uuid import UUID, uuid4
 
 from dotenv import dotenv_values
-from pydantic import SecretBytes
+from pydantic import SecretBytes, SecretStr
 from sqlalchemy import func, select, text, update
 from sqlalchemy.orm import Session
 
@@ -40,6 +40,7 @@ from herramientas.arnes_http_seguro.infraestructura import (
 )
 from herramientas.ingreso_local.aplicacion import crear_aplicacion_local
 from herramientas.ingreso_local.evidencia import VerificadorIngresoLocal
+from herramientas.ingreso_local.rag_ensayo import preparar_rag
 from pruebas.intermediario_auxiliar import credencial, politica
 from pruebas.login_auxiliar import configuracion_login
 
@@ -47,6 +48,22 @@ from pruebas.login_auxiliar import configuracion_login
 def escribir(path, value):
     path.write_text(json.dumps(value, ensure_ascii=False), encoding="utf-8")
     path.chmod(0o600)
+
+
+def responder_checkpoint(path, value):
+    # Edge sondea este archivo. Publicarlo después de cerrar la escritura evita
+    # que lea JSON vacío o parcial entre truncado y flush, también en Windows.
+    temporal = path.with_name(path.name + ".new")
+    escribir(temporal, value)
+    limite = monotonic() + 2
+    while True:
+        try:
+            temporal.replace(path)
+            return
+        except PermissionError:
+            if monotonic() >= limite:
+                raise
+            sleep(.01)
 
 
 def comprobar_punto_sql(motor, solicitud, cuentas, evidencia):
@@ -80,6 +97,10 @@ def comprobar_punto_sql(motor, solicitud, cuentas, evidencia):
             assert revision is not None and revision.decision == "accepted"
             assert revision.revisor_id == UUID(cuenta["id"]) and fila.estado == "open"
             evidencia["sql_checkpoints"][-1]["recommendation_accepted"] = True
+        elif fase == "recommendation_abstained":
+            assert db.scalar(select(func.count(Recomendacion.id)).where(Recomendacion.ticket_id == fila.id)) == 0
+            assert fila.estado == "open"
+            evidencia["sql_checkpoints"][-1]["recommendation_count"] = 0
         else:
             assert fase in {"created", "updated", "reloaded", "negative_unchanged"}
 
@@ -97,7 +118,7 @@ def next_local(frontend, carpeta, control, evidencia, ocultos):
         "src/app/api/local/csrf/route.ts", "src/components/auth/LoginForm.tsx",
         "src/components/tickets/TicketStatusControl.tsx", "src/app/(dashboard)/layout.tsx",
         "src/app/(dashboard)/tickets/page.tsx", "src/app/(dashboard)/tickets/[id]/page.tsx",
-        "src/app/(dashboard)/inicio/page.tsx"]
+        "src/app/(dashboard)/inicio/page.tsx", "tests/proxy/rag-result.mjs"]
     evidencia["frontend_sources"] = [dict(path=p, sha256=hashlib.sha256((frontend / p).read_bytes()).hexdigest()) for p in rutas]
     archivo = carpeta / "next-control.json"
     escribir(archivo, dict(control, repo=str(frontend.parent), project=str(frontend)))
@@ -142,9 +163,15 @@ def next_local(frontend, carpeta, control, evidencia, ocultos):
             assert evidencia["next_logs_without_secrets"], "Secreto en registro Next."
 
 
-def ejecutar(frontend: Path, reporte: Path, driver: Path | None, *, rag: bool = False):
+def ejecutar(frontend: Path, reporte: Path, driver: Path | None, *, rag: bool = False,
+             rag_fixture: str | None = None, rag_expect: str = "draft"):
+    if (rag_fixture is not None and (not rag or rag_fixture not in {"draft", "abstention"})
+            or rag_expect not in {"draft", "abstention", "either"}):
+        raise ValueError("Opciones del ensayo RAG inválidas.")
     if reporte.exists():
         raise ValueError("El reporte ya existe; conservar evidencia anterior.")
+    if driver is not None and not driver.is_file():
+        raise ValueError("El driver de navegador no existe o no es un archivo.")
     carpeta = BACKEND / (".arnes-auth07d2-" + uuid4().hex)
     carpeta.mkdir()
     evidencia = dict(task="SYNAPDESK-MVP12B-RESOLVE-PR52-REVIEW",
@@ -159,10 +186,14 @@ def ejecutar(frontend: Path, reporte: Path, driver: Path | None, *, rag: bool = 
         "app/tickets/servicio.py", "app/tickets/repositorio.py",
         "herramientas/ingreso_local/aplicacion.py", "herramientas/ingreso_local/evidencia.py",
         "herramientas/ingreso_local/protocolo.mjs", "herramientas/ingreso_local/servidor_next.mjs",
-        "herramientas/ingreso_local/demo.py")]
+        "herramientas/ingreso_local/demo.py", "herramientas/ingreso_local/rag_ensayo.py",
+        "app/api/recomendaciones.py", "app/recomendaciones/generacion.py")]
     evidencia["backend_sources"] = [dict(path=str(p.relative_to(BACKEND.parent)).replace("\\", "/"),
         sha256=hashlib.sha256(p.read_bytes()).hexdigest()) for p in fuentes]
+    if driver is not None:
+        evidencia["browser_driver_sha256"] = hashlib.sha256(driver.read_bytes()).hexdigest()
     ocultos = []
+    recursos = ExitStack()
     try:
         certificados(carpeta)
         with base_propia(carpeta, evidencia) as (motor, nombre):
@@ -180,6 +211,9 @@ def ejecutar(frontend: Path, reporte: Path, driver: Path | None, *, rag: bool = 
                 auth_origenes_permitidos=[origen], auth_proxies_autorizados=["127.0.0.1/32"],
                 auth_cookie_profile="local", rag_enabled=rag,
                 rag_public_origin=origen if rag else None)
+            if rag_fixture:
+                datos.update(search_enabled=True, gemini_api_key=SecretStr("proveedor-sintetico-sin-egress"),
+                             rag_external_data_approved=True)
             config = Configuracion(_env_file=None, **datos)
             assert config.app_env == "testing"
             if rag and (not config.search_enabled or not config.gemini_api_key or
@@ -191,8 +225,7 @@ def ejecutar(frontend: Path, reporte: Path, driver: Path | None, *, rag: bool = 
             verificador = VerificadorIngresoLocal(config, clave, audiencia, ventana_segundos=30, capacidad_nonces=2048)
             if rag:
                 sys.path.insert(0, str(BACKEND.parent))
-                from app.recuperacion.servicio import ServicioRecuperacion
-                recuperacion = ServicioRecuperacion(config)
+                recuperacion = recursos.enter_context(preparar_rag(config, rag_fixture, evidencia))
             else:
                 recuperacion = None
             app = crear_aplicacion_local(config, motor, perfil, verificador, capacidad_argon2=1,
@@ -237,6 +270,8 @@ def ejecutar(frontend: Path, reporte: Path, driver: Path | None, *, rag: bool = 
                 privado_browser = carpeta / "browser-input.json"
                 escribir(privado_browser, dict(origin=origen, accounts=cuentas, tickets=tickets,
                     ragEnabled=rag,
+                    ragMode="fixture" if rag_fixture else "live",
+                    ragExpectedOutcome=rag_fixture or rag_expect,
                     backend=control["backend"], ca=str(carpeta / "ca.pem"), output=str(carpeta / "browser-result.json"),
                     privateCookies=str(carpeta / "cookies-private.json"),
                     checkpointRequest=str(carpeta / "checkpoint-request.json"),
@@ -252,16 +287,19 @@ def ejecutar(frontend: Path, reporte: Path, driver: Path | None, *, rag: bool = 
                                 cwd=frontend, env=env, stdout=log, stderr=subprocess.STDOUT,
                                 creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
                             try:
-                                limite, procesado = monotonic() + 480, None
+                                limite, procesado = monotonic() + 480, 0
                                 while run.poll() is None:
                                     assert monotonic() < limite, "Agotado el plazo del navegador."
-                                    punto = carpeta / "checkpoint-request.json"
+                                    # Un archivo por secuencia: ningún proceso reemplaza
+                                    # un archivo que el otro pueda tener abierto en Windows.
+                                    punto = carpeta / f"checkpoint-request.json.{procesado + 1}"
                                     if punto.exists():
                                         pedido = json.loads(punto.read_text(encoding="utf-8"))
-                                        if pedido["sequence"] != procesado:
-                                            comprobar_punto_sql(motor, pedido, cuentas, evidencia)
-                                            procesado = pedido["sequence"]
-                                            escribir(carpeta / "checkpoint-reply.json", dict(sequence=procesado, passed=True))
+                                        assert pedido["sequence"] == procesado + 1
+                                        comprobar_punto_sql(motor, pedido, cuentas, evidencia)
+                                        procesado = pedido["sequence"]
+                                        responder_checkpoint(carpeta / f"checkpoint-reply.json.{procesado}",
+                                                             dict(sequence=procesado, passed=True))
                                     sleep(.05)
                             finally:
                                 detener(run)
@@ -302,6 +340,7 @@ def ejecutar(frontend: Path, reporte: Path, driver: Path | None, *, rag: bool = 
         evidencia["error_type"] = type(error).__name__
         raise
     finally:
+        recursos.close()
         if "verificador" in locals():
             evidencia["ip_proof_statistics"] = dict(verificador.estadisticas)
         # Preservar el resultado saneado incluso si Windows impide limpiar un recurso.
@@ -322,6 +361,10 @@ def main():
     parser.add_argument("--reporte", type=Path, required=True)
     parser.add_argument("--browser-driver", type=Path)
     parser.add_argument("--rag", action="store_true", help="Activa recomendaciones solo en este ensayo aislado.")
+    parser.add_argument("--rag-fixture", choices=("draft", "abstention"),
+                        help="Con --rag: dependencias sintéticas sin llamadas externas; no acredita Gemini.")
+    parser.add_argument("--rag-expect", choices=("draft", "abstention", "either"), default="draft",
+                        help="Resultado esperado con proveedor real; either no exige cubrir la revisión.")
     parser.add_argument("--env-file", type=Path, help="Configuración privada; nunca se copia al reporte.")
     args = parser.parse_args()
     if args.env_file is not None:
@@ -331,7 +374,8 @@ def main():
             if valor is not None:
                 os.environ.setdefault(nombre, valor)
     result = ejecutar(args.frontend.resolve(), args.reporte.resolve(),
-        args.browser_driver.resolve() if args.browser_driver else None, rag=args.rag)
+        args.browser_driver.resolve() if args.browser_driver else None, rag=args.rag,
+        rag_fixture=args.rag_fixture, rag_expect=args.rag_expect)
     print(json.dumps({k: result.get(k) for k in ("browser_verified", "persisted_sessions_from_http",
         "persisted_tickets", "database_deleted", "next_stopped", "fastapi_stopped", "temporary_deleted")}))
 

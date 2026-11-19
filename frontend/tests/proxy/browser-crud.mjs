@@ -3,6 +3,7 @@ import fs from "node:fs";
 import http from "node:http";
 import { createRequire } from "node:module";
 import { randomBytes, randomUUID } from "node:crypto";
+import { readRagResponse } from "./rag-result.mjs";
 const { chromium } = createRequire(import.meta.url)(process.env.PLAYWRIGHT_MODULE);
 const config = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
 const result = {
@@ -26,7 +27,9 @@ function check(name, value) {
 }
 async function checkpoint(account, ticket, phase) {
   const n = ++sequence;
-  const temporary = config.checkpointRequest + ".new";
+  const requestPath = config.checkpointRequest + "." + n;
+  const replyPath = config.checkpointReply + "." + n;
+  const temporary = requestPath + ".new";
   fs.writeFileSync(
     temporary,
     JSON.stringify({
@@ -39,11 +42,11 @@ async function checkpoint(account, ticket, phase) {
       status: ticket.status,
     })
   );
-  fs.renameSync(temporary, config.checkpointRequest);
+  fs.renameSync(temporary, requestPath);
   const deadline = Date.now() + 15000;
   while (Date.now() < deadline) {
-    if (fs.existsSync(config.checkpointReply)) {
-      const reply = JSON.parse(fs.readFileSync(config.checkpointReply, "utf8"));
+    if (fs.existsSync(replyPath)) {
+      const reply = JSON.parse(fs.readFileSync(replyPath, "utf8"));
       if (reply.sequence === n) {
         check(account.role + "_sql_" + phase, reply.passed);
         return;
@@ -165,7 +168,7 @@ try {
     check(role + "_new_ticket_page", newPage.status() === 200);
     const title =
       config.ragEnabled && role === "agent"
-        ? "Consultas DNS expiran en Windows " + randomUUID()
+        ? "Consultas DNS expiran en Windows"
         : "MVP09 " + role + " " + randomUUID();
     const description =
       config.ragEnabled && role === "agent"
@@ -229,27 +232,64 @@ try {
         const generationResponse = responseFor(page, ragPath, "POST");
         await page.getByRole("button", { name: "Generar recomendación" }).click();
         const generated = await generationResponse;
-        check(role + "_rag_generation_http201", generated.status() === 201);
-        const draft = await generated.json();
+        const { payload, summary, validContract } = await readRagResponse(generated, config);
+        result.rag = summary;
+        check(role + "_rag_generation_contract", validContract);
         check(
-          role + "_rag_draft_with_sources",
-          draft.status === "pending" && draft.sources.length > 0 && draft.ticketId === ticket.id
+          role + "_rag_generation_no_store",
+          generated.headers()["cache-control"] === "no-store"
         );
-        await page.getByText(draft.content, { exact: true }).waitFor();
-        await page.getByText(draft.sources[0].title, { exact: true }).first().waitFor();
-        stage = role + "_rag_review";
-        const reviewResponse = responseFor(
-          page,
-          `/api/v1/recommendations/${draft.id}/reviews`,
-          "POST"
+        if (summary.outcome === "abstention") {
+          await page
+            .getByRole("alert")
+            .filter({
+              hasText:
+                "La documentación recuperada no alcanza para generar una recomendación fundamentada.",
+            })
+            .waitFor();
+          const listed = await browserRequest(page, ragPath, "GET");
+          check(
+            role + "_rag_abstention_empty_list",
+            listed.status === 200 && listed.data.length === 0
+          );
+          await checkpoint(account, ticket, "recommendation_abstained");
+          await page.reload({ waitUntil: "domcontentloaded" });
+          await page.getByText("Aún no hay recomendaciones para este ticket.").waitFor();
+          check(role + "_rag_abstention_persisted_in_ui", true);
+        } else {
+          check(role + "_rag_generation_http201", generated.status() === 201);
+          const draft = payload;
+          check(
+            role + "_rag_draft_with_sources",
+            draft.status === "pending" &&
+              typeof draft.content === "string" &&
+              draft.content.trim().length > 0 &&
+              Array.isArray(draft.sources) &&
+              draft.sources.length > 0 &&
+              draft.ticketId === ticket.id
+          );
+          await page.getByText(draft.content, { exact: true }).waitFor();
+          await page.getByText(draft.sources[0].title, { exact: true }).first().waitFor();
+          stage = role + "_rag_review";
+          const reviewResponse = responseFor(
+            page,
+            `/api/v1/recommendations/${draft.id}/reviews`,
+            "POST"
+          );
+          await page.getByRole("button", { name: /Aceptar recomendación/ }).click();
+          check(role + "_rag_review_http204", (await reviewResponse).status() === 204);
+          await page.getByText("La recomendación fue aceptada.").waitFor();
+          await checkpoint(account, ticket, "recommendation_accepted");
+          await page.reload({ waitUntil: "domcontentloaded" });
+          await page.getByText("La recomendación fue aceptada.").waitFor();
+          check(role + "_rag_review_persisted_in_ui", true);
+          result.rag.reviewVerified = true;
+        }
+        check(
+          role + "_rag_expected_outcome",
+          result.rag.expectedOutcome === "either" ||
+            result.rag.expectedOutcome === result.rag.outcome
         );
-        await page.getByRole("button", { name: /Aceptar recomendación/ }).click();
-        check(role + "_rag_review_http204", (await reviewResponse).status() === 204);
-        await page.getByText("La recomendación fue aceptada.").waitFor();
-        await checkpoint(account, ticket, "recommendation_accepted");
-        await page.reload({ waitUntil: "domcontentloaded" });
-        await page.getByText("La recomendación fue aceptada.").waitFor();
-        check(role + "_rag_review_persisted_in_ui", true);
       }
     } else {
       const optionalRecommendations = page.getByRole("alert").filter({

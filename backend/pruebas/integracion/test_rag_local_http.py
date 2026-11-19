@@ -75,6 +75,15 @@ def test_generacion_y_revision_con_sesion_y_procedencia_reales(tickets, configur
             token = csrf.json()["csrfToken"]
             assert solicitar(ruta, "POST", {}, evidencia=False, token=token).status_code == 503
             assert solicitar(ruta, "POST", {}).status_code == 403
+            with patch("app.api.recomendaciones.generar", return_value=None):
+                abstencion = solicitar(ruta, "POST", {}, token=token)
+            assert abstencion.status_code == 422
+            assert abstencion.json()["error"]["code"] == "INSUFFICIENT_INFORMATION"
+            assert abstencion.headers["cache-control"] == "no-store"
+            assert solicitar(ruta).json() == []
+            with Session(tickets["motor"]) as db:
+                assert db.scalar(select(Recomendacion.id).where(Recomendacion.ticket_id == ticket.id)) is None
+                assert db.get(Ticket, ticket.id).estado == "open"
             fuente = {"documentId": uuid4(), "documentChunkId": uuid4(),
                       "title": "Ayuda DNS", "excerpt": "Consultar DNS configurado.", "score": 0.8}
             with patch("app.api.recomendaciones.generar", return_value=("Consultar DNS configurado.", [fuente])):

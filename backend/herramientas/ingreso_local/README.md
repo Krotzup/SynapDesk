@@ -97,7 +97,70 @@ recomendaciones sin revisión humana.
 Para repetir automáticamente el recorrido en Edge, configurar
 `PLAYWRIGHT_MODULE` con la ruta local de `playwright-core` ya instalado y añadir
 `--browser-driver ../frontend/tests/proxy/browser-crud.mjs`. El driver usa un
-ticket sintético de DNS, comprueba respuesta HTTP 201 con fuentes, revisión HTTP
-204, persistencia en SQL y recarga de la interfaz. La ejecución local del
-19-11-2026 completó 99 comprobaciones y eliminó su base temporal. Los informes
-quedan bajo `ml/artifacts/`, excluidos de Git.
+ticket sintético de DNS con título y descripción constantes: el UUID del ticket
+ya permite identificarlo dentro de su base aislada. Un UUID aleatorio en el título
+alteraba la consulta semántica entre ejecuciones.
+
+### Recorrido reproducible sin proveedor externo
+
+Desde `backend/`, con `PLAYWRIGHT_MODULE` configurado, ejecutar cada escenario con
+un nombre de reporte nuevo:
+
+```powershell
+./.venv/Scripts/python.exe -B -m herramientas.ingreso_local.demo `
+  --frontend ../frontend --reporte ../artifacts/rag-fixture-draft.json `
+  --browser-driver ../frontend/tests/proxy/browser-crud.mjs `
+  --env-file ../.env --rag --rag-fixture draft
+
+./.venv/Scripts/python.exe -B -m herramientas.ingreso_local.demo `
+  --frontend ../frontend --reporte ../artifacts/rag-fixture-abstention.json `
+  --browser-driver ../frontend/tests/proxy/browser-crud.mjs `
+  --env-file ../.env --rag --rag-fixture abstention
+```
+
+Estos modos requieren solo `db_test`, Python, Next, Edge y Playwright preparados.
+Sustituyen la recuperación y la respuesta del proveedor por datos sintéticos
+constantes; no usan la base semántica ni llaman a Gemini. La orquestación, el
+validador de citas, la API, el ingreso TLS, la sesión, CSRF, la interfaz y SQL
+siguen siendo reales. Solo se admiten dentro de la composición aislada de testing.
+
+`draft` exige HTTP 201 con fuentes, revisión HTTP 204 y persistencia de la aceptación
+en SQL y después de recargar la interfaz. `abstention` entrega `steps: []` al
+validador real y exige `422 INSUFFICIENT_INFORMATION`, `Cache-Control: no-store`,
+el mensaje de abstención y ausencia de recomendaciones tanto en API como en SQL
+y después de recargar. La abstención no modifica el estado del ticket. Ambos
+escenarios continúan los controles CRUD, logout, revocación e inactividad.
+
+Los informes identifican `rag_mode: fixture` y el escenario. Un resultado correcto
+de este modo acredita el recorrido, **no** al proveedor externo ni la calidad de
+una recomendación real.
+
+### Recorrido con recuperación V2 y Gemini reales
+
+Usar `--rag` sin `--rag-fixture`, con las opciones de recuperación y la aprobación
+externa explícitamente configuradas. `SEARCH_ENABLED`, `SEARCH_RELEVANCE_PROFILE`,
+la conexión semántica, `GEMINI_API_KEY` y `RAG_EXTERNAL_DATA_APPROVED` deben estar
+preparados; los fixtures no los habilitan para ejecuciones posteriores.
+
+Por defecto se exige un borrador y su revisión. `--rag-expect abstention` permite
+exigir una abstención; `--rag-expect either` acepta ambas respuestas válidas y
+continúa CRUD. En ese último modo, consultar `browser.rag.reviewVerified`: `false`
+significa que no se cubrió la revisión. No se reintenta la generación para forzar
+un HTTP 201. Otros errores 422 y los 5xx siguen haciendo fallar el recorrido.
+
+`browser.rag` conserva estado HTTP, código de error conocido, resultado esperado,
+resultado observado y cobertura de revisión, sin copiar cuerpos de error.
+`responseJsonValid` indica si se pudo interpretar el cuerpo; una respuesta no
+JSON conserva su estado HTTP y hace fallar el ensayo sin copiar el cuerpo.
+`rag_events` distingue abstención en recuperación o en generación usando únicamente
+resultado, etapa, número de fuentes y duración. Del proveedor conserva únicamente
+resultado, estado HTTP si falla, modelo fijo, duración y contadores de tokens
+permitidos si existen. No registra entradas, fragmentos,
+respuestas del proveedor ni claves. Los reportes y capturas quedan en la ruta
+indicada, bajo `artifacts/` o `ml/artifacts/`, excluidos de Git. Cada ejecución
+elimina únicamente su base y sus recursos temporales al cerrar.
+
+Cada solicitud y confirmación SQL usa un archivo nuevo por secuencia, publicado
+de forma atómica. Así Edge no lee JSON parcial ni se reemplaza un archivo que
+el otro proceso pueda tener abierto en Windows. Un bloqueo transitorio al
+publicar la respuesta se tolera hasta dos segundos, sin repetir operaciones SQL.
