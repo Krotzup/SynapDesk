@@ -72,13 +72,13 @@ def ejecutar(modo):
     config = seleccionar_configuracion_bd("testing")
     comprobar_destino(config)  # Siempre antes de abrir conexiones.
     scripts = ScriptDirectory.from_config(Config(str(BACKEND / "alembic.ini")))
-    if scripts.get_heads() != ["0006_user_created"]:
+    if scripts.get_heads() != ["0007_recomendaciones_rag"]:
         raise ValueError("Se exige el head único de migraciones vigente.")
     revisiones = list(reversed(list(scripts.walk_revisions())))
-    if (len(revisiones) != 6 or revisiones[0].down_revision is not None
-            or len({r.revision for r in revisiones}) != 6
+    if (len(revisiones) != 7 or revisiones[0].down_revision is not None
+            or len({r.revision for r in revisiones}) != 7
             or any(b.down_revision != a.revision for a, b in zip(revisiones, revisiones[1:]))):
-        raise ValueError("Se exige la cadena lineal vigente 0001–0006.")
+        raise ValueError("Se exige la cadena lineal vigente 0001–0007.")
     carpeta = BACKEND / (".arnes-auth07d2-" + uuid4().hex)
     carpeta.mkdir()
     evidencia = {"suite": modo, "temporary_directory": carpeta.name,

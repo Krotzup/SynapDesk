@@ -19,10 +19,10 @@ CONTEXTOS_POR_SESION = {
 }
 
 
-def session_credential(request, name: str) -> str:
+def session_credential(request, name: str, *, origin: str | None = None) -> str:
     profile = PerfilCookies(
         request.app.state.configuracion.app_env,
-        request.headers.getlist("origin")[0],
+        origin or request.headers.getlist("origin")[0],
         name,
         CONTEXTOS_POR_SESION.get(name, f"{name}_context"),
     )

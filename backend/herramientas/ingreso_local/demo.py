@@ -10,16 +10,23 @@ import base64
 from contextlib import contextmanager
 import hashlib
 import http.client
+from ipaddress import ip_address
 import json
 import os
 from pathlib import Path
+import select as socket_select
 import secrets
 import shutil
+import socket
+import socketserver
 import ssl
 import subprocess
+import sys
+from threading import Thread
 from time import monotonic, sleep
 from uuid import UUID, uuid4
 
+from dotenv import dotenv_values
 from pydantic import SecretBytes
 from sqlalchemy import func, select, text, update
 from sqlalchemy.orm import Session
@@ -28,6 +35,7 @@ from app.api.cookies_auth import preparar_perfil
 from app.configuracion import Configuracion
 from app.persistencia.entornos import seleccionar_configuracion_bd
 from app.persistencia.modelos import Sesion, Usuario, Ticket, EventoAutenticacion
+from app.persistencia.modelos.recomendacion import Recomendacion, RevisionRecomendacion
 from app.seguridad.contrasenas import ServicioContrasenas
 from app.seguridad.transacciones import transaccion_seguridad
 from app.tickets.esquemas import TicketCreate
@@ -44,6 +52,57 @@ from pruebas.login_auxiliar import configuracion_login
 def escribir(path, value):
     path.write_text(json.dumps(value, ensure_ascii=False), encoding="utf-8")
     path.chmod(0o600)
+
+
+@contextmanager
+def puente_bd_remota():
+    """Expone solo en loopback:5433 la BD del notebook para el ensayo desechable."""
+    principal = seleccionar_configuracion_bd("principal")
+    try:
+        host = ip_address(principal.postgres_host)
+    except ValueError:
+        raise ValueError("El puente requiere la IPv4 privada explícita del notebook.") from None
+    if (host.version != 4 or not host.is_private or host.is_loopback or
+            principal.postgres_db == "postgres" or not principal.tiene_configuracion_bd):
+        raise ValueError("La base remota no cumple las guardas del ensayo.")
+
+    class Conexion(socketserver.BaseRequestHandler):
+        def handle(self):
+            with socket.create_connection((str(host), principal.postgres_port), timeout=10) as remoto:
+                sockets = (self.request, remoto)
+                while True:
+                    listos, _, _ = socket_select.select(sockets, [], [], 120)
+                    if not listos:
+                        return
+                    for origen in listos:
+                        datos = origen.recv(65536)
+                        if not datos:
+                            return
+                        (remoto if origen is self.request else self.request).sendall(datos)
+
+    class Servidor(socketserver.ThreadingTCPServer):
+        allow_reuse_address = True
+        daemon_threads = True
+
+    nombres = ("POSTGRES_TEST_HOST", "POSTGRES_TEST_PORT", "POSTGRES_TEST_DB",
+               "POSTGRES_TEST_USER", "POSTGRES_TEST_PASSWORD")
+    previos = {nombre: os.environ.get(nombre) for nombre in nombres}
+    with Servidor(("127.0.0.1", 5433), Conexion) as servidor:
+        hilo = Thread(target=servidor.serve_forever, daemon=True)
+        hilo.start()
+        os.environ.update(POSTGRES_TEST_HOST="127.0.0.1", POSTGRES_TEST_PORT="5433",
+            POSTGRES_TEST_DB="postgres", POSTGRES_TEST_USER=principal.postgres_user,
+            POSTGRES_TEST_PASSWORD=principal.postgres_password.get_secret_value())
+        try:
+            yield
+        finally:
+            for nombre, valor in previos.items():
+                if valor is None:
+                    os.environ.pop(nombre, None)
+                else:
+                    os.environ[nombre] = valor
+            servidor.shutdown()
+            hilo.join(timeout=5)
 
 
 def comprobar_punto_sql(motor, solicitud, cuentas, evidencia):
@@ -69,6 +128,14 @@ def comprobar_punto_sql(motor, solicitud, cuentas, evidencia):
         elif fase == "deactivate":
             db.execute(update(Usuario).where(Usuario.id == UUID(cuenta["id"])).values(activo=False))
             db.commit()
+        elif fase == "recommendation_accepted":
+            recomendacion = db.scalar(select(Recomendacion).where(Recomendacion.ticket_id == fila.id))
+            assert recomendacion is not None and recomendacion.estado == "accepted"
+            revision = db.scalar(select(RevisionRecomendacion).where(
+                RevisionRecomendacion.recomendacion_id == recomendacion.id))
+            assert revision is not None and revision.decision == "accepted"
+            assert revision.revisor_id == UUID(cuenta["id"]) and fila.estado == "open"
+            evidencia["sql_checkpoints"][-1]["recommendation_accepted"] = True
         else:
             assert fase in {"created", "updated", "reloaded", "negative_unchanged"}
 
@@ -131,7 +198,7 @@ def next_local(frontend, carpeta, control, evidencia, ocultos):
             assert evidencia["next_logs_without_secrets"], "Secreto en registro Next."
 
 
-def ejecutar(frontend: Path, reporte: Path, driver: Path | None):
+def ejecutar(frontend: Path, reporte: Path, driver: Path | None, *, rag: bool = False):
     if reporte.exists():
         raise ValueError("El reporte ya existe; conservar evidencia anterior.")
     carpeta = BACKEND / (".arnes-auth07d2-" + uuid4().hex)
@@ -141,7 +208,8 @@ def ejecutar(frontend: Path, reporte: Path, driver: Path | None):
         logout_sha="c81367aae9a7213581afb02f69976e91ba39a5a0",
         reconciliation_sha="9c13277635e3e0838c46a05b863a502cd2ec7fef",
         main_merge_sha="800a723034279c12ff0e26b970d7b554fe50d151",
-        production_enabled=False, base_main="4acec0992b246ed78898c06d1007a626230e51cc", browser_verified=False)
+        production_enabled=False, base_main="4acec0992b246ed78898c06d1007a626230e51cc",
+        browser_verified=False, rag_enabled=rag)
     fuentes = [BACKEND / p for p in (
         "app/api/adaptadores_auth.py", "app/api/adaptadores_tickets.py",
         "app/tickets/servicio.py", "app/tickets/repositorio.py",
@@ -165,14 +233,26 @@ def ejecutar(frontend: Path, reporte: Path, driver: Path | None):
             datos = seleccionar_configuracion_bd("testing").model_dump()
             datos.update({k: v for k, v in configuracion_login().model_dump().items() if k.startswith("auth_")})
             datos.update(postgres_db=nombre, auth_intermediario=politica([servicio]),
-                auth_origenes_permitidos=[origen], auth_proxies_autorizados=["127.0.0.1/32"])
+                auth_origenes_permitidos=[origen], auth_proxies_autorizados=["127.0.0.1/32"],
+                auth_cookie_profile="local", rag_enabled=rag,
+                rag_public_origin=origen if rag else None)
             config = Configuracion(_env_file=None, **datos)
             assert config.app_env == "testing"
+            if rag and (not config.search_enabled or not config.gemini_api_key or
+                        not config.rag_external_data_approved):
+                raise ValueError("El ensayo RAG requiere recuperación, Gemini y aprobación de datos explícitos.")
             evidencia["app_env"] = config.app_env
             perfil = preparar_perfil(config, origen_publico=origen,
                 nombre_sesion="synapdesk_session_dev", nombre_contexto="synapdesk_csrf_context_dev")
             verificador = VerificadorIngresoLocal(config, clave, audiencia, ventana_segundos=30, capacidad_nonces=2048)
-            app = crear_aplicacion_local(config, motor, perfil, verificador, capacidad_argon2=1, max_cuerpo_bytes=65536)
+            if rag:
+                sys.path.insert(0, str(BACKEND.parent))
+                from app.recuperacion.servicio import ServicioRecuperacion
+                recuperacion = ServicioRecuperacion(config)
+            else:
+                recuperacion = None
+            app = crear_aplicacion_local(config, motor, perfil, verificador, capacidad_argon2=1,
+                max_cuerpo_bytes=65536, recuperacion=recuperacion)
             cuentas, tickets = [], []
             with Session(motor) as db, transaccion_seguridad(db):
                 for rol in ("agent", "admin"):
@@ -212,6 +292,7 @@ def ejecutar(frontend: Path, reporte: Path, driver: Path | None):
                     credential=servicio.get_secret_value())
                 privado_browser = carpeta / "browser-input.json"
                 escribir(privado_browser, dict(origin=origen, accounts=cuentas, tickets=tickets,
+                    ragEnabled=rag,
                     backend=control["backend"], ca=str(carpeta / "ca.pem"), output=str(carpeta / "browser-result.json"),
                     privateCookies=str(carpeta / "cookies-private.json"),
                     checkpointRequest=str(carpeta / "checkpoint-request.json"),
@@ -296,8 +377,21 @@ def main():
     parser.add_argument("--frontend", type=Path, required=True)
     parser.add_argument("--reporte", type=Path, required=True)
     parser.add_argument("--browser-driver", type=Path)
+    parser.add_argument("--rag", action="store_true", help="Activa recomendaciones solo en este ensayo aislado.")
+    parser.add_argument("--env-file", type=Path, help="Configuración privada; nunca se copia al reporte.")
+    parser.add_argument("--remote-test-db", action="store_true",
+        help="Usa la base del notebook por un puente local y crea solo una BD temporal propia.")
     args = parser.parse_args()
-    result = ejecutar(args.frontend.resolve(), args.reporte.resolve(), args.browser_driver.resolve() if args.browser_driver else None)
+    if args.env_file is not None:
+        if not args.env_file.is_file():
+            raise ValueError("Archivo privado ausente.")
+        for nombre, valor in dotenv_values(args.env_file).items():
+            if valor is not None:
+                os.environ.setdefault(nombre, valor)
+    from contextlib import nullcontext
+    with puente_bd_remota() if args.remote_test_db else nullcontext():
+        result = ejecutar(args.frontend.resolve(), args.reporte.resolve(),
+            args.browser_driver.resolve() if args.browser_driver else None, rag=args.rag)
     print(json.dumps({k: result.get(k) for k in ("browser_verified", "persisted_sessions_from_http",
         "persisted_tickets", "database_deleted", "next_stopped", "fastapi_stopped", "temporary_deleted")}))
 

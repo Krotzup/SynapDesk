@@ -25,6 +25,11 @@ export function RecommendationSources({ sources }: { sources: RecommendationSour
               </summary>
               <div className="mt-1 px-3 py-2 bg-white border border-[#C7D2FE] border-t-0 rounded-b-lg text-[11px] text-[#475569] leading-relaxed italic">
                 &ldquo;{formatExcerpt(source.excerpt)}&rdquo;
+                {source.sourceUrl?.startsWith("https://") && (
+                  <a href={source.sourceUrl} target="_blank" rel="noopener noreferrer" className="ml-2 font-medium text-[#4338CA] underline">
+                    Abrir fuente
+                  </a>
+                )}
               </div>
             </details>
           ))}

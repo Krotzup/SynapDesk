@@ -48,11 +48,19 @@ const server = http.createServer((request, response) => {
       /^\/api\/v1\/tickets\/[0-9a-f-]{36}$/i.test(pathname));
   const escrituraTickets = (request.method === 'POST' && pathname === '/api/v1/tickets') ||
     (request.method === 'PATCH' && /^\/api\/v1\/tickets\/[0-9a-f-]{36}$/i.test(pathname));
+  const recomendaciones = !parsed.search && (
+    (request.method === 'GET' && (
+      /^\/api\/v1\/tickets\/[0-9a-f-]{36}\/recommendations$/i.test(pathname) ||
+      /^\/api\/v1\/recommendations\/[0-9a-f-]{36}$/i.test(pathname))) ||
+    (request.method === 'POST' && (
+      /^\/api\/v1\/tickets\/[0-9a-f-]{36}\/recommendations$/i.test(pathname) ||
+      /^\/api\/v1\/recommendations\/[0-9a-f-]{36}\/reviews$/i.test(pathname))));
   const interfaz = request.method === 'GET' && (!pathname.startsWith('/api/') &&
     (pathname === '/' || pathname === '/login' || pathname === '/inicio' ||
       pathname === '/tickets' || pathname === '/tickets/nuevo' || /^\/tickets\/[0-9a-f-]{36}$/i.test(pathname) ||
       pathname.startsWith('/_next/') || pathname === '/favicon.ico'));
-  if (allowed.get(request.url) !== request.method && !lecturaTickets && !escrituraTickets && !interfaz) {
+  if (allowed.get(request.url) !== request.method && !lecturaTickets && !escrituraTickets &&
+      !recomendaciones && !interfaz) {
     response.writeHead(404, {'Cache-Control': 'no-store'}).end();
     return;
   }

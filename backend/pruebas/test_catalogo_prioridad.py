@@ -20,7 +20,7 @@ def configuracion_sin_conexion():
 def test_nuevo_catalogo_tiene_una_revision_y_sql_coherente_con_orm():
     configuracion, salida = configuracion_sin_conexion()
     assert ScriptDirectory.from_config(configuracion).get_heads() == [
-        "0006_user_created",
+        "0007_recomendaciones_rag",
     ]
     command.upgrade(configuracion, "0002_autenticacion_persistencia:head", sql=True)
     sql = salida.getvalue()

@@ -163,9 +163,14 @@ try {
       waitUntil: "domcontentloaded",
     });
     check(role + "_new_ticket_page", newPage.status() === 200);
-    const title = "MVP09 " + role + " " + randomUUID();
+    const title =
+      config.ragEnabled && role === "agent"
+        ? "Consultas DNS expiran en Windows " + randomUUID()
+        : "MVP09 " + role + " " + randomUUID();
     const description =
-      "Creación desde formulario en Edge real; comprobación de commit y cambio de estado en PostgreSQL.";
+      config.ragEnabled && role === "agent"
+        ? "Las consultas DNS expiran; necesito comprobar el servidor configurado y el archivo hosts."
+        : "Creación desde formulario en Edge real; comprobación de commit y cambio de estado en PostgreSQL.";
     await page.getByLabel("Título", { exact: true }).fill(title);
     await page.getByLabel("Descripción", { exact: true }).fill(description);
     stage = role + "_create";
@@ -215,14 +220,47 @@ try {
     await page.getByRole("link", { name: title, exact: true }).first().click();
     await page.getByRole("heading", { name: title, exact: true }).waitFor();
     check(role + "_detail_browser", await page.getByText(description, { exact: true }).isVisible());
-    const optionalRecommendations = page.getByRole("alert").filter({
-      hasText: "No se pudieron cargar las recomendaciones del ticket.",
-    });
-    await optionalRecommendations.waitFor();
-    check(
-      role + "_optional_recommendations_do_not_block",
-      await optionalRecommendations.isVisible()
-    );
+    if (config.ragEnabled) {
+      await page.getByText("Aún no hay recomendaciones para este ticket.").waitFor();
+      check(role + "_recommendations_loaded", true);
+      if (role === "agent") {
+        stage = role + "_rag_generate";
+        const ragPath = `/api/v1/tickets/${ticket.id}/recommendations`;
+        const generationResponse = responseFor(page, ragPath, "POST");
+        await page.getByRole("button", { name: "Generar recomendación" }).click();
+        const generated = await generationResponse;
+        check(role + "_rag_generation_http201", generated.status() === 201);
+        const draft = await generated.json();
+        check(
+          role + "_rag_draft_with_sources",
+          draft.status === "pending" && draft.sources.length > 0 && draft.ticketId === ticket.id
+        );
+        await page.getByText(draft.content, { exact: true }).waitFor();
+        await page.getByText(draft.sources[0].title, { exact: true }).first().waitFor();
+        stage = role + "_rag_review";
+        const reviewResponse = responseFor(
+          page,
+          `/api/v1/recommendations/${draft.id}/reviews`,
+          "POST"
+        );
+        await page.getByRole("button", { name: /Aceptar recomendación/ }).click();
+        check(role + "_rag_review_http204", (await reviewResponse).status() === 204);
+        await page.getByText("La recomendación fue aceptada.").waitFor();
+        await checkpoint(account, ticket, "recommendation_accepted");
+        await page.reload({ waitUntil: "domcontentloaded" });
+        await page.getByText("La recomendación fue aceptada.").waitFor();
+        check(role + "_rag_review_persisted_in_ui", true);
+      }
+    } else {
+      const optionalRecommendations = page.getByRole("alert").filter({
+        hasText: "No se pudieron cargar las recomendaciones del ticket.",
+      });
+      await optionalRecommendations.waitFor();
+      check(
+        role + "_optional_recommendations_do_not_block",
+        await optionalRecommendations.isVisible()
+      );
+    }
     stage = role + "_status";
     const target = role === "agent" ? "in_progress" : "resolved";
     await page.getByLabel("Cambiar estado", { exact: true }).selectOption(target);

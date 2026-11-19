@@ -43,6 +43,14 @@ class Configuracion(BaseSettings):
     auth_cookie_profile: Literal["local", "production"] | None = None
     synapdesk_semantic_database_url: SecretStr | None = Field(default=None, repr=False)
 
+    # Generación RAG: deshabilitada hasta configurar recuperación y proveedor.
+    rag_enabled: bool = False
+    gemini_api_key: SecretStr | None = Field(default=None, repr=False)
+    rag_timeout_seconds: int = Field(default=15, ge=1, le=20)
+    rag_max_context_chunks: int = Field(default=5, ge=1, le=10)
+    rag_public_origin: str | None = None
+    rag_external_data_approved: bool = False
+
     # PROVISIONAL_CONFIGURATION / PENDING_MEASUREMENT; memoria en KiB.
     auth_argon2_memoria_kib: int = Field(default=65536, ge=8, le=2**32 - 1)
     auth_argon2_iteraciones: int = Field(default=3, ge=1, le=2**32 - 1)

@@ -360,6 +360,9 @@ def test_sesion_sin_motor_falla_cerrada_y_rutas_reales_siguen_intactas():
     app = aplicacion()
     assert set(app.openapi()["paths"]) == {
         "/api/v1/health", "/api/v1/ready", "/api/v1/auth/csrf", "/api/v1/search",
+        "/api/v1/tickets/{ticket_id}/recommendations",
+        "/api/v1/recommendations/{recommendation_id}",
+        "/api/v1/recommendations/{recommendation_id}/reviews",
     }
 
     @app.get("/prueba")

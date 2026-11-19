@@ -15,26 +15,57 @@ from app.api.dependencias_auth import exigir_origin, obtener_intermediario
 from app.api.errores_auth import CodigoHttp, registrar_errores, respuesta_error, traducir_error
 from app.api.esquemas_auth import DetalleValidacion, SolicitudLogin, SolicitudLogout
 from app.api.salud import router as router_salud
+from app.api.busqueda import error_response
+from app.api.recomendaciones import router as router_recomendaciones
 from app.configuracion import Configuracion
+from app.recuperacion.servicio import ErrorRecuperacion
 from herramientas.ingreso_local.evidencia import VerificadorIngresoLocal, exigir_testing_propio
 from app.tickets.esquemas import TicketCreate, TicketPagination, TicketStatusUpdate
 
 
 def crear_aplicacion_local(config: Configuracion, motor: Engine, perfil: PerfilCookies,
                            verificador: VerificadorIngresoLocal, *, capacidad_argon2: int,
-                           max_cuerpo_bytes: int) -> FastAPI:
+                           max_cuerpo_bytes: int, recuperacion=None) -> FastAPI:
     exigir_testing_propio(config)
     if type(verificador) is not VerificadorIngresoLocal or not 1 <= max_cuerpo_bytes <= 1048576:
         raise ValueError("Composición local inválida.")
     with motor.connect() as db:
         assert db.execute(text("SELECT current_database(), current_user")).one() == (config.postgres_db, config.postgres_user)
-        assert db.scalar(text("SELECT version_num FROM alembic_version")) == "0006_user_created"
+        assert db.scalar(text("SELECT version_num FROM alembic_version")) == "0007_recomendaciones_rag"
     auth = AdaptadorAuth(motor, config, perfil, capacidad_argon2=capacidad_argon2, procedencia_ip=verificador)
     tickets = AdaptadorTickets(motor, config, perfil)
     app = FastAPI(title="SynapDesk MVP04 — ensayo aislado", docs_url=None, redoc_url=None, openapi_url=None)
     app.state.configuracion, app.state.motor_bd = config, motor
+    app.state.recuperacion = recuperacion
     registrar_errores(app)
     app.include_router(router_salud, prefix="/api/v1")
+
+    if config.rag_enabled:
+        if config.auth_cookie_profile != "local" or config.rag_public_origin != perfil.origen_publico:
+            raise ValueError("El acceso RAG local requiere el origen y las cookies del ensayo.")
+
+        @app.exception_handler(ErrorRecuperacion)
+        async def error_rag(request, error):
+            return error_response(error.code, error.message, error.status)
+
+        @app.middleware("http")
+        async def ingreso_rag(request: Request, siguiente):
+            ruta = request.url.path
+            if (ruta.startswith("/api/v1/recommendations/") or
+                    ruta.startswith("/api/v1/tickets/") and ruta.endswith("/recommendations")):
+                try:
+                    if request.method == "POST":
+                        exigir_origin(request, config)
+                    elif request.headers.getlist("origin"):
+                        exigir_origin(request, config)
+                    obtener_intermediario(request)
+                    extraer_cookies(request, perfil)
+                    verificador(request)
+                except Exception as error:
+                    return respuesta_error(request, traducir_error(error))
+            return await siguiente(request)
+
+        app.include_router(router_recomendaciones, prefix="/api/v1")
 
     @app.get("/api/v1/auth/csrf")
     def csrf(request: Request):

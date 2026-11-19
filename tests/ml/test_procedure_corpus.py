@@ -84,3 +84,34 @@ class ProcedureCorpusTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "texto extraído no coincide"):
                     build(registry, rejected)
                 self.assertFalse(rejected.exists())
+
+
+class ProcedureCaseSplitTests(unittest.TestCase):
+    def test_calibration_and_evaluation_are_disjoint_and_preserved(self):
+        from ml.tools.split_procedure_cases import split
+
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            cases = folder / "cases.json"
+            queries = [
+                {"queryId": f"P{doc}-{number}", "query": f"Problema {doc} variante {number}",
+                 "answerable": True, "expectedDocumentId": f"{doc:08d}-1111-4111-8111-111111111111"}
+                for doc in (1, 2) for number in (1, 2)
+            ]
+            queries += [
+                {"queryId": f"NEG-{number}", "query": f"Fuera de alcance {number}",
+                 "answerable": False} for number in (1, 2, 3)
+            ]
+            cases.write_text(json.dumps({"annotationStatus": "synthetic_pending_human_review",
+                                         "queries": queries}), encoding="utf-8")
+            output = folder / "partition"
+            self.assertEqual(split(cases, output), {"calibration": 4, "evaluation": 3})
+            calibration = json.loads((output / "calibracion.json").read_text(encoding="utf-8"))
+            evaluation = json.loads((output / "evaluacion.json").read_text(encoding="utf-8"))
+            self.assertEqual({row["queryId"] for row in calibration["queries"]}
+                             & {row["queryId"] for row in evaluation["queries"]}, set())
+            self.assertEqual({row["queryId"] for row in calibration["queries"] + evaluation["queries"]},
+                             {row["queryId"] for row in queries})
+            self.assertEqual(calibration["annotationStatus"], "synthetic_pending_human_review")
+            with self.assertRaisesRegex(ValueError, "ya existe"):
+                split(cases, output)

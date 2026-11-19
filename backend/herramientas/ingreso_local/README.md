@@ -56,3 +56,45 @@ Los filtros pendientes se anuncian explícitamente en este ensayo y una URL con
 filtros no se interpreta como un listado filtrado. Las recomendaciones ausentes
 no impiden leer ni cambiar el estado del ticket. El transporte conserva la política
 de cookies de #30; no se importa la variante antigua de MVP07.
+
+## Ensayo RAG del MVP
+
+La opción `--rag` incorpora en **esta composición de testing** las rutas de generar,
+listar, consultar y revisar recomendaciones. Conserva el mismo ingreso verificado,
+sesión, Origin, CSRF, TLS y credencial de servicio. Requiere la migración `0007`,
+recuperación V2 preparada, `GEMINI_API_KEY` y aprobación explícita mediante
+`RAG_EXTERNAL_DATA_APPROVED=true`. Sin `--rag` el ensayo CRUD no genera contenido.
+
+Desde `backend/`, con Python y Node ya instalados y la base semántica preparada:
+
+```powershell
+New-Item -ItemType Directory -Force ../artifacts | Out-Null
+$env:RAG_EXTERNAL_DATA_APPROVED = 'true' # Solo si el proyecto Gemini está autorizado para esos tickets.
+& 'D:/Visual Code Amemin/Recursos/SynapDesk/envs/backend-ml/Scripts/python.exe' -B -m herramientas.ingreso_local.demo `
+  --frontend ../frontend --reporte ../artifacts/rag-mvp-local.json `
+  --env-file ../.env --rag --remote-test-db
+```
+
+`--remote-test-db` se usa cuando PostgreSQL está en el notebook: abre solo
+`127.0.0.1:5433` en este PC, lo conecta durante el ensayo a la IPv4 privada
+`POSTGRES_HOST` del `.env`, crea una base aleatoria propia y la elimina al cerrar.
+Exige que el usuario de PostgreSQL pueda crear bases; la base principal y la
+semántica no se borran ni migran. Si la base de testing ya corre localmente en
+`127.0.0.1:5433`, omitir esa opción y configurar `POSTGRES_TEST_*`. El reporte
+debe tener un nombre nuevo en cada ejecución; no se sobrescribe evidencia.
+
+Abrir la URL impresa, obtener las credenciales efímeras del archivo privado
+indicado por el lanzador, iniciar sesión, crear un ticket relacionado con el
+corpus y abrir su Asistente IA. Generar, revisar fuentes y aceptar, modificar o
+descartar. El estado del ticket se cambia aparte. Al terminar, pulsar Enter en
+la consola del lanzador para cerrar sus procesos y eliminar su base temporal.
+El reporte identifica el cierre. Este ensayo no acredita Render ni calidad de
+recomendaciones sin revisión humana.
+
+Para repetir automáticamente el recorrido en Edge, configurar
+`PLAYWRIGHT_MODULE` con la ruta local de `playwright-core` ya instalado y añadir
+`--browser-driver ../frontend/tests/proxy/browser-crud.mjs`. El driver usa un
+ticket sintético de DNS, comprueba respuesta HTTP 201 con fuentes, revisión HTTP
+204, persistencia en SQL y recarga de la interfaz. La ejecución local del
+19-11-2026 completó 99 comprobaciones y eliminó su base temporal. Los informes
+quedan bajo `ml/artifacts/`, excluidos de Git.

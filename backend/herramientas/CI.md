@@ -51,7 +51,7 @@ PostgreSQL y Alembic usan servicios independientes en runners hospedados
 [compose existente](../../compose.yaml). El healthcheck comprueba el usuario y
 la base de control del servicio. El puerto del servicio se publica únicamente
 en `127.0.0.1:5433`, manteniendo las guardas locales sin introducir excepciones.
-Se verifica PostgreSQL, vector y el head único `0006_user_created`.
+Se verifica PostgreSQL, vector y el head único `0007_recomendaciones_rag`.
 
 El usuario `synapdesk_ci` y la base `synapdesk_ci_control` pertenecen solo al
 servicio efímero. Su contraseña se deriva de los identificadores públicos de
