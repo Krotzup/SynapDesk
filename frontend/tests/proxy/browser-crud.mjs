@@ -264,8 +264,17 @@ try {
               draft.sources.length > 0 &&
               draft.ticketId === ticket.id
           );
-          await page.getByText(draft.content, { exact: true }).waitFor();
-          await page.getByText(draft.sources[0].title, { exact: true }).first().waitFor();
+          // La interfaz transforma las referencias UUID del texto en enlaces a fuentes.
+          const sourceLink = page.getByRole("link", {
+            name: `Consultar fuente 1: ${draft.sources[0].title}`,
+            exact: true,
+          });
+          await sourceLink.waitFor();
+          await sourceLink.click();
+          const sourceDetails = page.locator(
+            `#source-${draft.id}-${draft.sources[0].documentChunkId}`
+          );
+          check(role + "_rag_source_opened", await sourceDetails.getAttribute("open") !== null);
           stage = role + "_rag_review";
           const reviewResponse = responseFor(
             page,
