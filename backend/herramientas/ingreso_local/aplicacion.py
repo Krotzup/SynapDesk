@@ -13,7 +13,7 @@ from app.api.adaptadores_tickets import AdaptadorTickets
 from app.api.cookies_auth import CookieAmbigua, PerfilCookies
 from app.api.dependencias_auth import exigir_origin, obtener_intermediario
 from app.api.errores_auth import CodigoHttp, registrar_errores, respuesta_error, traducir_error
-from app.api.esquemas_auth import SolicitudLogin, SolicitudLogout
+from app.api.esquemas_auth import DetalleValidacion, SolicitudLogin, SolicitudLogout
 from app.api.salud import router as router_salud
 from app.configuracion import Configuracion
 from herramientas.ingreso_local.evidencia import VerificadorIngresoLocal, exigir_testing_propio
@@ -127,7 +127,14 @@ def crear_aplicacion_local(config: Configuracion, motor: Engine, perfil: PerfilC
             return await run_in_threadpool(ejecutar, request, datos)
         except CookieAmbigua as error:
             return respuesta_error(request, traducir_error(error))
-        except (ValidationError, ValueError, UnicodeError):
+        except ValidationError as error:
+            nombres = {item["loc"][0] for item in error.errors(include_input=False, include_context=False)
+                       if item["loc"] and item["loc"][0] in modelo.model_fields
+                       and item["loc"][0] in {"title", "description", "status"}}
+            return respuesta_error(request, CodigoHttp.VALIDATION_ERROR, detalles=[
+                DetalleValidacion(field=nombre, message="El campo no tiene un valor válido.")
+                for nombre in sorted(nombres)])
+        except (ValueError, UnicodeError):
             return respuesta_error(request, CodigoHttp.VALIDATION_ERROR)
         except Exception as error:
             return respuesta_error(request, traducir_error(error))

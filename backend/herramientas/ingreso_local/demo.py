@@ -136,12 +136,12 @@ def ejecutar(frontend: Path, reporte: Path, driver: Path | None):
         raise ValueError("El reporte ya existe; conservar evidencia anterior.")
     carpeta = BACKEND / (".arnes-auth07d2-" + uuid4().hex)
     carpeta.mkdir()
-    evidencia = dict(task="SYNAPDESK-MVP12-PREPARE-PR52-NONDESTRUCTIVE-UPDATE",
-        source_sha="ba2422fadff2cab93ab842a6ecdd3990f1434471",
+    evidencia = dict(task="SYNAPDESK-MVP12B-RESOLVE-PR52-REVIEW",
+        source_sha="9271d90ad812f62b95c93aa2dfc87d3aa071aaed",
         logout_sha="c81367aae9a7213581afb02f69976e91ba39a5a0",
         reconciliation_sha="9c13277635e3e0838c46a05b863a502cd2ec7fef",
-        main_merge_sha="4302efa92e98eade122728faccba91a90e88e362",
-        production_enabled=False, base_main="ca1d572c35472af525e4a2d85bf38881265e5818", browser_verified=False)
+        main_merge_sha="800a723034279c12ff0e26b970d7b554fe50d151",
+        production_enabled=False, base_main="4acec0992b246ed78898c06d1007a626230e51cc", browser_verified=False)
     fuentes = [BACKEND / p for p in (
         "app/api/adaptadores_auth.py", "app/api/adaptadores_tickets.py",
         "app/tickets/servicio.py", "app/tickets/repositorio.py",

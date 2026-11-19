@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.api.cookies_auth import preparar_perfil
 from app.configuracion import Configuracion
-from app.persistencia.modelos import EventoAutenticacion, Sesion
+from app.persistencia.modelos import EventoAutenticacion, Sesion, Ticket as TicketORM
 from app.tickets.esquemas import TicketCreate
 from herramientas.ingreso_local.aplicacion import crear_aplicacion_local
 from herramientas.ingreso_local.evidencia import DOMINIO, VerificadorIngresoLocal, huella_controles
@@ -132,3 +132,43 @@ def logout_local(http_local):
         event.remove(Session, "after_flush", recordar)
         with e["motor"].begin() as db:
             db.execute(delete(EventoAutenticacion).where(EventoAutenticacion.id.in_(propios)))
+
+
+@pytest.mark.parametrize("actor", [0, 1], ids=["admin", "agent"])
+@pytest.mark.parametrize("metodo,cuerpo,campo", [
+    ("POST", {"title": "x", "description": "Descripción válida de prueba."}, "title"),
+    ("POST", {"title": "Ticket válido", "description": "x"}, "description"),
+    ("PATCH", {"status": "estado_invalido"}, "status"),
+    ("POST", {"title": "Ticket válido", "description": "Descripción válida de prueba.",
+              "campo_no_previsto": True}, None),
+    ("PATCH", {"status": "closed", "campo_no_previsto": True}, None),
+], ids=["titulo", "descripcion", "estado", "extra_creacion", "extra_actualizacion"])
+def test_escritura_invalida_detalla_campos_conocidos_sin_mutar_sql(
+        logout_local, actor, metodo, cuerpo, campo):
+    e = logout_local
+    existente = e["servicio"].crear(e["referencias"][actor], TicketCreate(
+        title="Ticket que debe conservarse", description="Estado y contenido persistentes de prueba."))
+    csrf = e["solicitar"]("/api/v1/auth/csrf", actor)
+    assert csrf.status_code == 200
+    ruta = "/api/v1/tickets" + (f"/{existente.id}" if metodo == "PATCH" else "")
+
+    def filas_sql():
+        with e["motor"].connect() as db:
+            return db.execute(select(TicketORM.__table__).order_by(TicketORM.id)).all()
+
+    antes = filas_sql()
+    respuesta = e["solicitar"](ruta, actor, metodo, cuerpo=cuerpo, token=csrf.json()["csrfToken"])
+    assert respuesta.status_code == 422
+    error = respuesta.json()["error"]
+    assert error["code"] == "VALIDATION_ERROR"
+    assert error["message"] == "Revisa los campos de la solicitud."
+    assert error["requestId"]
+    assert respuesta.headers["cache-control"] == "no-store"
+    assert "set-cookie" not in respuesta.headers
+    assert filas_sql() == antes
+    if campo is None:
+        # PR #51 sigue abierto: no publicar nombres adicionales no contratados.
+        assert error["details"] in (None, [])
+    else:
+        assert error["details"] == [dict(
+            field=campo, message="El campo no tiene un valor válido.")]
