@@ -356,7 +356,7 @@ export function AssistantRecommendation({
               className={`${textareaClass} ${borderClass(Boolean(contentError))}`}
             />
             {contentError && (
-              <p id="recommendation-content-error" className="text-xs text-[#EF4444]">
+              <p id="recommendation-content-error" className="text-xs text-[#B91C1C]">
                 {contentError}
               </p>
             )}
@@ -482,7 +482,7 @@ export function AssistantRecommendation({
                 className={`${textareaClass} ${borderClass(Boolean(feedbackError))}`}
               />
               {feedbackError && (
-                <p id="review-feedback-error" className="text-xs text-[#EF4444]">
+                <p id="review-feedback-error" className="text-xs text-[#B91C1C]">
                   {feedbackError}
                 </p>
               )}
