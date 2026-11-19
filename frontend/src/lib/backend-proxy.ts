@@ -276,14 +276,32 @@ export async function callBackend(
   headers.set("authorization", `Bearer ${config.credential}`);
 
   // Capacidad privada instalada solo por el lanzador testing; no procede de HTTP/env publico.
-  const bridge = (process as unknown as Record<symbol, {
-    localTesting?: boolean;
-    attest: (method: string, path: string, headers: Headers,
-      filter: typeof filterCookieHeader, ssr: boolean) => string;
-  }>)[Symbol.for("synapdesk.mvp04.ingress")];
+  const bridge = (
+    process as unknown as Record<
+      symbol,
+      {
+        localTesting?: boolean;
+        attest: (
+          method: string,
+          path: string,
+          headers: Headers,
+          filter: typeof filterCookieHeader,
+          ssr: boolean
+        ) => string;
+      }
+    >
+  )[Symbol.for("synapdesk.mvp04.ingress")];
   if (bridge?.localTesting === true) {
-    headers.set("x-synapdesk-ingress-evidence", bridge.attest(
-      request.method, request.path, headers, filterCookieHeader, request.localRead === true));
+    headers.set(
+      "x-synapdesk-ingress-evidence",
+      bridge.attest(
+        request.method,
+        request.path,
+        headers,
+        filterCookieHeader,
+        request.localRead === true
+      )
+    );
   }
 
   let response: Response;

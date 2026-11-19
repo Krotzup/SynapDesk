@@ -34,7 +34,11 @@ function loginErrorMessage(error: unknown): string {
 }
 
 export function LoginForm() {
-  const hydrated = useSyncExternalStore(subscribeHydration, () => true, () => false);
+  const hydrated = useSyncExternalStore(
+    subscribeHydration,
+    () => true,
+    () => false
+  );
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

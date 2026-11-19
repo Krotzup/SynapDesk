@@ -34,7 +34,13 @@ async function backendFetch(
   try {
     const result = await callBackend(
       config,
-      { method: init.method ?? "GET", path, headers: new Headers(init.headers), body, localRead: true },
+      {
+        method: init.method ?? "GET",
+        path,
+        headers: new Headers(init.headers),
+        body,
+        localRead: true,
+      },
       AbortSignal.timeout(BACKEND_TIMEOUT_MS)
     );
     return new Response(result.body, {
