@@ -3,12 +3,8 @@ import { TicketListParams, TicketPriority, TicketStatus } from "@/types";
 
 export const TICKET_PAGE_SIZE = 10;
 
-/**
- * Filtros del listado (búsqueda, estado, prioridad y área). El backend MVP02 no los implementa
- * y pide no enviarlos esperando que se ignoren: quedan desactivados hasta que el contrato
- * apruebe sus valores. Para reactivarlos basta con cambiar esta constante.
- */
-export const TICKET_FILTERS_ENABLED = false;
+/** Filtros combinables implementados por el backend y conservados en la URL. */
+export const TICKET_FILTERS_ENABLED = true;
 
 /** Aviso que acompaña a los filtros mientras están desactivados. */
 export const TICKET_FILTERS_NOTICE =
@@ -56,6 +52,7 @@ export function parseTicketListParams(
     status: oneOf(TICKET_STATUSES, first(searchParams.status)),
     priority: oneOf(TICKET_PRIORITIES, first(searchParams.priority)),
     area: first(searchParams.area),
+    category: first(searchParams.category),
     search: first(searchParams.search),
     page: parsePage(searchParams.page),
     pageSize: TICKET_PAGE_SIZE,
@@ -64,11 +61,13 @@ export function parseTicketListParams(
 
 /** Indica si el listado tiene algún filtro aplicado (sin contar la paginación). */
 export function hasActiveFilters(params: TicketListParams): boolean {
-  return Boolean(params.status || params.priority || params.area || params.search);
+  return Boolean(
+    params.status || params.priority || params.area || params.category || params.search
+  );
 }
 
 /** Parámetros que se conservan en la URL al cambiar de página (pageSize es fijo). */
 export function filtersForUrl(params: TicketListParams): TicketListParams {
-  const { status, priority, area, search } = params;
-  return { status, priority, area, search };
+  const { status, priority, area, category, search } = params;
+  return { status, priority, area, category, search };
 }

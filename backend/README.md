@@ -1,5 +1,22 @@
 # Backend
 
+## Pendientes integrados del MVP
+
+Ver [contrato del incremento](../docs/contratos/entrega-pendientes-v1.md) para
+filtros, transiciones, errores 409, predicciones y documentos. Las rutas de
+tickets de la fábrica habitual se registran solo con `TICKETS_HTTP_ENABLED=true`.
+Configurar `APPLICATION_PUBLIC_ORIGIN` y la frontera de sesión/canal existente;
+este indicador no activa login productivo ni la procedencia IP pendiente.
+`CLASSIFIER_ENABLED` y `DOCUMENTS_ENABLED` son independientes de Gemini y están
+apagados por defecto. El clasificador requiere el extra `ml/requirements.txt`,
+artefacto confiable y SHA-256; la indexación requiere el extra semántico.
+
+La migración vigente es `0008_predicciones_ticket`. Aplicarla explícitamente con
+Alembic antes de habilitar estas funciones. El bootstrap administrativo exige
+ahora esa revisión exacta. El esquema de cargas web se prepara en la base
+semántica separada mediante su `init-db`, sin modificar la base de tickets.
+El despliegue se describe en [infra/render](../infra/render/README.md).
+
 API de SynapDesk basada en FastAPI y Pydantic, con prefijo `/api/v1`.
 
 ## Estado actual

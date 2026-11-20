@@ -59,6 +59,9 @@ export interface MlPrediction {
   predictedCategory: string | null;
   predictedPriority: TicketPriority | null;
   predictedArea: string | null;
+  predictedType?: string;
+  suggestedQueue?: string;
+  confidences?: { type: number; priority: number; queue: number };
   confidence: number | null;
   modelName: string;
   modelVersion: string;
@@ -146,6 +149,7 @@ export interface TicketListParams extends PaginationParams {
   status?: TicketStatus;
   priority?: TicketPriority;
   area?: string;
+  category?: string;
 }
 
 // ─── Métricas ─────────────────────────────────────────────────────────────────

@@ -1,5 +1,15 @@
 # SynapDesk
 
+## Integración de pendientes del MVP
+
+El incremento actual agrega filtros de tickets, transiciones y conflictos 409,
+clasificación persistida con panel de predicción y gestión web de documentos
+TXT/Markdown con indexación atómica. El Asistente diferencia fallos y enlaza
+pasos con sus fuentes. Ver el [alcance y activación](docs/contratos/entrega-pendientes-v1.md).
+Requiere aplicar la migración `0008_predicciones_ticket` y preparar el esquema
+semántico actualizado. La configuración de [Render](infra/render/README.md)
+está preparada; el despliegue y los artefactos ML autorizados siguen pendientes.
+
 ## Estado de RAG + LLM
 
 El backend incorpora rutas optativas para recuperar evidencia, generar borradores con **Gemini 3.5 Flash-Lite**, conservar fuentes y registrar una revisión humana. El frontend ya consume las rutas de recomendaciones cuando `NEXT_PUBLIC_USE_MOCKS=false`. La generación y la búsqueda están apagadas por defecto. El piloto sintético está cerrado; sus resultados no son una medición del sistema con tickets reales.
@@ -227,7 +237,7 @@ El proyecto se encuentra actualmente en su etapa de preparación técnica y cons
 
 ### Trabajo pendiente
 
-Las rutas HTTP de autenticación y tickets funcionan en una composición local de testing, pero siguen cerradas en la aplicación habitual. Quedan pendientes su activación operativa segura, la ingestión de documentación desde la interfaz y la integración ML con tickets. La calidad de las recomendaciones y la ampliación del corpus requieren evaluación humana; el ensayo local integral no acredita producción.
+Las rutas HTTP de autenticación y tickets funcionan en la composición local de testing. La aplicación habitual permite activar las rutas de tickets de forma optativa; el login productivo sigue pendiente de acreditar su ingreso. La ingestión desde la interfaz y la integración ML están implementadas de forma optativa, pendientes de configuración, artefacto autorizado y revisión de los mapeos de categoría/área. La calidad de las recomendaciones y la ampliación del corpus requieren evaluación humana; el ensayo local integral no acredita producción.
 
 La estrategia de staging ha sido definida y aceptada por el equipo, pero el entorno todavía no se encuentra desplegado.
 

@@ -58,7 +58,7 @@ if (["unavailable", "hostname", "untrusted"].includes(phase)) {
 } else if (phase === "local") {
   await test("TLS_CA_HOSTNAME_Y_POSTGRESQL", async () => {
     const r = await request(config.backend, "/api/v1/ensayo/servicio", { headers: bearer() });
-    assert.equal(r.status, 200); assert.equal(r.json().schema, "0007_recomendaciones_rag");
+    assert.equal(r.status, 200); assert.equal(r.json().schema, "0008_predicciones_ticket");
     assert.equal(r.json().service, "nextjs"); assert.equal(r.json().user_identity, false);
     assert.equal(r.json().ip_verified, false);
   });
@@ -111,7 +111,7 @@ if (["unavailable", "hostname", "untrusted"].includes(phase)) {
   });
   await test("NEXT_SUSTITUTO_SEC01B_TLS_POSTGRESQL", async () => {
     const r = await request(config.next, "/ensayo-canal/servicio", { headers: { ...origin, Authorization: "Bearer " + config.wrong, "X-Forwarded-For": "198.51.100.7" } });
-    assert.equal(r.status, 200); assert.equal(r.json().schema, "0007_recomendaciones_rag");
+    assert.equal(r.status, 200); assert.equal(r.json().schema, "0008_predicciones_ticket");
     assert.equal(r.json().harness, config.identity); assert(!r.body.includes(config.tokens[0]));
   });
   await test("NEXT_SUSTITUTO_NO_ABRE_CSRF", async () => apiError(await request(config.next, "/ensayo-canal/csrf", { headers: origin }), "SERVICE_UNAVAILABLE", 503));

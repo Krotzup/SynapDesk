@@ -51,6 +51,16 @@ class Configuracion(BaseSettings):
     rag_public_origin: str | None = None
     rag_external_data_approved: bool = False
 
+    application_public_origin: str | None = None
+    classifier_enabled: bool = False
+    classifier_model_path: Path | None = None
+    classifier_model_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+    # No equiparar tipo/cola a categoría/área sin un catálogo explícito.
+    classifier_category_mapping: dict[str, str] = Field(default_factory=dict)
+    classifier_area_mapping: dict[str, str] = Field(default_factory=dict)
+    documents_enabled: bool = False
+    tickets_http_enabled: bool = False
+
     # PROVISIONAL_CONFIGURATION / PENDING_MEASUREMENT; memoria en KiB.
     auth_argon2_memoria_kib: int = Field(default=65536, ge=8, le=2**32 - 1)
     auth_argon2_iteraciones: int = Field(default=3, ge=1, le=2**32 - 1)
@@ -84,7 +94,7 @@ class Configuracion(BaseSettings):
         hide_input_in_errors=True,
     )
 
-    @field_validator("search_relevance_profile")
+    @field_validator("search_relevance_profile", "classifier_model_path")
     @classmethod
     def resolver_perfil_recuperacion(cls, value: Path | None) -> Path | None:
         return RAIZ_PROYECTO / value if value is not None and not value.is_absolute() else value

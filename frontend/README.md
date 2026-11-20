@@ -142,8 +142,13 @@ con las rutas reales.
 - [x] Autenticación con la sesión del backend: cookies `HttpOnly` a través del proxy de mismo origen (#30); login, `/auth/me` y logout conectados y verificados de punta a punta en el ensayo local (#52)
 - [x] Protección de rutas: `AuthProvider` consulta `/auth/me` y redirige a `/login` si no hay sesión
 - [x] Pantallas funcionales del MVP: tickets (listado, detalle, creación y cambio de estado), métricas por estado, búsqueda e indicador de servicio
-- [ ] Documentos y Asistente IA: con datos de ejemplo hasta que el backend implemente sus endpoints
-- [ ] Filtros del listado y administración de usuarios: desactivados o fuera del MVP (#48, #49)
+- [x] Asistente IA integrado: abstención, errores diferenciados, citas navegables y revisión humana persistida
+- [x] Documentos: listado, detalle, carga TXT/Markdown y retiro con backend optativo; datos de ejemplo sin indexación
+- [x] Filtros combinables de tickets y precondición de estado para conflictos 409
+- [x] Panel de predicción ML separado de los valores confirmados; requiere artefacto y configuración del backend
+- [ ] Administración de usuarios y activación del despliegue real
+
+Ver [integración de pendientes](../docs/contratos/entrega-pendientes-v1.md) para límites, variables, migración y activación. El listado de documentos gestiona cargas web; el corpus importado por CLI se administra por sus herramientas.
 
 > Los tipos de `src/types/index.ts` y los servicios de `src/services/` siguen el contrato
 > (`docs/contratos/frontend-backend.md`). Las partes marcadas como propuesta o pendientes en el

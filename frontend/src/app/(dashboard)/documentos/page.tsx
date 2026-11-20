@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { DocumentList, DocumentListFallback } from "@/components/documents/DocumentList";
+import { DocumentUpload } from "@/components/documents/DocumentActions";
 import { USE_MOCKS } from "@/lib/config";
 import { parseDocumentListParams } from "@/lib/document-params";
 
@@ -18,6 +19,10 @@ export default async function DocumentosPage({ searchParams }: DocumentosPagePro
           <p className="text-sm text-[#64748B] mt-1">
             Documentos que el Asistente IA y la búsqueda semántica usan como fuente.
           </p>
+          <p className="text-xs text-[#64748B] mt-1">
+            Este listado gestiona los documentos cargados desde la aplicación. Las fuentes del
+            corpus importado se administran por separado.
+          </p>
         </div>
 
         {USE_MOCKS && (
@@ -27,7 +32,11 @@ export default async function DocumentosPage({ searchParams }: DocumentosPagePro
           </p>
         )}
 
-        {/* Subir y retirar documentos esperan que el contrato defina formatos y tamaños. */}
+        <DocumentUpload />
+        <p className="text-sm text-[#64748B]">
+          Después de incorporar o retirar documentos, la búsqueda puede quedar temporalmente no
+          disponible mientras se actualiza su configuración.
+        </p>
         <section
           aria-labelledby="documentos-titulo"
           className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm overflow-hidden"

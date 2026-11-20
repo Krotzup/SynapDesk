@@ -40,6 +40,15 @@ Los errores de recuperación conservan los códigos de su contrato. No se public
 
 ## Activación y datos
 
+Restricción PO/backend recibida el 20-11-2026: con Gemini Free solo pueden
+usarse entradas sintéticas o públicas expresamente autorizadas. No se autoriza
+enviar tickets reales, datos personales, credenciales ni información interna
+identificable. El redactor de patrones y `RAG_EXTERNAL_DATA_APPROVED=true` no
+levantan esa restricción. Mantener generación real deshabilitada en cualquier
+entorno con tickets reales o corpus no autorizado. La propuesta de conservar
+«aceptar no resuelve» es compatible con #59; falta ratificación explícita en
+el PR, sin alterar automáticamente el flujo del ticket.
+
 Requiere `SEARCH_ENABLED=true`, perfil V2 vigente, base semántica independiente, backend migrado, sesión/CSRF operativos, `RAG_ENABLED=true`, `GEMINI_API_KEY`, `RAG_PUBLIC_ORIGIN` y `RAG_EXTERNAL_DATA_APPROVED=true`. Este último flag exige una decisión operativa explícita sobre el envío de tickets a Google. Según los [términos oficiales de Gemini](https://ai.google.dev/gemini-api/terms), los servicios gratuitos pueden usar entradas para mejorar productos; antes de tickets reales se necesita un proyecto con tratamiento de datos aprobado y las políticas de la organización. El redactor de patrones evidentes no garantiza anonimización. El identificador del modelo se corresponde con la [documentación oficial de Gemini 3.5 Flash-Lite](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite).
 
 La recuperación se evalúa con consultas representativas y documentos cuya procedencia/derechos sean conocidos. Cualquier cambio de corpus exige recalibrar el perfil V2. El piloto sintético y sus métricas no certifican calidad en producción.

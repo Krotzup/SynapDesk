@@ -1,0 +1,63 @@
+# Referencia de staging NO AUTORIZADA: contiene planes de pago.
+# Presupuesto actual: cero. No aplicar este Blueprint. Ver infra/render/README.md.
+services:
+  - type: pserv
+    name: synapdesk-backend
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./infra/render/Dockerfile
+    dockerContext: .
+    autoDeployTrigger: "off"
+    envVars:
+      - key: APP_ENV
+        value: staging
+      - key: AUTH_COOKIE_PROFILE
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: TLS_CERT_FILE
+        value: /etc/secrets/backend-cert.pem
+      - key: TLS_KEY_FILE
+        value: /etc/secrets/backend-key.pem
+      - key: SEARCH_ENABLED
+        value: "false"
+      - key: RAG_ENABLED
+        value: "false"
+      - key: CLASSIFIER_ENABLED
+        value: "false"
+      - key: DOCUMENTS_ENABLED
+        value: "false"
+      - key: TICKETS_HTTP_ENABLED
+        value: "false"
+      - key: POSTGRES_HOST
+        sync: false
+      - key: POSTGRES_DB
+        sync: false
+      - key: POSTGRES_USER
+        sync: false
+      - key: POSTGRES_PASSWORD
+        sync: false
+      - key: POSTGRES_SSLMODE
+        value: verify-full
+  - type: web
+    name: synapdesk-frontend
+    runtime: node
+    plan: starter
+    rootDir: frontend
+    autoDeployTrigger: "off"
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start -- --hostname 0.0.0.0 --port $PORT
+    healthCheckPath: /login
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      - key: NEXT_PUBLIC_USE_MOCKS
+        value: "false"
+      - key: AUTH_COOKIE_PROFILE
+        value: production
+      - key: BACKEND_INTERNAL_URL
+        sync: false
+      - key: BACKEND_SERVICE_CREDENTIAL
+        sync: false

@@ -77,3 +77,21 @@ CREATE TABLE IF NOT EXISTS semantic_prototype_document_metadata (
     language text,
     PRIMARY KEY (document_id, model_id)
 );
+
+-- Gestión web: ficha y contenido confirman en la misma base que sus vectores.
+-- Sin FK hacia la base de tickets; uploaded_by es una instantánea pública.
+CREATE TABLE IF NOT EXISTS semantic_uploaded_documents (
+    id uuid PRIMARY KEY,
+    title text NOT NULL CHECK (length(btrim(title)) BETWEEN 1 AND 150),
+    description text,
+    original_filename text NOT NULL,
+    content_type text NOT NULL CHECK (content_type IN ('text/plain','text/markdown')),
+    uploaded_by jsonb NOT NULL,
+    content text NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    retired_at timestamptz,
+    retired_by uuid
+);
+CREATE INDEX IF NOT EXISTS semantic_uploaded_documents_created
+    ON semantic_uploaded_documents (created_at DESC, id DESC) WHERE retired_at IS NULL;

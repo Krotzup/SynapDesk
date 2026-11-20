@@ -19,7 +19,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from app.persistencia.conexion import crear_motor_bd
-from app.persistencia.modelos import ContextoCsrf, Sesion, Ticket as TicketORM, TokenCsrf, Usuario
+from app.persistencia.modelos import ContextoCsrf, PrediccionTicket, Sesion, Ticket as TicketORM, TokenCsrf, Usuario
 from app.seguridad.operaciones_sesion import ReferenciaSesion
 from app.seguridad.sesiones import ServicioSesiones
 from app.seguridad.transacciones import CodigoSeguridad, ErrorSeguridad, transaccion_seguridad
@@ -35,7 +35,7 @@ def tickets(configuracion_bd_test):
     assert config.postgres_port == 5433
     assert re.fullmatch(r"synapdesk_auth07_sec01a_[a-f0-9]{32}", config.postgres_db)
     motor = crear_motor_bd(config)
-    ids = {TicketORM: set(), TokenCsrf: set(), ContextoCsrf: set(), Sesion: set(), Usuario: set()}
+    ids = {PrediccionTicket: set(), TicketORM: set(), TokenCsrf: set(), ContextoCsrf: set(), Sesion: set(), Usuario: set()}
     candado = Lock()
 
     def recordar(db, _):
@@ -52,7 +52,7 @@ def tickets(configuracion_bd_test):
                 config.postgres_db, config.postgres_user, config.postgres_user)
             assert 170000 <= int(db.scalar(text("SHOW server_version_num"))) < 180000
             assert db.scalar(text("SELECT extversion FROM pg_extension WHERE extname='vector'"))
-            assert db.scalar(text("SELECT version_num FROM alembic_version")) == "0007_recomendaciones_rag"
+            assert db.scalar(text("SELECT version_num FROM alembic_version")) == "0008_predicciones_ticket"
         referencias = []
         usuarios = []
         for rol in ("admin", "agent"):
@@ -71,7 +71,7 @@ def tickets(configuracion_bd_test):
         try:
             with motor.begin() as db:
                 assert db.scalar(text("SELECT current_database()")) == config.postgres_db
-                for modelo in (TicketORM, TokenCsrf, ContextoCsrf, Sesion, Usuario):
+                for modelo in (PrediccionTicket, TicketORM, TokenCsrf, ContextoCsrf, Sesion, Usuario):
                     db.execute(delete(modelo).where(modelo.id.in_(ids[modelo])))
         finally:
             motor.dispose()
@@ -161,10 +161,10 @@ def test_actualizar_estado_conserva_campos_ajenos_y_es_idempotente(tickets):
     with tickets["motor"].begin() as db:
         db.execute(update(TicketORM).where(TicketORM.id == t.id).values(
             categoria="Categoría existente", area="Área existente", prioridad="high",
-            asignado_a_id=tickets["usuarios"][1], resuelto_en=t.createdAt))
+            asignado_a_id=tickets["usuarios"][1], resuelto_en=t.createdAt, estado="resolved"))
     antes = consulta_interna(tickets, lambda repo: repo.detalle(t.id))
     despues = consulta_interna(tickets, lambda repo: repo.actualizar_estado(
-        t.id, TicketStatusUpdate(status="closed"), estado_esperado="open"))
+        t.id, TicketStatusUpdate(status="closed"), estado_esperado="resolved"))
     assert despues.status == "closed" and despues.updatedAt >= antes.updatedAt
     assert antes.model_dump(exclude={"status", "updatedAt"}) == despues.model_dump(exclude={"status", "updatedAt"})
     repetido = consulta_interna(tickets, lambda repo: repo.actualizar_estado(t.id, TicketStatusUpdate(status="closed")))
@@ -199,7 +199,7 @@ def test_dos_actualizaciones_con_precondicion_no_pierden_conflicto(tickets):
             return error.codigo
 
     with ThreadPoolExecutor(max_workers=2) as pool:
-        futuros = [pool.submit(cambiar, s) for s in ("in_progress", "closed")]
+        futuros = [pool.submit(cambiar, s) for s in ("in_progress", "resolved")]
         resultados = [f.result(timeout=10) for f in futuros]
     assert resultados.count(CodigoTickets.CONFLICTO_ESTADO) == 1
     final = consulta_interna(tickets, lambda repo: repo.detalle(t.id))
@@ -257,6 +257,8 @@ def test_rollback_real_revierte_creacion_y_actualizacion(tickets):
 def test_conteos_reales_incluyen_todos_los_estados(tickets):
     for estado in ("open", "in_progress", "resolved", "closed"):
         t = crear(tickets)
+        if estado == "closed":
+            consulta_interna(tickets, lambda repo: repo.actualizar_estado(t.id, TicketStatusUpdate(status="resolved")))
         consulta_interna(tickets, lambda repo: repo.actualizar_estado(t.id, TicketStatusUpdate(status=estado)))
     assert consulta_interna(tickets, lambda repo: repo.resumen()).model_dump() == {
         "totalTickets": 4, "openTickets": 1, "inProgressTickets": 1, "resolvedTickets": 1, "closedTickets": 1,

@@ -6,9 +6,38 @@ from pathlib import Path
 
 import joblib
 
-from prediction_output import model_prediction
-from dataset_io import PRIORITIES
-from text_preprocessing import build_text
+if __package__:
+    from .prediction_output import model_prediction
+    from .text_preprocessing import build_text
+else:
+    from prediction_output import model_prediction
+    from text_preprocessing import build_text
+
+PRIORITIES = {"low", "medium", "high"}
+
+
+class TicketClassifier:
+    """Artefacto de confianza cargado una vez; nunca entrena durante inferencia."""
+
+    def __init__(self, artifact: dict, business_rules: bool | None = None):
+        if business_rules:
+            raise ValueError("La regla de urgencia fue retirada; no se pueden habilitar reglas de prioridad.")
+        priority_classes = set(artifact["models"]["prioridad_estimada"].classes_)
+        if not priority_classes or not priority_classes <= PRIORITIES:
+            raise ValueError("El artefacto contiene prioridades no admitidas; reentrena con low, medium, high.")
+        if business_rules is None and artifact.get("config", {}).get("business_rules_enabled", False):
+            raise ValueError("El artefacto habilita una regla retirada; reentrena o usa --disable-business-rules.")
+        self.artifact = artifact
+
+    def predict(self, subject: str, body: str) -> dict[str, object]:
+        text = build_text(subject, body)
+        return {
+            "modelName": self.artifact["model_name"],
+            "modelVersion": self.artifact["model_version"],
+            "businessRulesEnabled": False,
+            "predictions": {name: model_prediction(model, text)
+                            for name, model in self.artifact["models"].items()},
+        }
 
 
 def predict(
@@ -17,28 +46,10 @@ def predict(
     body: str,
     business_rules: bool | None = None,
 ) -> dict[str, object]:
-    text = build_text(subject, body)
+    build_text(subject, body)
     if business_rules:
         raise ValueError("La regla de urgencia fue retirada; no se pueden habilitar reglas de prioridad.")
-    artifact = joblib.load(model_path)
-    priority_classes = set(artifact["models"]["prioridad_estimada"].classes_)
-    if not priority_classes or not priority_classes <= PRIORITIES:
-        raise ValueError("El artefacto contiene prioridades no admitidas; reentrena con low, medium, high.")
-    if business_rules is None and artifact.get("config", {}).get("business_rules_enabled", False):
-        raise ValueError("El artefacto habilita una regla retirada; reentrena o usa --disable-business-rules.")
-    response: dict[str, object] = {
-        "modelName": artifact["model_name"],
-        "modelVersion": artifact["model_version"],
-        "businessRulesEnabled": False,
-        "predictions": {},
-    }
-
-    for business_name, model in artifact["models"].items():
-        prediction = model_prediction(model, text)
-
-        response["predictions"][business_name] = prediction
-
-    return response
+    return TicketClassifier(joblib.load(model_path), business_rules).predict(subject, body)
 
 
 def build_parser() -> argparse.ArgumentParser:

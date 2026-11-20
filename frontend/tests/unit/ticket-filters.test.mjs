@@ -9,27 +9,31 @@ import {
   ticketListHrefForStatus,
 } from "@/lib/ticket-filters";
 
-describe("filtros desactivados (el backend MVP02 no los implementa)", () => {
-  test("por defecto están desactivados", () => {
-    assert.equal(TICKET_FILTERS_ENABLED, false);
+describe("activación de filtros", () => {
+  test("por defecto están habilitados", () => {
+    assert.equal(TICKET_FILTERS_ENABLED, true);
   });
 
   test("solo se lee la página: los filtros de la URL no llegan al backend", () => {
     assert.deepEqual(
-      parseTicketListParams({
-        status: "open",
-        priority: "high",
-        area: "Soporte",
-        search: "vpn",
-        page: "2",
-      }),
+      parseTicketListParams(
+        {
+          status: "open",
+          priority: "high",
+          area: "Soporte",
+          search: "vpn",
+          page: "2",
+        },
+        false
+      ),
       { page: 2, pageSize: TICKET_PAGE_SIZE }
     );
   });
 
   test("sin filtros activos, los conteos no enlazan a un listado filtrado", () => {
-    assert.equal(hasActiveFilters(parseTicketListParams({ status: "open" })), false);
-    assert.equal(ticketListHrefForStatus("open"), undefined);
+    assert.equal(hasActiveFilters(parseTicketListParams({ status: "open" }, false)), false);
+    assert.equal(ticketListHrefForStatus("open", false), undefined);
+    assert.equal(ticketListHrefForStatus("open"), "/tickets?status=open");
     assert.equal(ticketListHrefForStatus("open", true), "/tickets?status=open");
   });
 });
@@ -40,6 +44,7 @@ describe("parseTicketListParams con los filtros habilitados", () => {
       status: undefined,
       priority: undefined,
       area: undefined,
+      category: undefined,
       search: undefined,
       page: 1,
       pageSize: TICKET_PAGE_SIZE,
@@ -89,7 +94,7 @@ describe("hasActiveFilters y filtersForUrl", () => {
   test("filtersForUrl conserva los filtros y quita page y pageSize", () => {
     assert.deepEqual(
       filtersForUrl({ status: "open", area: "Soporte", search: "vpn", page: 2, pageSize: 10 }),
-      { status: "open", priority: undefined, area: "Soporte", search: "vpn" }
+      { status: "open", priority: undefined, area: "Soporte", category: undefined, search: "vpn" }
     );
   });
 });

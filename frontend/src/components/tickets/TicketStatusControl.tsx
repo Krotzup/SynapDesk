@@ -18,8 +18,8 @@ interface TicketStatusControlProps {
 }
 
 /**
- * Cambio de estado del ticket (HU04; PATCH /tickets/{id} con { status }). No valida
- * transiciones: lo que rechace el backend se muestra como error. Sin reintento automático.
+ * Cambio de estado con precondición del estado observado. El backend valida
+ * transiciones y fechas; los rechazos se muestran sin reintento automático.
  */
 export function TicketStatusControl({ ticketId, status: serverStatus }: TicketStatusControlProps) {
   const router = useRouter();
@@ -36,7 +36,10 @@ export function TicketStatusControl({ ticketId, status: serverStatus }: TicketSt
     setError(null);
     setConfirmation("");
     try {
-      const updated = await ticketsService.updateStatus(ticketId, { status: selected });
+      const updated = await ticketsService.updateStatus(ticketId, {
+        status: selected,
+        expectedStatus: current,
+      });
       setDemoTicketStatus(ticketId, updated.status);
       setSelected(updated.status);
       setConfirmation(`Estado actualizado a «${statusLabels[updated.status]}».`);

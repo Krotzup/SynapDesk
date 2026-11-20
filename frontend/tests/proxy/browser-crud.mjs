@@ -148,16 +148,12 @@ try {
     const me = await browserRequest(page, "/api/v1/auth/me", "GET");
     check(role + "_me_persisted_session", me.status === 200 && me.data.user.role === role);
     await page.goto(config.origin + "/tickets?status=open", { waitUntil: "domcontentloaded" });
-    const filtersNotice = page.getByText(
-      "Los filtros y la búsqueda de tickets se habilitarán cuando el backend los implemente.",
-      { exact: true }
-    );
-    await filtersNotice.waitFor();
+    await page.locator("#ticket-status").waitFor();
     check(
-      role + "_unsupported_filters_disabled",
-      (await filtersNotice.isVisible()) &&
-        (await page.locator("#ticket-status").isDisabled()) &&
-        (await page.locator("#ticket-priority").isDisabled())
+      role + "_filters_enabled",
+      (await page.locator("#ticket-status").isEnabled()) &&
+        (await page.locator("#ticket-priority").isEnabled()) &&
+        (await page.locator("#ticket-status").inputValue()) === "open"
     );
     await page.goto(config.origin + "/tickets", { waitUntil: "domcontentloaded" });
     await page.getByRole("heading", { name: "Gestión de tickets", exact: true }).waitFor();
@@ -299,8 +295,17 @@ try {
               draft.sources.length > 0 &&
               draft.ticketId === ticket.id
           );
-          await page.getByText(draft.content, { exact: true }).waitFor();
-          await page.getByText(draft.sources[0].title, { exact: true }).first().waitFor();
+          // La interfaz transforma las referencias UUID del texto en enlaces a fuentes.
+          const sourceLink = page.getByRole("link", {
+            name: `Consultar fuente 1: ${draft.sources[0].title}`,
+            exact: true,
+          });
+          await sourceLink.waitFor();
+          await sourceLink.click();
+          const sourceDetails = page.locator(
+            `#source-${draft.id}-${draft.sources[0].documentChunkId}`
+          );
+          check(role + "_rag_source_opened", (await sourceDetails.getAttribute("open")) !== null);
           stage = role + "_rag_review";
           const reviewResponse = responseFor(
             page,

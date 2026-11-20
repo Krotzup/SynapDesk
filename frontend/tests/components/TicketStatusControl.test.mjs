@@ -55,7 +55,9 @@ describe("TicketStatusControl", () => {
 
     const confirmation = await screen.findByText("Estado actualizado a «En Proceso».");
     assert.equal(confirmation.getAttribute("aria-live"), "polite");
-    assert.deepEqual(stub.calls.updateStatus, [[TICKET_ID, { status: "in_progress" }]]);
+    assert.deepEqual(stub.calls.updateStatus, [
+      [TICKET_ID, { status: "in_progress", expectedStatus: "open" }],
+    ]);
     assert.deepEqual(router.calls, [["refresh"]]);
     assert.equal(screen.queryByRole("alert"), null);
   });

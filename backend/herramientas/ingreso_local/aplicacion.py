@@ -17,6 +17,8 @@ from app.api.esquemas_auth import DetalleValidacion, SolicitudLogin, SolicitudLo
 from app.api.salud import router as router_salud
 from app.api.busqueda import error_response, router as router_busqueda
 from app.api.recomendaciones import router as router_recomendaciones
+from app.api.predicciones import router as router_predicciones
+from app.api.documentos import router as router_documentos
 from app.configuracion import Configuracion
 from app.recuperacion.servicio import ErrorRecuperacion
 from herramientas.ingreso_local.evidencia import VerificadorIngresoLocal, exigir_testing_propio
@@ -31,14 +33,50 @@ def crear_aplicacion_local(config: Configuracion, motor: Engine, perfil: PerfilC
         raise ValueError("Composición local inválida.")
     with motor.connect() as db:
         assert db.execute(text("SELECT current_database(), current_user")).one() == (config.postgres_db, config.postgres_user)
-        assert db.scalar(text("SELECT version_num FROM alembic_version")) == "0007_recomendaciones_rag"
+        assert db.scalar(text("SELECT version_num FROM alembic_version")) == "0008_predicciones_ticket"
     auth = AdaptadorAuth(motor, config, perfil, capacidad_argon2=capacidad_argon2, procedencia_ip=verificador)
     tickets = AdaptadorTickets(motor, config, perfil)
     app = FastAPI(title="SynapDesk MVP04 — ensayo aislado", docs_url=None, redoc_url=None, openapi_url=None)
     app.state.configuracion, app.state.motor_bd = config, motor
     app.state.recuperacion = recuperacion
+    app.state.indexador = recuperacion
+    app.state.clasificacion = None
+    if config.classifier_enabled:
+        from app.clasificacion import ServicioClasificacion
+        try:
+            app.state.clasificacion = ServicioClasificacion(config)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).error("No se pudo preparar el clasificador local.")
+    if config.documents_enabled and app.state.indexador is None:
+        from app.documentos import IndexadorDocumentos
+        app.state.indexador = IndexadorDocumentos()
     registrar_errores(app)
     app.include_router(router_salud, prefix="/api/v1")
+    app.include_router(router_predicciones, prefix="/api/v1")
+    app.include_router(router_documentos, prefix="/api/v1")
+
+    @app.exception_handler(ErrorRecuperacion)
+    async def error_ml(request, error):
+        return error_response(error.code, error.message, error.status)
+
+    @app.middleware("http")
+    async def ingreso_asistencia(request: Request, siguiente):
+        ruta = request.url.path
+        protegida = (ruta == "/api/v1/documents" or ruta.startswith("/api/v1/documents/")
+            or ruta.startswith("/api/v1/recommendations/")
+            or ruta.startswith("/api/v1/tickets/") and
+               (ruta.endswith("/recommendations") or ruta.endswith("/prediction")))
+        if protegida:
+            try:
+                if request.method != "GET" or request.headers.getlist("origin"):
+                    exigir_origin(request, config)
+                obtener_intermediario(request)
+                extraer_cookies(request, perfil)
+                verificador(request)
+            except Exception as error:
+                return respuesta_error(request, traducir_error(error))
+        return await siguiente(request)
 
     if config.search_enabled:
         if config.auth_cookie_profile != "local" or config.search_cookie_name != perfil.nombre_sesion:
@@ -64,28 +102,6 @@ def crear_aplicacion_local(config: Configuracion, motor: Engine, perfil: PerfilC
     if config.rag_enabled:
         if config.auth_cookie_profile != "local" or config.rag_public_origin != perfil.origen_publico:
             raise ValueError("El acceso RAG local requiere el origen y las cookies del ensayo.")
-
-        @app.exception_handler(ErrorRecuperacion)
-        async def error_rag(request, error):
-            return error_response(error.code, error.message, error.status)
-
-        @app.middleware("http")
-        async def ingreso_rag(request: Request, siguiente):
-            ruta = request.url.path
-            if (ruta.startswith("/api/v1/recommendations/") or
-                    ruta.startswith("/api/v1/tickets/") and ruta.endswith("/recommendations")):
-                try:
-                    if request.method == "POST":
-                        exigir_origin(request, config)
-                    elif request.headers.getlist("origin"):
-                        exigir_origin(request, config)
-                    obtener_intermediario(request)
-                    extraer_cookies(request, perfil)
-                    verificador(request)
-                except Exception as error:
-                    return respuesta_error(request, traducir_error(error))
-            return await siguiente(request)
-
         app.include_router(router_recomendaciones, prefix="/api/v1")
 
     @app.get("/api/v1/auth/csrf")
@@ -199,7 +215,7 @@ def crear_aplicacion_local(config: Configuracion, motor: Engine, perfil: PerfilC
     def listado(request: Request):
         def ejecutar():
             parametros = request.query_params
-            if set(parametros) - {"page", "pageSize"} or any(
+            if set(parametros) - set(TicketPagination.model_fields) or any(
                     len(parametros.getlist(k)) != 1 for k in parametros):
                 raise ValueError
             datos = {}
@@ -209,6 +225,7 @@ def crear_aplicacion_local(config: Configuracion, motor: Engine, perfil: PerfilC
                     if not valor.isascii() or not valor.isdecimal():
                         raise ValueError
                     datos[nombre] = int(valor)
+            datos.update({k: parametros[k] for k in ("status", "priority", "category", "area", "search") if k in parametros})
             return tickets.listar(request, TicketPagination.model_validate(datos))
         return leer(request, ejecutar)
 

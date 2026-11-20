@@ -188,7 +188,7 @@ class ServicioCreacionUsuarios:
                 identidad = db.execute(text("SELECT current_database(), session_user, current_user")).one()
                 if identidad != (self._config.postgres_db, self._config.postgres_user, self._config.postgres_user):
                     raise ErrorCreacionUsuario(CodigoCreacionUsuario.DESTINO_ENSAYO)
-                if set(db.scalars(text("SELECT version_num FROM public.alembic_version"))) != {"0007_recomendaciones_rag"}:
+                if set(db.scalars(text("SELECT version_num FROM public.alembic_version"))) != {"0008_predicciones_ticket"}:
                     raise ErrorCreacionUsuario(CodigoCreacionUsuario.DESTINO_ENSAYO)
                 usuario, evento_id = self._insertar(db, referencia, preparado)
             finally:

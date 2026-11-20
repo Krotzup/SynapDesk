@@ -138,6 +138,11 @@ function notFound() {
 }
 
 export const documentsMock: DocumentsService = {
+  upload: () =>
+    rejectWithApiError(
+      "DOCUMENTS_UNAVAILABLE",
+      "La carga necesita el backend real; no se simula una indexación."
+    ),
   // Más recientes primero, como el listado de tickets.
   getAll: (params) => {
     const sorted = [...documents].sort((a, b) => b.createdAt.localeCompare(a.createdAt));

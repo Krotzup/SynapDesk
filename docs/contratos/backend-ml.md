@@ -4,6 +4,14 @@
 
 **Provisional — propuesta de integración pendiente de aprobación.**
 
+Actualización del 19 de noviembre de 2026: existe un adaptador optativo con
+carga por proceso, predicción persistente y representación en el detalle.
+La [integración de pendientes](entrega-pendientes-v1.md#clasificación) especifica
+rutas, activación, probabilidades por objetivo y mapeos explícitos. Las frases
+de esta revisión anterior que indican ausencia de integración describen el
+estado previo. No se aprueba una equivalencia entre tipo y categoría temática;
+el artefacto autorizado y sus correspondencias siguen siendo entregables de ML.
+
 El clasificador del [PR #13](https://github.com/Krotzup/SynapDesk/pull/13) se incorporó a `main` mediante `0d37072`; el [contrato documental #14](https://github.com/Krotzup/SynapDesk/pull/14), mediante `55fb431`. La revisión inicial del 29 de octubre de 2026 describía `5c99424`. Esta actualización del 5 de noviembre distingue el código integrado de las opciones experimentales de la rama de mejoras del clasificador.
 
 La integración FastAPI del clasificador sigue sin implementarse. Las variantes, evaluaciones y herramientas de exportación descritas en la documentación ML son experimentales hasta su revisión e integración; su presencia no aprueba taxonomías, reglas de negocio, umbrales ni un modelo de producción.
@@ -395,6 +403,14 @@ La comprobación con `py_compile` valida sintaxis, no reemplaza estas pruebas ni
 | Equipo | Semántica tipo/categoría, mapeo cola/área, criterios de prioridad, futuras reglas de negocio, confianza pública y aprobación del contrato |
 
 ## Decisiones pendientes y bloqueos
+
+La devolución PO/backend compartida el 20-11-2026 propone mantener confianzas
+individuales por objetivo y un adaptador explícito; no autoriza modificar
+campos confirmados ni inventar equivalencias tipo/categoría o cola/área.
+La propuesta es compatible con el incremento #60, pero los mapeos y la
+ratificación contractual siguen pendientes. El artefacto y su entorno deben
+completar la [ficha de entrega](../ml/ficha-clasificador.md) y la
+[matriz MLOps propuesta](../ml/matriz-mlops.md) antes de habilitar inferencia real.
 
 1. Resolver si tipo equivale a categoría o requiere ampliar el dominio.
 2. Aprobar el catálogo y mapeo de colas a áreas.

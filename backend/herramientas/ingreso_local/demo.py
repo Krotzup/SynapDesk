@@ -215,7 +215,8 @@ def ejecutar(frontend: Path, reporte: Path, driver: Path | None, *, rag: bool = 
             datos.update({k: v for k, v in configuracion_login().model_dump().items() if k.startswith("auth_")})
             datos.update(postgres_db=nombre, auth_intermediario=politica([servicio]),
                 auth_origenes_permitidos=[origen], auth_proxies_autorizados=["127.0.0.1/32"],
-                auth_cookie_profile="local", rag_enabled=rag,
+                auth_cookie_profile="local", rag_enabled=rag, documents_enabled=False,
+                application_public_origin=origen,
                 rag_public_origin=origen if rag else None)
             if search:
                 datos.update(search_enabled=True)

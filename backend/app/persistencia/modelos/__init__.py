@@ -7,6 +7,7 @@ from app.persistencia.modelos.csrf import ContextoCsrf, TokenCsrf
 from app.persistencia.modelos.seguridad import LimiteAutenticacion, EventoAutenticacion
 from app.persistencia.modelos.bootstrap_csrf import CuotaBootstrapCsrf
 from app.persistencia.modelos.recomendacion import Recomendacion, RevisionRecomendacion
+from app.persistencia.modelos.prediccion import PrediccionTicket
 
 __all__ = [
     "CuotaBootstrapCsrf",
@@ -19,4 +20,5 @@ __all__ = [
     "EventoAutenticacion",
     "Recomendacion",
     "RevisionRecomendacion",
+    "PrediccionTicket",
 ]

@@ -54,7 +54,7 @@ async function send<TResponse, TBody>(
     // Respuestas privadas: sin caché compartida entre usuarios.
     cache: "no-store",
     headers: {
-      "Content-Type": "application/json",
+      ...(body instanceof FormData ? {} : { "Content-Type": "application/json" }),
       ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {}),
       ...headers,
       ...transport.headers,
@@ -62,7 +62,7 @@ async function send<TResponse, TBody>(
   };
 
   if (body !== undefined) {
-    config.body = JSON.stringify(body);
+    config.body = body instanceof FormData ? body : JSON.stringify(body);
   }
 
   const response = await transport.fetch(`${transport.baseUrl}${prefix}${endpoint}`, config);

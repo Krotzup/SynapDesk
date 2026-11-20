@@ -73,7 +73,7 @@ def test_cinco_adaptadores_con_sesion_y_csrf_persistidos(candidato_pg, actor):
     cambiado = cuerpo(e["adaptador"].actualizar_estado(
         peticion(e, metodo="PATCH", actor=otro, token=emitir(e, otro).token),
         ticket_id, TicketStatusUpdate(status="resolved")))
-    assert cambiado["status"] == "resolved" and cambiado["resolvedAt"] is None
+    assert cambiado["status"] == "resolved" and cambiado["resolvedAt"] is not None
     assert cuerpo(e["adaptador"].resumen(peticion(e, actor=actor))) == {
         "totalTickets": 1, "openTickets": 0, "inProgressTickets": 0,
         "resolvedTickets": 1, "closedTickets": 0}
