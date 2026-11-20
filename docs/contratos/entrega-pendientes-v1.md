@@ -8,6 +8,10 @@ de filtros, estados, clasificación e ingestión de los contratos anteriores.
 
 ## Condiciones pendientes antes del merge
 
+La [verificación final del PR #60](../gestion/verificacion-pr60.md) enlaza los
+checks del HEAD revisado, registra la respuesta PO/backend y distingue el
+cierre técnico de las ratificaciones pendientes sobre el HEAD final.
+
 La revisión de `2e6beb7` no constituye aprobación. Registrar expresamente en el
 PR quién ratifica cada decisión; ninguna casilla se considera aprobada por
 aparecer en el código o por pasar CI:
@@ -216,52 +220,33 @@ solicitaron en un comentario del PR #60.
 
 Se aprobaron además 39 integraciones PostgreSQL del conjunto conciliado y
 48 pruebas Node del protocolo de ingreso. El alcance adicional se limita a la
-parte ML/LLM/RAG. HU10, inicialmente excluida, se incorpora por solicitud
-posterior explícita como función optativa descrita abajo; no constituye una
-ratificación del PO sobre su activación en el MVP.
+parte ML/LLM/RAG. La respuesta PO/backend compartida el 20-11-2026
+excluye HU10: se retiraron su endpoint, sección de interfaz, flags y pruebas
+específicas. Se mantiene el evaluador EA3, como propuesta de evaluación.
 
-## HU10: métricas de revisiones de IA, optativas
+## Respuesta PO/backend del 20-11-2026
 
-`METRICS_AI_ENABLED=false` por defecto. Al habilitarlo se registra
-`GET /api/v1/metrics/recommendations`, independiente de la generación Gemini y
-de las rutas de tickets. Requiere la misma identidad de sesión de la aplicación
-(agente o administrador), origen/canal interno configurado y responde con
-`Cache-Control: no-store`. En el ensayo local también exige el sello de ingreso.
-No expone consultas, contenidos, autores ni identificadores personales.
+Procedencia: [respuesta de PO/backend en el PR](https://github.com/Krotzup/SynapDesk/pull/60#issuecomment-7041283764),
+también compartida por el solicitante en esta revisión. Debe
+registrarse la ratificación formal y su autor en el PR; este documento no
+emite una aprobación independiente.
 
-Respuesta: `recommendationsAccepted`, `recommendationsModified` y
-`recommendationsRejected`, enteros no negativos que cuentan las decisiones de
-la tabla inmutable de revisiones en una sola consulta/snapshot. Son conteos
-globales históricos; no hay filtros, ventanas temporales ni tasas inferidas.
-Una tabla vacía devuelve tres ceros; los borradores pendientes no se cuentan.
-Aceptar, modificar o rechazar no equivale a resolver un ticket ni a medir la
-exactitud del modelo. No requiere migraciones adicionales a la 0007 existente.
+| Tema | Registro de la respuesta | Estado |
+| --- | --- | --- |
+| Alcance y presupuesto | Clasificación, búsqueda y RAG/LLM; servicios gratuitos; HU10 fuera | Aplicado al incremento |
+| Gemini Free | Prohibido enviar tickets reales, datos personales, credenciales o información interna identificable; solo sintéticos o públicos expresamente autorizados | Restricción de habilitación |
+| Aceptar recomendación | PO/backend propone conservar #59: registra revisión y no cambia estado del ticket | Código compatible; ratificación explícita pendiente |
+| Clasificador | Propone confianza individual y adaptador; no sobrescribe valores confirmados | Implementado; artefacto/mapeos y ratificación pendientes |
+| Matriz MLOps | No consta matriz aprobada; se solicita documento propuesto | [Propuesta versionada](../ml/matriz-mlops.md), sin aprobación implícita |
+| Perfil V2 | No queda aprobado como perfil productivo | Experimental |
+| Render | Evaluar Web Service Free con revisión de Felipe y mediciones ML | Sin despliegue ni recursos de pago |
+| Transiciones, fechas, 409, filtros y formatos | La respuesta no ratifica expresamente estas reglas | Casillas iniciales siguen pendientes |
 
-Sin sesión válida aplica el contrato de autenticación existente. Si no hay
-base o falla la lectura responde 503 `METRICS_UNAVAILABLE`; no sustituye el
-error por ceros. Apagado, la ruta no se registra (404).
-
-La sección de `/metricas` se habilita con la variable exclusiva de servidor
-`AI_REVIEW_METRICS_ENABLED=true` y exige también el flag del backend. Sin ella
-no consulta esta ruta. Los datos de ejemplo no inventan conteos de revisiones.
-El Blueprint conserva ambos flags en false; no se aplicó en Render ni autoriza
-recursos de pago. La conformidad frontend anterior correspondía a 607482a;
-esta sección nueva necesita su propia revisión.
-
-- [ ] PO: ratificar inclusión/activación de HU10 y alcance de conteos globales.
-- [ ] Felipe: revisar endpoint, permisos y configuración del ingreso.
-- [ ] Responsable frontend: revisar la sección optativa nueva.
-
-Las decisiones de transiciones, 409, formatos, mapeos, «Aceptar y resolver»,
-proveedor LLM y datos enviados a Gemini siguen pendientes de sus responsables.
-
-Validación de esta ampliación: 24 pruebas focalizadas de matriz/CLI/HU10,
-5 integraciones PostgreSQL (migraciones hasta 0008 y base temporal eliminada),
-49 pruebas del protocolo de ingreso y 59 pruebas de componentes. La suite
-unitaria amplia aprobó 1.083 pruebas, complementadas por la ejecución focalizada
-final de 24. Compilación de producción y TypeScript
-aprobados. Estas comprobaciones no ejecutan la matriz con Gemini real ni
-acreditan calidad del modelo o ratificaciones del equipo.
+La definición EA3 recibida anteriormente es un insumo del evaluador RAG;
+no acredita aprobación de una matriz MLOps integral. Consultas autorizadas,
+revisión independiente, artefacto, mapeos, cuotas y mediciones reales forman
+parte de la etapa posterior de habilitación. No se añaden nuevas funciones
+para suplir decisiones humanas. La aprobación independiente sigue pendiente.
 
 ### Evidencia anterior
 

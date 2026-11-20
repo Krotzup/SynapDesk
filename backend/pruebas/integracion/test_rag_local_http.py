@@ -46,11 +46,16 @@ def test_generacion_y_revision_con_sesion_y_procedencia_reales(tickets, configur
         title="No resuelve el DNS", description="El equipo no puede resolver el nombre del servidor."))
 
     with TestClient(app, base_url="https://localhost", client=("127.0.0.1", 12345)) as cliente:
-        def solicitar(ruta, metodo="GET", cuerpo=None, token=None, evidencia=True):
+        def solicitar(ruta, metodo="GET", cuerpo=None, token=None, evidencia=True,
+                      origen=ORIGEN, canal=True, sesion=True):
             headers = {"Authorization": "Bearer " + servicio.get_secret_value(),
-                       "Origin": ORIGEN,
+                       "Origin": origen,
                        "Cookie": "synapdesk_session_dev=" +
                                  tickets["referencias"][1].credencial.get_secret_value()}
+            if not canal:
+                headers["Authorization"] = "Bearer credencial-invalida-de-prueba"
+            if not sesion:
+                headers["Cookie"] = ""  # No incorporar el cookie jar después de firmar.
             if token is not None:
                 headers["X-CSRF-Token"] = token
             url = urlsplit(ruta)
@@ -94,6 +99,17 @@ def test_generacion_y_revision_con_sesion_y_procedencia_reales(tickets, configur
             assert borrador["sources"][0]["documentChunkId"] == str(fuente["documentChunkId"])
             assert [item["id"] for item in solicitar(ruta).json()] == [borrador["id"]]
             assert solicitar(f"/api/v1/recommendations/{borrador['id']}").json() == borrador
+            for protegida, metodo, cuerpo in (
+                (ruta, "GET", None), (ruta, "POST", {}),
+                (f"/api/v1/recommendations/{borrador['id']}", "GET", None),
+                (f"/api/v1/recommendations/{borrador['id']}/reviews", "POST", {"decision": "accepted"}),
+            ):
+                assert solicitar(protegida, metodo, cuerpo, token, evidencia=False).status_code == 503
+                assert solicitar(protegida, metodo, cuerpo, token, canal=False).status_code == 503
+                assert solicitar(protegida, metodo, cuerpo, token, sesion=False).status_code == 401
+                assert solicitar(protegida, metodo, cuerpo, token, origen="https://ajeno.invalid").status_code == 403
+                if metodo == "POST":
+                    assert solicitar(protegida, metodo, cuerpo, "invalido").status_code == 403
             revisada = solicitar(f"/api/v1/recommendations/{borrador['id']}/reviews",
                 "POST", {"decision": "accepted"}, token=token)
             assert revisada.status_code == 204

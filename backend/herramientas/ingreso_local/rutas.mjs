@@ -2,7 +2,6 @@ const allowed = new Map([['/api/v1/auth/csrf', 'GET'], ['/api/v1/auth/login', 'P
 allowed.set('/api/v1/auth/logout', 'POST');
 allowed.set('/api/local/csrf', 'POST');
 allowed.set('/api/v1/search', 'POST');
-allowed.set('/api/v1/metrics/recommendations', 'GET');
 
 export function rutaPermitida(method, url) {
   const parsed = new URL(url, "http://ingreso.invalid");
@@ -27,7 +26,7 @@ export function rutaPermitida(method, url) {
     /^\/api\/v1\/tickets\/[0-9a-f-]{36}\/prediction$/i.test(pathname);
   const interfaz = method === 'GET' && (!pathname.startsWith('/api/') &&
     (pathname === '/' || pathname === '/login' || pathname === '/inicio' ||
-      pathname === '/metricas' || pathname === '/busqueda' || pathname === '/documentos' || /^\/documentos\/[0-9a-f-]{36}$/i.test(pathname) ||
+      pathname === '/busqueda' || pathname === '/documentos' || /^\/documentos\/[0-9a-f-]{36}$/i.test(pathname) ||
       pathname === '/tickets' || pathname === '/tickets/nuevo' || /^\/tickets\/[0-9a-f-]{36}$/i.test(pathname) ||
       pathname.startsWith('/_next/') || pathname === '/favicon.ico'));
   return allowed.get(url) === method || lecturaTickets || escrituraTickets || recomendaciones || documentos || predicciones || interfaz;

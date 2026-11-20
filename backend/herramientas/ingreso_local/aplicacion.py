@@ -55,9 +55,6 @@ def crear_aplicacion_local(config: Configuracion, motor: Engine, perfil: PerfilC
     app.include_router(router_salud, prefix="/api/v1")
     app.include_router(router_predicciones, prefix="/api/v1")
     app.include_router(router_documentos, prefix="/api/v1")
-    if config.metrics_ai_enabled:
-        from app.api.metricas_ia import router as router_metricas_ia
-        app.include_router(router_metricas_ia, prefix="/api/v1")
 
     @app.exception_handler(ErrorRecuperacion)
     async def error_ml(request, error):
@@ -66,7 +63,7 @@ def crear_aplicacion_local(config: Configuracion, motor: Engine, perfil: PerfilC
     @app.middleware("http")
     async def ingreso_asistencia(request: Request, siguiente):
         ruta = request.url.path
-        protegida = (ruta == "/api/v1/metrics/recommendations" or ruta == "/api/v1/documents" or ruta.startswith("/api/v1/documents/")
+        protegida = (ruta == "/api/v1/documents" or ruta.startswith("/api/v1/documents/")
             or ruta.startswith("/api/v1/recommendations/")
             or ruta.startswith("/api/v1/tickets/") and
                (ruta.endswith("/recommendations") or ruta.endswith("/prediction")))

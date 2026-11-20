@@ -7,6 +7,11 @@ está en el repositorio y no se ha revisado. Esta especificación implementa
 el extracto recibido; no declara una evaluación realizada ni un umbral
 global de producción aprobado.
 
+La respuesta PO/backend del 20-11-2026 indica que no existe una matriz MLOps
+aprobada. Este extracto EA3 se conserva como antecedente propuesto dentro de
+la [matriz integral](matriz-mlops.md), pendiente de ratificación; disponer del
+evaluador no equivale a aprobar sus criterios.
+
 | Caso | Tema | Criterio recibido |
 | --- | --- | --- |
 | RAG-001 | Red corporativa | Al menos un fragmento relevante en los tres primeros: Precision@3 ≥ 1/3 |

@@ -58,7 +58,7 @@ export function seal(context, method, path, headers, key, audience, filterCookie
       const source = new URL(context.path, 'http://ingreso.invalid').pathname;
       const target = new URL(path, 'http://ingreso.invalid').pathname;
       const navigation = /^\/(?:inicio|metricas|documentos(?:\/[0-9a-f-]{36})?|tickets(?:\/nuevo|\/[0-9a-f-]{36})?)$/i.test(source);
-      const read = /^\/api\/v1\/(?:metrics\/(?:summary|recommendations)|documents(?:\/[0-9a-f-]{36})?|tickets(?:\/[0-9a-f-]{36}(?:\/(?:recommendations|prediction))?)?)$/i.test(target);
+      const read = /^\/api\/v1\/(?:metrics\/summary|documents(?:\/[0-9a-f-]{36})?|tickets(?:\/[0-9a-f-]{36}(?:\/(?:recommendations|prediction))?)?)$/i.test(target);
       const original = Object.fromEntries(context.rawControls);
       if (!navigation || !read || context.method !== 'GET' || method !== 'GET' ||
           original.origin.length > 1 ||

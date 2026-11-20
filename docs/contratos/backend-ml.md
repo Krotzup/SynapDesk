@@ -404,6 +404,14 @@ La comprobación con `py_compile` valida sintaxis, no reemplaza estas pruebas ni
 
 ## Decisiones pendientes y bloqueos
 
+La devolución PO/backend compartida el 20-11-2026 propone mantener confianzas
+individuales por objetivo y un adaptador explícito; no autoriza modificar
+campos confirmados ni inventar equivalencias tipo/categoría o cola/área.
+La propuesta es compatible con el incremento #60, pero los mapeos y la
+ratificación contractual siguen pendientes. El artefacto y su entorno deben
+completar la [ficha de entrega](../ml/ficha-clasificador.md) y la
+[matriz MLOps propuesta](../ml/matriz-mlops.md) antes de habilitar inferencia real.
+
 1. Resolver si tipo equivale a categoría o requiere ampliar el dominio.
 2. Aprobar el catálogo y mapeo de colas a áreas.
 3. Verificar el catálogo vigente `low`, `medium`, `high` y la aplicación explícita de su migración.

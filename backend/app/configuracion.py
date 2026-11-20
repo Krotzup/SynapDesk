@@ -60,7 +60,6 @@ class Configuracion(BaseSettings):
     classifier_area_mapping: dict[str, str] = Field(default_factory=dict)
     documents_enabled: bool = False
     tickets_http_enabled: bool = False
-    metrics_ai_enabled: bool = False
 
     # PROVISIONAL_CONFIGURATION / PENDING_MEASUREMENT; memoria en KiB.
     auth_argon2_memoria_kib: int = Field(default=65536, ge=8, le=2**32 - 1)

@@ -1,5 +1,15 @@
 # Preparación para Render
 
+Actualización PO/backend del 20-11-2026: **presupuesto exclusivamente gratuito**.
+El Blueprint privado de pago no satisface ese alcance y no está autorizado.
+La alternativa Web Service Free público, HTTPS y autenticación entre servicios
+queda en evaluación de Felipe: debe verificar terminación TLS, identidad,
+autorización y compatibilidad SEC-01B antes de implementarla. América debe
+medir RSS/tiempo de carga de clasificador y embeddings. Sin esa evidencia,
+mantener la IA deshabilitada; no crear recursos de pago ni habilitar confianza
+en cabeceras de proxy para sortear los controles. La construcción ligera previa
+no acredita capacidad Free. Véase la [matriz propuesta](../../docs/ml/matriz-mlops.md).
+
 El Blueprint raíz describe Next.js público y FastAPI privado con TLS directo.
 **El backend ML/RAG no está desplegado ni acreditado en Render.** No hay credencial de Render ni
 certificados de su hostname privado en el repositorio. `autoDeployTrigger: off`

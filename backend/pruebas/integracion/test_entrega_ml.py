@@ -56,7 +56,7 @@ def test_router_optativo_usa_sesion_csrf_y_precondicion_reales(candidato_pg):
     from app.aplicacion import crear_aplicacion
     from pruebas.intermediario_auxiliar import ORIGEN
     e = candidato_pg
-    config = e["config"].model_copy(update={"tickets_http_enabled": True, "metrics_ai_enabled": True,
+    config = e["config"].model_copy(update={"tickets_http_enabled": True,
         "application_public_origin": ORIGEN, "auth_cookie_profile": "local"})
     app = crear_aplicacion(config)
     headers = {"Authorization": "Bearer " + e["clave"].get_secret_value(), "Origin": ORIGEN,
@@ -65,11 +65,6 @@ def test_router_optativo_usa_sesion_csrf_y_precondicion_reales(candidato_pg):
     # Scope HTTPS de pruebas: verifica HTTP/SQL, no certifica listener TLS real.
     with TestClient(app, base_url="https://localhost", client=("127.0.0.1", 12345)) as client:
         app.state.motor_bd = e["motor"]
-        metrics = client.get("/api/v1/metrics/recommendations", headers=headers)
-        assert metrics.status_code == 200 and metrics.headers["cache-control"] == "no-store"
-        assert metrics.json() == dict(recommendationsAccepted=0, recommendationsModified=0, recommendationsRejected=0)
-        denied = client.get("/api/v1/metrics/recommendations", headers={"Authorization": headers["Authorization"]})
-        assert denied.status_code == 401
         created = client.post("/api/v1/tickets", headers=headers,
             json={"title": "Router con sesion real", "description": "Descripcion del router optativo."})
         assert created.status_code == 201, created.text
@@ -82,33 +77,6 @@ def test_router_optativo_usa_sesion_csrf_y_precondicion_reales(candidato_pg):
         assert conflict.status_code == 409 and conflict.json()["error"]["code"] == "TICKET_STATE_CONFLICT"
         result = client.get("/api/v1/tickets?status=resolved&search=Router", headers=headers)
         assert result.status_code == 200 and result.json()["totalItems"] == 1
-
-
-def test_metricas_cuentan_revisiones_no_borradores_y_sin_mutar_tickets(tickets):
-    from sqlalchemy import delete
-    from sqlalchemy.orm import Session
-    from app.api.metricas_ia import contar_revisiones
-    from app.persistencia.modelos.recomendacion import Recomendacion, RevisionRecomendacion
-    ticket = crear(tickets)
-    identifiers = []
-    try:
-        with Session(tickets["motor"]) as db, db.begin():
-            for decision in ("pending", "accepted", "modified", "rejected"):
-                row = Recomendacion(ticket_id=ticket.id, contenido="Contenido de prueba", estado=decision,
-                    fuentes=[], proveedor="simulado", modelo="simulado", version_prompt="test")
-                db.add(row)
-                db.flush()
-                identifiers.append(row.id)
-                if decision != "pending":
-                    db.add(RevisionRecomendacion(recomendacion_id=row.id, revisor_id=tickets["usuarios"][0],
-                        decision=decision, contenido_modificado="Revisado" if decision == "modified" else None))
-        with Session(tickets["motor"]) as db:
-            assert contar_revisiones(db) == dict(recommendationsAccepted=1, recommendationsModified=1, recommendationsRejected=1)
-        assert consulta_interna(tickets, lambda repo: repo.detalle(ticket.id)) == ticket
-    finally:
-        with Session(tickets["motor"]) as db, db.begin():
-            db.execute(delete(RevisionRecomendacion).where(RevisionRecomendacion.recomendacion_id.in_(identifiers)))
-            db.execute(delete(Recomendacion).where(Recomendacion.id.in_(identifiers)))
 
 
 @pytest.fixture

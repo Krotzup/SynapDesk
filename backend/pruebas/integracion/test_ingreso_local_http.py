@@ -34,7 +34,8 @@ def http_local(tickets, configuracion_bd_test):
     datos.update({k: v for k, v in configuracion_login().model_dump().items() if k.startswith("auth_")})
     servicio, clave, audiencia = credencial(), secrets.token_bytes(32), uuid4().hex
     datos.update(auth_intermediario=politica([servicio]), auth_origenes_permitidos=[ORIGEN],
-                 auth_proxies_autorizados=["127.0.0.1/32"], search_enabled=True, auth_cookie_profile="local")
+                 auth_proxies_autorizados=["127.0.0.1/32"], search_enabled=True, auth_cookie_profile="local",
+                 application_public_origin=ORIGEN)
     config = Configuracion(_env_file=None, **datos)
     perfil = preparar_perfil(config, origen_publico=ORIGEN,
         nombre_sesion="synapdesk_session_dev", nombre_contexto="synapdesk_csrf_context_dev")
@@ -43,10 +44,16 @@ def http_local(tickets, configuracion_bd_test):
     app = crear_aplicacion_local(config, tickets["motor"], perfil, verificador,
         capacidad_argon2=1, max_cuerpo_bytes=65536)
     with TestClient(app, base_url="https://localhost", client=("127.0.0.1", 12345)) as cliente:
-        def solicitar(ruta, actor, metodo="GET", cuerpo=None, token=None, origen=ORIGEN, evidencia=True):
+        def solicitar(ruta, actor, metodo="GET", cuerpo=None, token=None, origen=ORIGEN, evidencia=True,
+                      canal=True, sesion=True):
             headers = {"Authorization": "Bearer " + servicio.get_secret_value(),
                        "Origin": origen,
                        "Cookie": "synapdesk_session_dev=" + tickets["referencias"][actor].credencial.get_secret_value()}
+            if not canal:
+                headers["Authorization"] = "Bearer credencial-invalida-de-prueba"
+            if not sesion:
+                # Evitar que TestClient añada su cookie jar después de firmar el sello.
+                headers["Cookie"] = ""
             if token is not None:
                 headers["X-CSRF-Token"] = token
             url = urlsplit(ruta)
@@ -296,3 +303,34 @@ def test_busqueda_sesion_csrf_e_ingreso_reales(http_local, actor):
         from sqlalchemy import func
         db.execute(update(Sesion).where(Sesion.usuario_id == e["usuarios"][actor]).values(revocada_en=func.clock_timestamp()))
     assert search(token=token).status_code == 401
+
+
+@pytest.mark.parametrize("actor", [0, 1], ids=["admin", "agent"])
+@pytest.mark.parametrize("metodo,ruta", [
+    ("GET", "/api/v1/documents"),
+    ("GET", "/api/v1/tickets/11111111-1111-4111-8111-111111111111/prediction"),
+    ("POST", "/api/v1/tickets/11111111-1111-4111-8111-111111111111/prediction"),
+    ("POST", "/api/v1/documents"),
+    ("DELETE", "/api/v1/documents/11111111-1111-4111-8111-111111111111"),
+])
+def test_asistencia_conciliada_conserva_fronteras_reales(http_local, actor, metodo, ruta):
+    from app.seguridad.csrf import ServicioCsrf
+    from app.seguridad.transacciones import transaccion_seguridad
+    e = http_local
+    with Session(e["motor"]) as db, transaccion_seguridad(db):
+        token = ServicioCsrf(db, e["config"]).emitir_token(sesion=e["referencias"][actor].credencial).token.get_secret_value()
+    def pedir(**kwargs):
+        return e["solicitar"](ruta, actor, metodo=metodo, cuerpo={} if metodo == "POST" else None,
+                              **(dict(token=token) | kwargs))
+    assert pedir(evidencia=False).status_code == 503
+    assert pedir(canal=False).status_code == 503
+    assert pedir(origen="https://ajeno.invalid").status_code == 403
+    assert pedir(sesion=False).status_code == 401
+    if metodo != "GET":
+        assert pedir(token="invalido").status_code == 403
+    if actor == 1 and ruta.startswith("/api/v1/documents") and metodo != "GET":
+        assert pedir().status_code == 403  # agente no administra documentos
+    with e["motor"].begin() as db:
+        from sqlalchemy import func
+        db.execute(update(Sesion).where(Sesion.usuario_id == e["usuarios"][actor]).values(revocada_en=func.clock_timestamp()))
+    assert pedir().status_code == 401

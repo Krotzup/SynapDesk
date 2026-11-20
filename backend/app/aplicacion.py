@@ -105,9 +105,6 @@ def crear_aplicacion(configuracion: Configuracion | None = None) -> FastAPI:
     aplicacion.include_router(router_recomendaciones, prefix="/api/v1")
     aplicacion.include_router(router_predicciones, prefix="/api/v1")
     aplicacion.include_router(router_documentos, prefix="/api/v1")
-    if configuracion.metrics_ai_enabled:
-        from app.api.metricas_ia import router as router_metricas_ia
-        aplicacion.include_router(router_metricas_ia, prefix="/api/v1")
     if configuracion.tickets_http_enabled:
         from app.api.tickets import router as router_tickets
         aplicacion.include_router(router_tickets, prefix="/api/v1")

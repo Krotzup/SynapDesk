@@ -7,7 +7,8 @@ docs/
 ├── arquitectura/   Diseño, límites, flujos y diagramas del sistema.
 ├── adr/            Registros de decisiones arquitectónicas.
 ├── contratos/      Acuerdos entre frontend, backend y Machine Learning.
-└── gestion/        Convenciones, alcance y seguimiento técnico.
+├── gestion/        Convenciones, alcance y seguimiento técnico.
+└── ml/             Matriz MLOps propuesta, evaluación y fichas de entrega.
 ```
 
 Los documentos deben actualizarse dentro del mismo pull request que modifica la decisión o el comportamiento correspondiente.
@@ -30,3 +31,7 @@ Documentos iniciales:
 - [Recomendaciones RAG V1 y revisión humana](contratos/recomendaciones-rag-v1.md)
 - [Persistencia relacional inicial](arquitectura/persistencia-inicial.md)
 - [Alcance y validación de las mejoras semánticas](gestion/mejora-recuperacion-semantica.md)
+- [Matriz MLOps propuesta](ml/matriz-mlops.md)
+- [Evaluación RAG EA3](ml/evaluacion-rag-ea3.md)
+- [Ficha de entrega del clasificador](ml/ficha-clasificador.md)
+- [Verificación y ratificaciones del PR #60](gestion/verificacion-pr60.md)
