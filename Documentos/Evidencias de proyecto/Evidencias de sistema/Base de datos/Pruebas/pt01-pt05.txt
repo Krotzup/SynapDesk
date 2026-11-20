@@ -1,0 +1,25 @@
+2026-11-20 01:24 -0300
+commit 49e88f1 (PR #60 sobre main 6e58949)
+Base temporal propia en db_test, eliminada al terminar.
+pruebas/test_salud.py::test_salud_responde_con_el_contrato_esperado PASSED [  5%]
+pruebas/test_disponibilidad.py::test_disponibilidad_con_consulta_exitosa PASSED [ 10%]
+pruebas/test_disponibilidad.py::test_error_de_conexion_no_revela_informacion_interna PASSED [ 15%]
+pruebas/test_disponibilidad.py::test_sin_configuracion_bd_la_api_responde_pero_no_esta_lista PASSED [ 20%]
+pruebas/test_disponibilidad.py::test_ciclo_de_vida_crea_y_libera_motor_sin_conectar_en_salud[False] PASSED [ 25%]
+pruebas/test_disponibilidad.py::test_ciclo_de_vida_crea_y_libera_motor_sin_conectar_en_salud[True] PASSED [ 30%]
+pruebas/integracion/test_postgresql.py::test_postgresql_y_pgvector_en_base_de_pruebas PASSED [ 35%]
+pruebas/integracion/test_postgresql.py::test_disponibilidad_con_postgresql_real PASSED [ 40%]
+pruebas/integracion/test_postgresql.py::test_ejemplo_directo_inicia_salud_y_disponibilidad_sin_servicios_auth PASSED [ 45%]
+pruebas/integracion/test_migracion_inicial.py::test_migracion_se_revierte_se_aplica_y_coincide_con_modelos PASSED [ 50%]
+pruebas/integracion/test_persistencia.py::test_persistir_usuario_y_ticket_con_valores_iniciales PASSED [ 55%]
+pruebas/integracion/test_persistencia.py::test_correo_normalizado_no_permite_duplicados PASSED [ 60%]
+pruebas/integracion/test_persistencia.py::test_ticket_rechaza_usuario_inexistente[creado_por_id] PASSED [ 65%]
+pruebas/integracion/test_persistencia.py::test_ticket_rechaza_usuario_inexistente[asignado_a_id] PASSED [ 70%]
+pruebas/integracion/test_persistencia.py::test_base_rechaza_rol_estado_o_prioridad_fuera_del_contrato[usuario-rol-superadmin] PASSED [ 75%]
+pruebas/integracion/test_persistencia.py::test_base_rechaza_rol_estado_o_prioridad_fuera_del_contrato[ticket-estado-pending] PASSED [ 80%]
+pruebas/integracion/test_persistencia.py::test_base_rechaza_rol_estado_o_prioridad_fuera_del_contrato[ticket-prioridad-urgent] PASSED [ 85%]
+pruebas/integracion/test_persistencia.py::test_base_rechaza_rol_estado_o_prioridad_fuera_del_contrato[ticket-prioridad-critical] PASSED [ 90%]
+pruebas/integracion/test_persistencia.py::test_eliminacion_fisica_no_borra_creador_con_historial PASSED [ 95%]
+pruebas/integracion/test_persistencia.py::test_desactivar_usuario_conserva_ticket_y_actualiza_fecha PASSED [100%]
+============================== 20 passed in 1.33s ==============================
+Base temporal eliminada.

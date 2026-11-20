@@ -1,0 +1,9 @@
+........................................................................ [ 14%]
+........................................................................ [ 29%]
+........................................................................ [ 44%]
+........................................................................ [ 58%]
+........................................................................ [ 73%]
+........................................................................ [ 88%]
+.........................................................                [100%]
+489 passed in 38.15s
+{"suite": "postgresql", "temporary_directory": ".arnes-auth07d2-8da24f0d831748f0bef6978629fee5b7", "migration_chain": ["0001_usuarios_tickets", "0002_autenticacion_persistencia", "0003_retirar_prioridad_critical", "0004_bootstrap_csrf", "0005_actor_bootstrap", "0006_user_created", "0007_recomendaciones_rag", "0008_predicciones_ticket"], "database": {"name": "synapdesk_auth07_sec01a_ab0d8a16bdb747348d41768d4549b1c1", "internal_port": 5432, "version": "170011", "client_port": 5433}, "alembic": [{"step": "upgrade", "exit_code": 0}, {"step": "current", "exit_code": 0}, {"step": "heads", "exit_code": 0}, {"step": "check", "exit_code": 0}], "schema_head": "0008_predicciones_ticket", "user_created_catalog_present": true, "passed": 489, "pytest_temporary_deleted": true, "skipped": 0, "database_deleted": true, "temporary_deleted": true}

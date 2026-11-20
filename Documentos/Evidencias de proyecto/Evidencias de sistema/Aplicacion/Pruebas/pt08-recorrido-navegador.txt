@@ -1,0 +1,103 @@
+2026-11-20 01:24 -0300
+commit 49e88f1 (PR #60 sobre main 6e58949)
+Ensayo local APP_ENV=testing: Chromium (Playwright 1.49.1) -> Next.js (servidor de desarrollo del ensayo) -> FastAPI -> PostgreSQL 17.11 en db_test (base temporal eliminada al terminar).
+Resultado: APROBADO - 94 de 94 comprobaciones
+
+OK   admin_csrf_before_login
+OK   admin_login_browser
+OK   admin_me_persisted_session
+OK   admin_filters_enabled
+OK   admin_new_ticket_page
+OK   admin_create_browser_http201
+OK   admin_created_data
+OK   admin_single_submit
+OK   admin_create_no_store
+OK   admin_sql_created
+OK   admin_detail_navigation
+OK   admin_list_browser
+OK   admin_list_second_page
+OK   admin_extreme_page_no_503
+OK   admin_detail_browser
+OK   admin_optional_recommendations_do_not_block
+OK   admin_status_browser_http200
+OK   admin_status_only
+OK   admin_sql_updated
+OK   admin_reload_persistence
+OK   admin_sql_reloaded
+OK   admin_session_csrf
+OK   admin_invalid_state
+OK   admin_invalid_csrf
+OK   admin_reject_unrelated_field
+OK   admin_invalid_origin
+OK   admin_invalid_cookie_nbsp
+OK   admin_anonymous_read
+OK   admin_anonymous_create
+OK   admin_sql_negative_unchanged
+OK   admin_logout_invalid_csrf
+OK   admin_logout_rejection_keeps_session
+OK   admin_logout_browser_http204
+OK   admin_logout_cookie_removed
+OK   admin_logout_me_rejected
+OK   admin_logout_old_cookie_rejected
+OK   admin_sql_logged_out
+OK   admin_security_relogin_http200
+OK   admin_security_relogin_me
+OK   admin_security_relogin_csrf
+OK   admin_sql_deactivate
+OK   admin_inactive_account_write
+OK   admin_revoked_or_inactive_read
+OK   admin_sql_negative_unchanged
+OK   admin_no_js_errors
+OK   admin_no_password_in_urls
+OK   admin_no_secret_in_errors
+OK   agent_csrf_before_login
+OK   agent_login_browser
+OK   agent_me_persisted_session
+OK   agent_filters_enabled
+OK   agent_new_ticket_page
+OK   agent_create_browser_http201
+OK   agent_created_data
+OK   agent_single_submit
+OK   agent_create_no_store
+OK   agent_sql_created
+OK   agent_detail_navigation
+OK   agent_list_browser
+OK   agent_list_second_page
+OK   agent_extreme_page_no_503
+OK   agent_detail_browser
+OK   agent_optional_recommendations_do_not_block
+OK   agent_status_browser_http200
+OK   agent_status_only
+OK   agent_sql_updated
+OK   agent_reload_persistence
+OK   agent_sql_reloaded
+OK   agent_session_csrf
+OK   agent_invalid_state
+OK   agent_invalid_csrf
+OK   agent_reject_unrelated_field
+OK   agent_invalid_origin
+OK   agent_invalid_cookie_nbsp
+OK   agent_anonymous_read
+OK   agent_anonymous_create
+OK   agent_sql_negative_unchanged
+OK   agent_logout_invalid_csrf
+OK   agent_logout_rejection_keeps_session
+OK   agent_logout_browser_http204
+OK   agent_logout_cookie_removed
+OK   agent_logout_me_rejected
+OK   agent_logout_old_cookie_rejected
+OK   agent_sql_logged_out
+OK   agent_security_relogin_http200
+OK   agent_security_relogin_me
+OK   agent_security_relogin_csrf
+OK   agent_sql_revoke
+OK   agent_revoked_session_write
+OK   agent_revoked_or_inactive_read
+OK   agent_sql_negative_unchanged
+OK   agent_no_js_errors
+OK   agent_no_password_in_urls
+OK   agent_no_secret_in_errors
+
+Observaciones de las capturas:
+- Las recomendaciones muestran un error controlado porque el RAG está desactivado en el ensayo; la comprobación optional_recommendations_do_not_block confirma que ese fallo no bloquea el ticket.
+- El indicador del menú lateral muestra "Sin conexión con el servidor": el ensayo no expone /api/v1/ready al navegador.

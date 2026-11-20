@@ -1,0 +1,7 @@
+2026-11-20 01:24 -0300
+commit 49e88f1 (PR #60 sobre main 6e58949)
+== node --test backend/herramientas/ingreso_local/protocolo.test.mjs
+# tests 49
+# pass 49
+# fail 0
+# skipped 0
