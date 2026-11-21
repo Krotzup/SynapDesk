@@ -1,0 +1,13 @@
+2026-11-20 01:24 -0300
+commit 49e88f1 (PR #60 sobre main 6e58949)
+API: uvicorn app.main:app (un solo proceso durante toda la prueba) con una base temporal propia en db_test (PostgreSQL 17.11 + pgvector 0.8.6)
+== con db_test en marcha
+GET /api/v1/health -> {"status":"ok","service":"synapdesk-backend"} [HTTP 200]
+GET /api/v1/ready -> {"status":"ready","service":"synapdesk-backend","database":"ok"} [HTTP 200]
+== tras detener solo db_test
+GET /api/v1/health -> {"status":"ok","service":"synapdesk-backend"} [HTTP 200]
+GET /api/v1/ready -> {"error":{"code":"DATABASE_UNAVAILABLE","message":"La base de datos no está disponible.","details":null,"requestId":"c30848a2-5d98-4381-b3d9-cd07eaf82852"}} [HTTP 503]
+== tras reiniciar db_test (sus datos están en memoria, por lo que se recrea la base temporal con el mismo nombre)
+GET /api/v1/health -> {"status":"ok","service":"synapdesk-backend"} [HTTP 200]
+GET /api/v1/ready -> {"status":"ready","service":"synapdesk-backend","database":"ok"} [HTTP 200]
+Base temporal eliminada al terminar.

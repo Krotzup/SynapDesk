@@ -1,0 +1,89 @@
+Fecha: 2026-11-20 01:30 -0300 | commit 49e88f1 | Python 3.12.16
+== entrenamiento con la muestra sintética (12 tickets)
+Dataset preparado: ml/artifacts/ticket_classifier_sample/prepared_tickets.csv
+Modelo guardado: ml/artifacts/ticket_classifier_sample/ticket_classifier.joblib
+Metricas guardadas: ml/artifacts/ticket_classifier_sample/metrics.json
+== predicción
+{
+  "modelName": "synapdesk_tfidf_sgd_words_chars_ticket_classifier",
+  "modelVersion": "20261120043001",
+  "businessRulesEnabled": false,
+  "predictions": {
+    "clasificacion_sugerida": {
+      "label": "problem",
+      "confidence": 0.5449164625764505,
+      "top3": [
+        {
+          "label": "problem",
+          "confidence": 0.5449164625764505
+        },
+        {
+          "label": "incident",
+          "confidence": 0.4550011807587451
+        },
+        {
+          "label": "request",
+          "confidence": 8.235625800488556e-05
+        }
+      ],
+      "decision": "model",
+      "decision_source": "model",
+      "confidence_source": "model",
+      "model_label": "problem",
+      "model_confidence": 0.5449164625764505,
+      "rule": null,
+      "trigger": null
+    },
+    "prioridad_estimada": {
+      "label": "medium",
+      "confidence": 0.9999355446593762,
+      "top3": [
+        {
+          "label": "medium",
+          "confidence": 0.9999355446593762
+        },
+        {
+          "label": "high",
+          "confidence": 6.44551071299525e-05
+        },
+        {
+          "label": "low",
+          "confidence": 2.334938670090421e-10
+        }
+      ],
+      "decision": "model",
+      "decision_source": "model",
+      "confidence_source": "model",
+      "model_label": "medium",
+      "model_confidence": 0.9999355446593762,
+      "rule": null,
+      "trigger": null
+    },
+    "area_responsable": {
+      "label": "application_support",
+      "confidence": 0.634091263408148,
+      "top3": [
+        {
+          "label": "application_support",
+          "confidence": 0.634091263408148
+        },
+        {
+          "label": "it_support",
+          "confidence": 0.36544221378889813
+        },
+        {
+          "label": "network",
+          "confidence": 0.00024428530088037753
+        }
+      ],
+      "decision": "model",
+      "decision_source": "model",
+      "confidence_source": "model",
+      "model_label": "application_support",
+      "model_confidence": 0.634091263408148,
+      "rule": null,
+      "trigger": null
+    }
+  }
+}
+salida: 0
