@@ -111,6 +111,6 @@ Carpeta [`Pruebas/`](Pruebas/), del 20-11-2026 sobre el commit `49e88f1`:
 | [`pt08-recorrido-navegador.txt`](Pruebas/pt08-recorrido-navegador.txt) | PT08: lista de las 94 comprobaciones con las cuentas agent y admin |
 | [`frontend.txt`](Pruebas/frontend.txt) | Pruebas del frontend: componentes 59, unitarias 78, búsqueda 15 y proxy 87; TypeScript, ESLint, Prettier y build |
 | [`protocolo-ensayo.txt`](Pruebas/protocolo-ensayo.txt) | 49 pruebas del protocolo del ensayo local |
-| [`ml.txt`](Pruebas/ml.txt) | Pruebas de Machine Learning: 115 pruebas, 112 aprobadas y 3 omitidas que requieren el modelo real |
+| [`ml.txt`](Pruebas/ml.txt) | Pruebas de Machine Learning: 115 pruebas, 112 aprobadas y 3 omitidas que requieren el modelo real; esas 3 se aprobaron con el modelo real en PT09 ([`ml-completo.txt`](../Base%20de%20datos/Pruebas/ml-completo.txt)) |
 | [`pt07.txt`](Pruebas/pt07.txt) | PT07: entrenamiento con la muestra sintética y predicción de tipo, prioridad y área |
 | [`fecha.txt`](Pruebas/fecha.txt) | Fecha, hora y commit de la ejecución |
