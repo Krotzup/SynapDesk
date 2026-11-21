@@ -1,0 +1,59 @@
+Fecha: 2026-11-20T21:22:13-03:00 (America/Santiago) | Commit: 8fb9c7251f8f05927b4d4f4fa0d451599b846aec | Python: 3.12.4
+Entorno: db_test, puerto 5433, base synapdesk_semantic_test; modelo en cache local, modo offline.
+Variables de activacion: SYNAPDESK_RUN_SEMANTIC_MODEL_TESTS=1; SYNAPDESK_SEMANTIC_DATABASE_URL y SYNAPDESK_SEMANTIC_TEST_DATABASE_URL configuradas en memoria para la misma base autorizada; valores de conexion omitidos.
+Modelo: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2@e8f8c211226b894fcb81acc59f3b34ba3efd5f42
+Versiones: {"sentence-transformers": "5.1.2", "transformers": "4.57.1", "torch": "2.14.0", "psycopg": "3.3.6", "pgvector": "0.4.1", "numpy": "2.3.4", "scikit-learn": "1.9.1", "pandas": "2.3.3"}
+
+$ python -m ml.semantic_retrieval.cli init-db
+Tabla experimental preparada.
+Codigo de salida: 0
+
+$ python -m ml.semantic_retrieval.cli index --document-id 11111111-1111-4111-8111-111111111111 --title Conectividad --file ml/examples/conectividad.txt
+Documento indexado: 1 fragmentos.
+Codigo de salida: 0
+
+$ python -m ml.semantic_retrieval.cli index --document-id 22222222-2222-4222-8222-222222222222 --title Impresora --file ml/examples/impresora.txt
+Documento indexado: 1 fragmentos.
+Codigo de salida: 0
+
+$ python -m ml.semantic_retrieval.cli search --query "No puedo acceder a la red de la oficina" --limit 5
+{
+  "items": [
+    {
+      "documentId": "11111111-1111-4111-8111-111111111111",
+      "documentChunkId": "3d6dfb62-0cbb-5ea6-aa77-08c7388e3b47",
+      "title": "Conectividad",
+      "excerpt": "Si un equipo no puede acceder a la red corporativa, compruebe primero la conexión física o inalámbrica. Revise el estado del adaptador de red y la configuración IP. Si la red sigue sin funcionar, documente los resultados y escale al equipo de redes.",
+      "score": 0.33075350522994995
+    },
+    {
+      "documentId": "22222222-2222-4222-8222-222222222222",
+      "documentChunkId": "183cb808-82a5-5ccd-b7fc-3bf6d3fa92f5",
+      "title": "Impresora",
+      "excerpt": "Si una impresora no responde, revise que esté encendida y conectada. Compruebe la cola de impresión y la configuración del controlador. Registre el resultado antes de solicitar soporte adicional.",
+      "score": 0.036777254194021225
+    }
+  ]
+}
+Codigo de salida: 0
+
+$ python -m ml.semantic_retrieval.cli search --query "La impresora no imprime" --limit 5
+{
+  "items": [
+    {
+      "documentId": "22222222-2222-4222-8222-222222222222",
+      "documentChunkId": "183cb808-82a5-5ccd-b7fc-3bf6d3fa92f5",
+      "title": "Impresora",
+      "excerpt": "Si una impresora no responde, revise que esté encendida y conectada. Compruebe la cola de impresión y la configuración del controlador. Registre el resultado antes de solicitar soporte adicional.",
+      "score": 0.6137719520194512
+    },
+    {
+      "documentId": "11111111-1111-4111-8111-111111111111",
+      "documentChunkId": "3d6dfb62-0cbb-5ea6-aa77-08c7388e3b47",
+      "title": "Conectividad",
+      "excerpt": "Si un equipo no puede acceder a la red corporativa, compruebe primero la conexión física o inalámbrica. Revise el estado del adaptador de red y la configuración IP. Si la red sigue sin funcionar, documente los resultados y escale al equipo de redes.",
+      "score": 0.05033166261504074
+    }
+  ]
+}
+Codigo de salida: 0

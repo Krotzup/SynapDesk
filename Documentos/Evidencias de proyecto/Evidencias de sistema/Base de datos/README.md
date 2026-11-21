@@ -174,6 +174,14 @@ Ejecutada sobre el commit `49e88f1` con PostgreSQL 17.11 y pgvector 0.8.6 en bas
 pruebas `db_test` (nunca en la base de desarrollo), borradas al terminar. Las salidas están en
 [`Pruebas/`](Pruebas/) y no contienen credenciales.
 
+Las tres evidencias complementarias de PT09 se ejecutaron el **20-11-2026** sobre
+el commit `8fb9c7251f8f05927b4d4f4fa0d451599b846aec`, con Python 3.12.4 y el modelo de
+embeddings real disponible en caché, sin descargas. Usaron exclusivamente
+`synapdesk_semantic_test` del servicio `db_test`, puerto 5433, con PostgreSQL 17.11
+y pgvector 0.8.6. La base semántica se conserva con los dos ejemplos; la prueba
+de integración revierte su esquema y datos temporales al terminar. Las cifras
+anteriores conservan su fecha y commit originales.
+
 | Archivo | Resultado |
 |---|---|
 | [`alembic.txt`](Pruebas/alembic.txt) | Migraciones 0001 → 0008 aplicadas; `alembic upgrade`, `current`, `heads` y `check` sin errores ni diferencias |
@@ -183,6 +191,9 @@ pruebas `db_test` (nunca en la base de desarrollo), borradas al terminar. Las sa
 | [`pt01-pt05.txt`](Pruebas/pt01-pt05.txt) | PT01–PT05: salud, disponibilidad, PostgreSQL y pgvector, migración y persistencia (20/20) |
 | [`pt01-pt02-humo.txt`](Pruebas/pt01-pt02-humo.txt) | Prueba de humo: `/health` y `/ready` responden 200; al detener la base, `/ready` responde 503 sin datos internos, y vuelve a 200 al recuperarla |
 | [`fecha.txt`](Pruebas/fecha.txt) | Fecha, hora y commit de la ejecución |
+| [`pt09-busqueda.txt`](Pruebas/pt09-busqueda.txt) | PT09 con el modelo real y pgvector: `init-db`, indexación de los dos ejemplos y búsquedas con `--limit 5`; Conectividad primero para la consulta de red (similitud 0,330754) e Impresora primero para la consulta de impresión (0,613772). Son similitudes, no probabilidades ni una medición de calidad general. |
+| [`pt09-pruebas-modelo-real.txt`](Pruebas/pt09-pruebas-modelo-real.txt) | **6 pruebas aprobadas, sin omisiones**: 5 de fragmentación/modelo real y 1 de base semántica; vectores de 384 dimensiones, reindexación estable, rollback y aislamiento por modelo verificados. |
+| [`ml-completo.txt`](Pruebas/ml-completo.txt) | Suite completa de ML con modelo y base reales activados: **115 pruebas, 111 aprobadas, 4 omitidas y 0 fallidas**. Las 4 omisiones son de `ProcedureCorpusTests` y requieren `ml/requirements-corpus.txt` (módulo `bs4` no disponible en este entorno); las 3 pruebas semánticas antes omitidas se ejecutaron y aprobaron. |
 
 Para repetirla, seguir [`backend/README.md`](https://github.com/Krotzup/SynapDesk/blob/main/backend/README.md) e
 [`infra/README.md`](https://github.com/Krotzup/SynapDesk/blob/main/infra/README.md).
